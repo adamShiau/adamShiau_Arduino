@@ -1,0 +1,14 @@
+#define LCD200I2CSLAVEADD 0x40
+
+//-------------Request command ----------
+#define LCD200_COM_IOUT 0x10
+#define LCD200_COM_ERR 0x11
+#define LCD200_COM_VFTH1 0x12
+#define LCD200_COM_VFTH2 0x13
+#define LCD200_COM_LDEN	0x14
+
+
+
+#define LCD200_ERRMASK_LDOPEN 	0x01
+#define LCD200_ERRMASK_LDSHORT 	0x02
+#define LCD200_ERRMASK_OUTERR	0x04

@@ -1,0 +1,23 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+LTC2451 KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+Init 		KEYWORD2
+Read		KEYWORD2
+SoftI2CInit	KEYWORD2
+SoftI2CRead	KEYWORD2
+
+######################################
+# Constants (KEYWORD3)
+#######################################
+MODE30HZ	KEYWORD3
+MODE60HZ	KEYWORD3
