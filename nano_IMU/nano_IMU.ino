@@ -2,8 +2,9 @@
 #include <Arduino.h>
 #include "wiring_private.h"
 #include <Arduino_LSM6DS3.h>
-#define PRINT_GYRO 1
+#define PRINT_GYRO 0
 #define PRINT_XLM 1
+#define PRINT_UNO 1
 
 Uart mySerial (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 
@@ -96,7 +97,8 @@ void loop() {
 ****/
 
   if(mySerial.available()>=12) {
-    requestGyro();
+//    requestGyro();
+    requestUno();
     requestXLM();
   }
 
@@ -134,6 +136,35 @@ void requestGyro() {
     Serial1.write(temp[4]);
     Serial1.write(temp[3]);
     Serial1.write(temp[2]);
+}
+
+void requestUno() {
+
+  byte temp[4];
+  int data;
+    for(int i=0; i<4; i++) {
+      temp[i] = mySerial.read(); 
+    }
+    data = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
+    if(PRINT_UNO){
+      Serial.print(mySerial.available()); 
+      Serial.print("\t");
+      Serial.print(data);
+      Serial.print("\t");
+//      Serial.print(temp[0]);
+//      Serial.print("\t");
+//      Serial.print(temp[1]);
+//      Serial.print("\t");
+//      Serial.print(temp[2]);
+//      Serial.print("\t");
+//      Serial.print(temp[3]);
+//      Serial.print("\t");
+
+    }  
+    Serial1.write(temp[0]);
+    Serial1.write(temp[1]);
+    Serial1.write(temp[2]);
+    Serial1.write(temp[3]);
 }
 
 void requestXLM() {
