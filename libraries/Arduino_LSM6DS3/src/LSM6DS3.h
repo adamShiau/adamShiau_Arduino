@@ -33,6 +33,8 @@ class LSM6DS3Class {
 
     // Accelerometer
     virtual int readAcceleration(float& x, float& y, float& z); // Results are in G (earth gravity).
+	virtual int readAcceleration(int& x, int& y, int& z); // Results are in G (earth gravity).
+
     virtual float accelerationSampleRate(); // Sampling rate of the sensor.
     virtual int accelerationAvailable(); // Check for available data from accerometer
 

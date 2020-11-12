@@ -84,9 +84,9 @@ int LSM6DS3Class::begin()
   //set the gyroscope control register to work at 104 Hz, 2000 dps and in bypass mode
   writeRegister(LSM6DS3_CTRL2_G, 0x4C);
 
-  // Set the Accelerometer control register to work at 104 Hz, 4G,and in bypass mode and enable ODR/4
+  // Set the Accelerometer control register to work at 208 Hz, 4G,and in bypass mode and enable ODR/4
   // low pass filter(check figure9 of LSM6DS3's datasheet)
-  writeRegister(LSM6DS3_CTRL1_XL, 0x4A);
+  writeRegister(LSM6DS3_CTRL1_XL, 0x5A);
 
   // set gyroscope power mode to high performance and bandwidth to 16 MHz
   writeRegister(LSM6DS3_CTRL7_G, 0x00);
@@ -121,10 +121,29 @@ int LSM6DS3Class::readAcceleration(float& x, float& y, float& z)
 
     return 0;
   }
-
+/*** +/- 4g w/ 16bit ***/
   x = data[0] * 4.0 / 32768.0;
   y = data[1] * 4.0 / 32768.0;
   z = data[2] * 4.0 / 32768.0;
+
+  return 1;
+}
+
+int LSM6DS3Class::readAcceleration(int& x, int& y, int& z)
+{
+  int16_t data[3];
+
+  if (!readRegisters(LSM6DS3_OUTX_L_XL, (uint8_t*)data, sizeof(data))) {
+    x = NAN;
+    y = NAN;
+    z = NAN;
+
+    return 0;
+  }
+/*** +/- 4g w/ 16bit ***/
+  x = (int)data[0];
+  y = (int)data[1];
+  z = (int)data[2];
 
   return 1;
 }
@@ -154,6 +173,7 @@ int LSM6DS3Class::readGyroscope(float& x, float& y, float& z)
 
     return 0;
   }
+/*** +/- 2000 w/ 16bit ***/
 
   x = data[0] * 2000.0 / 32768.0;
   y = data[1] * 2000.0 / 32768.0;
