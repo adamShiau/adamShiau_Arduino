@@ -12,6 +12,7 @@ int cnt_p = 0, cnt_m = 0;
 byte cnt0_p, cnt1_p, cnt2_p, cnt3_p;
 byte cnt0_m, cnt1_m, cnt2_m, cnt3_m;
 int byte_read;
+byte test[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 // Attach the interrupt handler to the SERCOM
 void SERCOM0_Handler()
@@ -98,8 +99,10 @@ void loop() {
 
   if(mySerial.available()>=12) {
 //    requestGyro();
+//    checkByte(170);
     requestUno();
     requestXLM();
+
   }
 
 //    if (IMU.accelerationAvailable()) {
@@ -161,10 +164,16 @@ void requestUno() {
 //      Serial.print("\t");
 
     }  
+    checkByte(0xAA);
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);
     Serial1.write(temp[3]);
+    
+//    Serial1.write(1);
+//    Serial1.write(2);
+//    Serial1.write(3);
+//    Serial1.write(4);
 }
 
 void requestXLM() {
@@ -186,4 +195,8 @@ void requestXLM() {
   Serial1.write(y);
   Serial1.write(z>>8);
   Serial1.write(z);
+}
+
+void checkByte(byte check) {
+  Serial1.write(check);
 }
