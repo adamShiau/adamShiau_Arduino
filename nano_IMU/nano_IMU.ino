@@ -3,142 +3,111 @@
 #include "wiring_private.h"
 #include <Arduino_LSM6DS3.h>
 #define PRINT_GYRO 0
-#define PRINT_XLM 1
-#define PRINT_UNO 1
+#define PRINT_XLM 0
+#define PRINT_UNO 0
+#define FOG_CLK 2
+#define HALF_PERIOD 5000
 
-Uart mySerial (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 int cnt_p = 0, cnt_m = 0;
-byte cnt0_p, cnt1_p, cnt2_p, cnt3_p;
-byte cnt0_m, cnt1_m, cnt2_m, cnt3_m;
-int byte_read;
-byte test[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+unsigned long start_time;
+//byte cnt0_p, cnt1_p, cnt2_p, cnt3_p;
+//byte cnt0_m, cnt1_m, cnt2_m, cnt3_m;
+//int byte_read;
+//byte test[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 // Attach the interrupt handler to the SERCOM
 void SERCOM0_Handler()
 {
-    mySerial.IrqHandler();
+    mySerial5.IrqHandler();
 }
+void SERCOM1_Handler()
+{
+    mySerial13.IrqHandler();
+}
+bool clk_status = 0;
 
 void setup() {
   // put your setup code here, to run once:
-    // Reassign pins 5 and 6 to SERCOM alt
+  pinMode(FOG_CLK,OUTPUT);
+//    // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
-  mySerial.begin(115200);
+    // Reassign pins 13 and 8 to SERCOM (not alt this time)
+  pinPeripheral(13, PIO_SERCOM);
+  pinPeripheral(8, PIO_SERCOM);
+  
+  mySerial5.begin(115200);
+  mySerial13.begin(115200);
   Serial1.begin(115200);
   Serial.begin(115200);
 
   if (!IMU.begin()) {
-    Serial.println("Failed to initialize IMU!");
-
+//    Serial.println("Failed to initialize IMU!");
     while (1);
   }
-  Serial.print("Accelerometer sample rate = ");
-  Serial.print(IMU.accelerationSampleRate());
-  Serial.println(" Hz");
-  Serial.println();
-  Serial.println("Acceleration in G's");
-  Serial.println("X\tY\tZ");
+//  Serial.print("Accelerometer sample rate = ");
+//  Serial.print(IMU.accelerationSampleRate());
+//  Serial.println(" Hz");
+//  Serial.println();
+//  Serial.println("Acceleration in G's");
+//  Serial.println("X\tY\tZ");
+
+
+  start_time = micros();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
 
-/**********
-  cnt0_p = cnt_p;
-  cnt1_p = cnt_p >> 8;
-  cnt2_p = cnt_p >> 16;
-  cnt3_p = cnt_p >> 24;
-  cnt0_m = cnt_m;
-  cnt1_m = cnt_m >> 8;
-  cnt2_m = cnt_m >> 16;
-  cnt3_m = cnt_m >> 24;
-  Serial.print(cnt_p);
-  Serial.print(", ");
-  Serial.println(cnt_m);
-  
-  Serial1.write(cnt3_p);
-  Serial1.write(cnt2_p);
-  Serial1.write(cnt1_p);
-  Serial1.write(cnt0_p);
-  Serial1.write(cnt3_m);
-  Serial1.write(cnt2_m);
-  Serial1.write(cnt1_m);
-  Serial1.write(cnt0_m);
-  cnt_p++;
-  cnt_m--;
-  delay(10);
-************/
-
-/********gyro get data SFOC-200*************
-//  if(mySerial.available()>=12)
-//  {
-//    for(int i=0; i<12; i++) {
-//      temp[i] = mySerial.read(); 
-//    }
-//    header = temp[0]<<8 | temp[1];
-//    omega = temp[5]<<24 | temp[4]<<16 | temp[3]<<8 | temp[2];
-//
-//    Serial.print(header, HEX);
-//    Serial.print(", ");
-//    Serial.print(mySerial.available()); 
-//    Serial.print(", ");
-//    Serial.print(cnt_p);
-//    Serial.print(", ");
-//    Serial.println(omega);
-//    
-//    Serial1.write(temp[5]);
-//    Serial1.write(temp[4]);
-//    Serial1.write(temp[3]);
-//    Serial1.write(temp[2]);
-//    cnt_p++;
-//  }
-****/
-
-  if(mySerial.available()>=12) {
-//    requestGyro();
-//    checkByte(170);
-    requestUno();
+  if(mySerial13.available()>=24) {
+    checkByte(0xAA);
+    requestGyro();
     requestXLM();
-
-  }
-
-//    if (IMU.accelerationAvailable()) {
-//    requestXLM();
-//  }
-
-
+  } 
+  output_fogClk(start_time);
 }
 
 void requestGyro() {
 
-  byte temp[12];
+  byte temp[10];
   int omega;
-  int header;
-  
-    for(int i=0; i<12; i++) {
-      temp[i] = mySerial.read(); 
+  byte header[2];
+
+    header[0] = mySerial13.read();
+    header[1] = mySerial13.read();
+    while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
+      header[0] = mySerial13.read();
+      header[1] = mySerial13.read();
     }
-    header = temp[0]<<8 | temp[1];
-    omega = temp[5]<<24 | temp[4]<<16 | temp[3]<<8 | temp[2];
+    for(int i=0; i<10; i++) {
+      temp[i] = mySerial13.read(); 
+    }
+    omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
 
     if(PRINT_GYRO) {
-      Serial.print(header, HEX);
+      Serial.print(mySerial13.available()); 
       Serial.print("\t");
-      Serial.print(mySerial.available()); 
+      Serial.print(header[0]<<8|header[1], HEX);
+      Serial.print("\t");    
+      Serial.print(temp[3]);
       Serial.print("\t");
-//      Serial.print(cnt_p);
-//      Serial.print("\t");
+      Serial.print(temp[2]);
+      Serial.print("\t");
+      Serial.print(temp[1]);
+      Serial.print("\t");
+      Serial.print(temp[0]);
+      Serial.print("\t");
       Serial.print(omega);
       Serial.print("\t");
-      cnt_p++;
     }  
-    Serial1.write(temp[5]);
-    Serial1.write(temp[4]);
-    Serial1.write(temp[3]);
-    Serial1.write(temp[2]);
+    Serial.write(temp[3]);
+    Serial.write(temp[2]);
+    Serial.write(temp[1]);
+    Serial.write(temp[0]);
 }
 
 void requestUno() {
@@ -146,11 +115,11 @@ void requestUno() {
   byte temp[4];
   int data;
     for(int i=0; i<4; i++) {
-      temp[i] = mySerial.read(); 
+      temp[i] = mySerial13.read(); 
     }
     data = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
     if(PRINT_UNO){
-      Serial.print(mySerial.available()); 
+      Serial.print(mySerial13.available()); 
       Serial.print("\t");
       Serial.print(data);
       Serial.print("\t");
@@ -164,16 +133,11 @@ void requestUno() {
 //      Serial.print("\t");
 
     }  
-    checkByte(0xAA);
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);
     Serial1.write(temp[3]);
     
-//    Serial1.write(1);
-//    Serial1.write(2);
-//    Serial1.write(3);
-//    Serial1.write(4);
 }
 
 void requestXLM() {
@@ -189,14 +153,22 @@ void requestXLM() {
     Serial.println(z);
     cnt_p++;
   }
-  Serial1.write(x>>8);
-  Serial1.write(x);
-  Serial1.write(y>>8);
-  Serial1.write(y);
-  Serial1.write(z>>8);
-  Serial1.write(z);
+  Serial.write(x>>8);
+  Serial.write(x);
+  Serial.write(y>>8);
+  Serial.write(y);
+  Serial.write(z>>8);
+  Serial.write(z);
 }
 
 void checkByte(byte check) {
-  Serial1.write(check);
+  Serial.write(check);
+}
+
+void output_fogClk(unsigned long tin) {
+  if((micros()-tin)>=HALF_PERIOD) {
+    start_time = micros();
+    digitalWrite(FOG_CLK, clk_status);
+    clk_status = !clk_status;
+  }
 }
