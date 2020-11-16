@@ -2,6 +2,8 @@
 #include "wiring_private.h"
 #include <Arduino_LSM6DS3.h>
 
+#define PRINT_GYRO 0
+#define PRINT_XLM 0
 #define PERIOD 10000
 
 bool clk_status = 0;
@@ -19,9 +21,10 @@ void loop() {
   int ax, ay, az, wx, wy, wz;
   if(clk_status) {
     clk_status = 0;
+    checkByte(0xAA);
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
-    Serial.println(millis());
+//    Serial.println(millis());
   }
   output_fogClk(start_time);
 }
@@ -30,25 +33,41 @@ void loop() {
 void request_xlm(int x, int y, int z) {
   while (!IMU.accelerationAvailable()); 
     IMU.readAcceleration(x, y, z);
-    Serial.print("a");
-    Serial.print('\t');
-    Serial.print(x);
-    Serial.print('\t');
-    Serial.print(y);
-    Serial.print('\t');
-    Serial.println(z);
+    if(PRINT_XLM) {
+      Serial.print("a");
+      Serial.print('\t');
+      Serial.print(x);
+      Serial.print('\t');
+      Serial.print(y);
+      Serial.print('\t');
+      Serial.println(z);
+    }
+    Serial.write(x>>8);
+    Serial.write(x);
+    Serial.write(y>>8);
+    Serial.write(y);
+    Serial.write(z>>8);
+    Serial.write(z);
 }
 
 void request_gyro(int x, int y, int z) {
   while (!IMU.gyroscopeAvailable()); 
     IMU.readGyroscope(x, y, z);
-    Serial.print("w");
-    Serial.print('\t');
-    Serial.print(x);
-    Serial.print('\t');
-    Serial.print(y);
-    Serial.print('\t');
-    Serial.println(z);
+    if(PRINT_GYRO) {
+      Serial.print("w");
+      Serial.print('\t');
+      Serial.print(x);
+      Serial.print('\t');
+      Serial.print(y);
+      Serial.print('\t');
+      Serial.println(z);
+    }
+    Serial.write(x>>8);
+    Serial.write(x);
+    Serial.write(y>>8);
+    Serial.write(y);
+    Serial.write(z>>8);
+    Serial.write(z);
 }
 
 void output_fogClk(unsigned long tin) {
@@ -56,4 +75,8 @@ void output_fogClk(unsigned long tin) {
     start_time = micros();
     clk_status = 1;
   }
+}
+
+void checkByte(byte check) {
+  Serial.write(check);
 }
