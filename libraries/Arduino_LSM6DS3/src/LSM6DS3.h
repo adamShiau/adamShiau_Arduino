@@ -40,6 +40,7 @@ class LSM6DS3Class {
 
     // Gyroscope
     virtual int readGyroscope(float& x, float& y, float& z); // Results are in degrees/second.
+	virtual int readGyroscope(int& x, int& y, int& z); // Results are in degrees/second.
     virtual float gyroscopeSampleRate(); // Sampling rate of the sensor.
     virtual int gyroscopeAvailable(); // Check for available data from gyroscopeAvailable
 
