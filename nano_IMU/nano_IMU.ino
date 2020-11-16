@@ -39,10 +39,10 @@ void setup() {
   pinPeripheral(13, PIO_SERCOM);
   pinPeripheral(8, PIO_SERCOM);
   
-  mySerial5.begin(115200);
-  mySerial13.begin(115200);
-  Serial1.begin(115200);
-  Serial.begin(115200);
+  mySerial5.begin(115200); //rx:p5, tx:p6
+  mySerial13.begin(115200);//rx:p13, tx:p8
+  Serial1.begin(115200);//rx:p0, tx:p1
+  Serial.begin(115200);// buit in
 
   if (!IMU.begin()) {
 //    Serial.println("Failed to initialize IMU!");
