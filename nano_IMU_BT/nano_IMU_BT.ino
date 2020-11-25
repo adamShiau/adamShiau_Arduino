@@ -9,6 +9,30 @@
 bool clk_status = 0;
 unsigned long start_time = 0;
 
+Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+
+// Attach the interrupt handler to the SERCOM
+void SERCOM0_Handler()
+{
+    mySerial5.IrqHandler();
+}
+void SERCOM1_Handler()
+{
+    mySerial13.IrqHandler();
+}
+
+  pinPeripheral(5, PIO_SERCOM_ALT); //RX
+  pinPeripheral(6, PIO_SERCOM_ALT); //TX
+    // Reassign pins 13 and 8 to SERCOM (not alt this time)
+  pinPeripheral(13, PIO_SERCOM);
+  pinPeripheral(8, PIO_SERCOM);
+  
+  mySerial5.begin(115200); //rx:p5, tx:p6
+  mySerial13.begin(115200);//rx:p13, tx:p8
+  Serial1.begin(115200);//rx:p0, tx:p1
+  Serial.begin(115200);// buit in
+
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
