@@ -4,14 +4,15 @@
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
+#define PRINT_TIME 0
 #define PERIOD 10000
 
-bool clk_status = 0;
+bool clk_status = 1;
 unsigned long start_time = 0;
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
+//  while (!Serial);
   if (!IMU.begin()) {
     while (1);
   }
@@ -20,15 +21,28 @@ void setup() {
 void loop() {
   int ax, ay, az, wx, wy, wz;
   if(clk_status) {
+    start_time = micros();
     clk_status = 0;
     checkByte(0xAA);
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
+    send_current_time(start_time);
 //    Serial.println(millis());
   }
   output_fogClk(start_time);
 }
 
+void send_current_time(unsigned long current_time) {
+  if(PRINT_TIME) {
+    Serial.print("t");
+    Serial.print('\t');
+    Serial.println(current_time);
+  }
+  Serial.write(current_time>>24);
+  Serial.write(current_time>>16);
+  Serial.write(current_time>>8);
+  Serial.write(current_time);
+}
 
 void request_xlm(int x, int y, int z) {
   while (!IMU.accelerationAvailable()); 

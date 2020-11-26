@@ -46,12 +46,12 @@ void setup() {
 void loop() {
   int ax, ay, az, wx, wy, wz;
   if(clk_status) {
+    start_time = micros();
     clk_status = 0;
     checkByte(0xAA);
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
     send_current_time(start_time);
-    start_time = micros();
 //    Serial.println(millis());
   }
   output_fogClk(start_time);
@@ -110,7 +110,7 @@ void request_gyro(int x, int y, int z) {
 }
 
 void output_fogClk(unsigned long tin) {
-  if((micros()-tin)>=PERIOD) {
+  if(abs((micros()-tin))>=PERIOD) {
 //    start_time = micros();
     clk_status = 1;
   }
