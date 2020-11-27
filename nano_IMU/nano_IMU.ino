@@ -27,6 +27,7 @@ void loop() {
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
     send_current_time(start_time);
+    checkByte(0xAB);
 //    Serial.println(millis());
   }
   output_fogClk(start_time);

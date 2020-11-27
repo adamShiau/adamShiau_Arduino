@@ -4,7 +4,7 @@
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_TIME 0
+#define PRINT_TIME 1
 #define PERIOD 10000
 
 bool clk_status = 1;
@@ -52,6 +52,7 @@ void loop() {
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
     send_current_time(start_time);
+    checkByte(0xAB);
 //    Serial.println(millis());
   }
   output_fogClk(start_time);
@@ -60,6 +61,14 @@ void loop() {
 void send_current_time(unsigned long current_time) {
   if(PRINT_TIME) {
     Serial.print("t");
+    Serial.print('\t');
+    Serial.print(byte(current_time>>24));
+    Serial.print('\t');
+    Serial.print(byte(current_time>>16));
+    Serial.print('\t');
+    Serial.print(byte(current_time>>8));
+    Serial.print('\t');
+    Serial.print(byte(current_time>>0));
     Serial.print('\t');
     Serial.println(current_time);
   }
