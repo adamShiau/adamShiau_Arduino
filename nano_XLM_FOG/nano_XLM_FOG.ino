@@ -6,7 +6,7 @@
 #define PRINT_XLM 0
 #define PRINT_UNO 0
 #define FOG_CLK 2
-#define HALF_PERIOD 5000
+#define HALF_PERIOD 2500
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
