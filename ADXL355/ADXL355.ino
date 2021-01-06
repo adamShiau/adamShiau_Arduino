@@ -25,6 +25,9 @@ const int DEVID_AD = 0x00;
 //status register
 const int STATUS = 0x04;
 
+//FIFO register
+const int FIFO = 0x05;
+
 //filter setting register
 const int FILTER = 0x28;
 
@@ -61,40 +64,41 @@ void setup() {
 
 void loop() {
   byte temp1, temp2, temp3;
-  int accX, accY, accZ, temp5; 
+  int accX, accY, accZ; 
   
   if((readRegistry(STATUS)&0x01) == 1)
   {
-	temp1 = readRegistry(XDATA3);
-	temp2 = readRegistry(XDATA2);
-	temp3 = readRegistry(XDATA1);
-	accX = temp1<<12 | temp2<<4 | temp3>>4;
-	if((accX>>19) == 1) accX = accX - 1048576;
-
-	temp1 = readRegistry(YDATA3);
-	temp2 = readRegistry(YDATA2);
-	temp3 = readRegistry(YDATA1);
-	accY = temp1<<12 | temp2<<4 | temp3>>4;
-	if((accY>>19) == 1) accY = accY - 1048576;
-
-	temp1 = readRegistry(ZDATA3);
-	temp2 = readRegistry(ZDATA2);
-	temp3 = readRegistry(ZDATA1);
-	accZ = temp1<<12 | temp2<<4 | temp3>>4;
-	if((accZ>>19) == 1) accZ = accZ - 1048576;
-
-	Serial.print(millis());
-	Serial.print(", ");
-	Serial.print((float)accX*SENS_8G);
-	Serial.print(", ");
-	Serial.print((float)accY*SENS_8G);
-	Serial.print(", ");
-	Serial.println((float)accZ*SENS_8G);
-		
-	
-
-  }
+  	temp1 = readRegistry(XDATA3);
+  	temp2 = readRegistry(XDATA2);
+  	temp3 = readRegistry(XDATA1);
+  	accX = temp1<<12 | temp2<<4 | temp3>>4;
+  	if((accX>>19) == 1) accX = accX - 1048576;
   
+  	temp1 = readRegistry(YDATA3);
+  	temp2 = readRegistry(YDATA2);
+  	temp3 = readRegistry(YDATA1);
+  	accY = temp1<<12 | temp2<<4 | temp3>>4;
+  	if((accY>>19) == 1) accY = accY - 1048576;
+  
+  	temp1 = readRegistry(ZDATA3);
+  	temp2 = readRegistry(ZDATA2);
+  	temp3 = readRegistry(ZDATA1);
+  	accZ = temp1<<12 | temp2<<4 | temp3>>4;
+  	if((accZ>>19) == 1) accZ = accZ - 1048576;
+  
+  	Serial.print(millis());
+  	Serial.print(", ");
+  	Serial.print((float)accX*SENS_8G);
+  	Serial.print(", ");
+  	Serial.print((float)accY*SENS_8G);
+  	Serial.print(", ");
+  	Serial.println((float)accZ*SENS_8G);
+//    Serial.println(readRegistry(DEVID_AD),HEX);
+//    Serial.print(micros());
+//    Serial.print(", ");
+//    Serial.println(readRegistry(FIFO),HEX);
+//    delay(100);
+  }
 }
 
 /* 

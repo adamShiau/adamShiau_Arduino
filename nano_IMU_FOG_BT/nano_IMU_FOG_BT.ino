@@ -12,14 +12,14 @@
 bool clk_status = 0;
 unsigned long start_time = 0;
 
-//Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 // Attach the interrupt handler to the SERCOM
-//void SERCOM0_Handler()
-//{
-//    mySerial5.IrqHandler();
-//}
+void SERCOM0_Handler()
+{
+    mySerial5.IrqHandler();
+}
 void SERCOM1_Handler()
 {
     mySerial13.IrqHandler();
@@ -30,14 +30,14 @@ void SERCOM1_Handler()
 void setup() {
   pinMode(FOG_CLK,OUTPUT);
   // Reassign pins 5 and 6 to SERCOM alt
-//  pinPeripheral(5, PIO_SERCOM_ALT); //RX
-//  pinPeripheral(6, PIO_SERCOM_ALT); //TX
+  pinPeripheral(5, PIO_SERCOM_ALT); //RX
+  pinPeripheral(6, PIO_SERCOM_ALT); //TX
 
   // Reassign pins 13 and 8 to SERCOM (not alt this time)
   pinPeripheral(13, PIO_SERCOM);
   pinPeripheral(8, PIO_SERCOM);
 
-//  mySerial5.begin(115200); //rx:p5, tx:p6
+  mySerial5.begin(115200); //rx:p5, tx:p6
   mySerial13.begin(115200);//rx:p13, tx:p8
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
@@ -92,19 +92,19 @@ void requestSFOS200() {
   int omega;
   byte header[2];
 
-    header[0] = mySerial13.read();
-    header[1] = mySerial13.read();
+    header[0] = mySerial5.read();
+    header[1] = mySerial5.read();
     // while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
-      // header[0] = mySerial13.read();
-      // header[1] = mySerial13.read();
+      // header[0] = mySerial5.read();
+      // header[1] = mySerial5.read();
     // }
     for(int i=0; i<10; i++) {
-      temp[i] = mySerial13.read(); 
+      temp[i] = mySerial5.read(); 
     }
     omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
 
     if(PRINT_SFOS200) {
-      Serial.print(mySerial13.available()); 
+      Serial.print(mySerial5.available()); 
       Serial.print("\t");
       Serial.print(header[0]<<8|header[1], HEX);
       Serial.print("\t");    
