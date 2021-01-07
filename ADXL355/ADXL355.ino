@@ -17,7 +17,9 @@ const int ZDATA2 = 0x0F;
 const int ZDATA1 = 0x10;
 const int RANGE = 0x2C;
 const int POWER_CTL = 0x2D;
-
+const int SYNC = 0x2B;
+const int RST = 0x2F;
+const int INTERRUPT = 0x2A;
 
 //analog device ID register
 const int DEVID_AD = 0x00;
@@ -54,18 +56,47 @@ void setup() {
   pinMode(CHIP_SELECT_PIN, OUTPUT);
 
   //Configure ADXL355:
+  writeRegister(RST, 0x52);
+  delay(100);
+//  writeRegister(INTERRUPT, 0);
+//  delay(100);
   writeRegister(RANGE, RANGE_8G); // 2G
-  writeRegister(FILTER, 0b0100); //ODR 250Hz
-  writeRegister(POWER_CTL, MEASURE_MODE); // Enable measure mode
+  delay(100);
+  writeRegister(FILTER, 0b101); //ODR 250Hz
+  delay(100);
+  writeRegister(SYNC, 0b000); 
+  delay(100);
+  writeRegister(POWER_CTL, 0x06); // Enable measure mode
 
   // Give the sensor time to set up:
-  delay(100);
+//  delay(100);
+//  Serial.print("RANGE: ");
+//    Serial.println(readRegistry(RANGE),BIN);
+//    delay(100);
+//    Serial.print("SYNC: ");
+//    Serial.println(readRegistry(SYNC),BIN);
+//    delay(100);
+//    Serial.print("FILTER: ");
+//    Serial.println(readRegistry(FILTER),BIN);
+//    delay(1000);
 }
-
+unsigned int t_old=0, t_new;
 void loop() {
   byte temp1, temp2, temp3;
   int accX, accY, accZ; 
   
+
+//  Serial.print("RANGE: ");
+//    Serial.println(readRegistry(RANGE),BIN);
+    Serial.print("SYNC: ");
+    Serial.println(readRegistry(SYNC),BIN);
+    Serial.print("FILTER: ");
+    Serial.println(readRegistry(FILTER),BIN);
+//    Serial.print("CTL: ");
+//    Serial.println(readRegistry(POWER_CTL),BIN);
+//    Serial.print("INTERRUPT: ");
+//    Serial.println(readRegistry(INTERRUPT),BIN);
+//  delay(10);
   if((readRegistry(STATUS)&0x01) == 1)
   {
   	temp1 = readRegistry(XDATA3);
@@ -85,15 +116,22 @@ void loop() {
   	temp3 = readRegistry(ZDATA1);
   	accZ = temp1<<12 | temp2<<4 | temp3>>4;
   	if((accZ>>19) == 1) accZ = accZ - 1048576;
-  
-  	Serial.print(millis());
-  	Serial.print(", ");
-  	Serial.print((float)accX*SENS_8G);
-  	Serial.print(", ");
-  	Serial.print((float)accY*SENS_8G);
-  	Serial.print(", ");
-  	Serial.println((float)accZ*SENS_8G);
-//    Serial.println(readRegistry(DEVID_AD),HEX);
+    t_new = millis();
+  	Serial.println(t_new - t_old);
+//  	Serial.print(", ");
+//  	Serial.print((float)accX*SENS_8G);
+//  	Serial.print(", ");
+//  	Serial.print((float)accY*SENS_8G);
+//  	Serial.print(", ");
+//  	Serial.println((float)accZ*SENS_8G);
+//
+//    Serial.print("RANGE: ");
+//    Serial.println(readRegistry(RANGE),BIN);
+//    Serial.print("SYNC: ");
+//    Serial.println(readRegistry(SYNC),BIN);
+//    Serial.print("FILTER: ");
+//    Serial.println(readRegistry(FILTER),BIN);
+    t_old = t_new;
 //    Serial.print(micros());
 //    Serial.print(", ");
 //    Serial.println(readRegistry(FIFO),HEX);

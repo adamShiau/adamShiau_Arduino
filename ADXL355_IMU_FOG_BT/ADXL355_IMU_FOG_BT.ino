@@ -19,6 +19,9 @@ const int ZDATA2 = 0x0F;
 const int ZDATA1 = 0x10;
 const int RANGE = 0x2C;
 const int POWER_CTL = 0x2D;
+const int SYNC = 0x2B;
+const int RST = 0x2F;
+const int INTERRUPT = 0x2A;
 //analog device ID register
 const int DEVID_AD = 0x00;
 
@@ -51,10 +54,11 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define FOG_CLK 2
-#define PERIOD 8000
+#define PERIOD 10000
 
 bool clk_status = 0;
 unsigned long start_time = 0;
+unsigned int t_old=0, t_new;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 //Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -72,10 +76,9 @@ void SERCOM0_Handler()
 
 
 void setup() {
+  SPI.begin();
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   
-  pinMode(FOG_CLK,OUTPUT);
-  
-
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -89,89 +92,114 @@ void setup() {
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
 //  while (!Serial);
+  pinMode(FOG_CLK,OUTPUT);
 	digitalWrite(FOG_CLK, 0);
- if (!IMU.begin()) {
-   while (1);
- }
-
-//  Serial.println(1);
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+// if (!IMU.begin()) {
+//   while (1);
+// }
+//  SPI.begin();
+//  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   pinMode(CHIP_SELECT_PIN, OUTPUT);
   //Configure ADXL355:
+  writeRegister(RST, 0x52);
+  delay(100);
   writeRegister(RANGE, RANGE_8G); // 2G
-  writeRegister(FILTER, 0b00000101); //ODR 0b100@250Hz 0b101@125Hz
+  delay(100);
+  writeRegister(FILTER, 0b00000100); //ODR 0b100@250Hz 0b101@125Hz
+  delay(100);
+  writeRegister(SYNC, 0b010); 
+  delay(100);
   writeRegister(POWER_CTL, MEASURE_MODE); // Enable measure mode
   // Give the sensor time to set up:
   delay(100);
-//  Serial.println(2);
+
+  if (!IMU.begin()) {
+   while (1);
+ }
+ 
 }
 
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
-   digitalWrite(FOG_CLK, 0);
-   if((readRegistry(STATUS)&0x01) == 1)
-   {	
+//   digitalWrite(FOG_CLK, 0);
+//   if((readRegistry(STATUS)&0x01) == 1)
+//   {	
 		output_fogClk(start_time);
 		if(clk_status) 
 		{
 			start_time = micros();
 			clk_status = 0;
 			checkByte(0xAA);
-			request_adxl355(ax, ay, az);
+      request_xlm(ax, ay, az);
 			request_gyro(wx, wy, wz);
-			request_xlm(ax, ay, az);
 			send_current_time(start_time);
 			requestSFOS200();
+      request_adxl355(ax, ay, az);
 			checkByte(0xAB);
 			digitalWrite(FOG_CLK, 0);
 		}
 	   
-   }
+//   }
 }
 
 void request_adxl355(int accX, int accY, int accZ) {
   byte temp_ax1, temp_ax2, temp_ax3;
   byte temp_ay1, temp_ay2, temp_ay3;
   byte temp_az1, temp_az2, temp_az3;
-	
-    temp_ax1 = readRegistry(XDATA3);
-    temp_ax2 = readRegistry(XDATA2);
-    temp_ax3 = readRegistry(XDATA1);
-    accX = temp_ax1<<12 | temp_ax2<<4 | temp_ax3>>4;
-    if((accX>>19) == 1) accX = accX - 1048576;
-  
-    temp_ay1 = readRegistry(YDATA3);
-    temp_ay2 = readRegistry(YDATA2);
-    temp_ay3 = readRegistry(YDATA1);
-    accY = temp_ay1<<12 | temp_ay2<<4 | temp_ay3>>4;
-    if((accY>>19) == 1) accY = accY - 1048576;
-  
-    temp_az1 = readRegistry(ZDATA3);
-    temp_az2 = readRegistry(ZDATA2);
-    temp_az3 = readRegistry(ZDATA1);
-    accZ = temp_az1<<12 | temp_az2<<4 | temp_az3>>4;
-    if((accZ>>19) == 1) accZ = accZ - 1048576;
 
-    if(PRINT_ADXL355){
-      Serial.print(micros());
-      Serial.print(", ");
-      Serial.print((float)accX*SENS_8G);
-      Serial.print(", ");
-      Serial.print((float)accY*SENS_8G);
-      Serial.print(", ");
-      Serial.println((float)accZ*SENS_8G);
-    }    
-	Serial1.write(temp_ax1);
-    Serial1.write(temp_ax2);
-	Serial1.write(temp_ax3);
-	Serial1.write(temp_ay1);
-    Serial1.write(temp_ay2);
-	Serial1.write(temp_ay3);
-	Serial1.write(temp_az1);
-    Serial1.write(temp_az2);
-	Serial1.write(temp_az3);
+  if((readRegistry(STATUS)&0x01) == 1){
+      temp_ax1 = readRegistry(XDATA3);
+      temp_ax2 = readRegistry(XDATA2);
+      temp_ax3 = readRegistry(XDATA1);
+      accX = temp_ax1<<12 | temp_ax2<<4 | temp_ax3>>4;
+      if((accX>>19) == 1) accX = accX - 1048576;
+    
+      temp_ay1 = readRegistry(YDATA3);
+      temp_ay2 = readRegistry(YDATA2);
+      temp_ay3 = readRegistry(YDATA1);
+      accY = temp_ay1<<12 | temp_ay2<<4 | temp_ay3>>4;
+      if((accY>>19) == 1) accY = accY - 1048576;
+    
+      temp_az1 = readRegistry(ZDATA3);
+      temp_az2 = readRegistry(ZDATA2);
+      temp_az3 = readRegistry(ZDATA1);
+      accZ = temp_az1<<12 | temp_az2<<4 | temp_az3>>4;
+      if((accZ>>19) == 1) accZ = accZ - 1048576;
+  
+      if(PRINT_ADXL355)
+      {
+        t_new = micros();
+        Serial.print(t_new - t_old);
+        Serial.print(", ");
+        Serial.print(accX);
+        Serial.print(", ");
+        Serial.print((float)accX*SENS_8G);
+        Serial.print(", ");
+        Serial.print(accY);
+        Serial.print(", ");
+        Serial.print((float)accY*SENS_8G);
+        Serial.print(", ");
+        Serial.print(accZ);
+        Serial.print(", ");
+        Serial.println((float)accZ*SENS_8G);
+        
+//        Serial.print("SYNC: ");
+//        Serial.println(readRegistry(SYNC),BIN);
+//        Serial.print("FILTER: ");
+//        Serial.println(readRegistry(FILTER),BIN);
+        t_old = t_new;
+      }    
+      Serial1.write(temp_ax1);
+      Serial1.write(temp_ax2);
+      Serial1.write(temp_ax3);
+      Serial1.write(temp_ay1);
+      Serial1.write(temp_ay2);
+      Serial1.write(temp_ay3);
+      Serial1.write(temp_az1);
+      Serial1.write(temp_az2);
+      Serial1.write(temp_az3);
+    }  
 }
 
 void send_current_time(unsigned long current_time) {
