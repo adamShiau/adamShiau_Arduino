@@ -2,11 +2,13 @@
 #include "wiring_private.h"
 #include <Arduino_LSM6DS3.h>
 #include <SPI.h>
+#include <Wire.h>
 
 /*** ADXL355***/
 #define SENS_8G 0.0000156
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
+#define ADXL355_ADDR 0x1D
 // Memory register addresses:
 const int XDATA3 = 0x08;
 const int XDATA2 = 0x09;
@@ -56,7 +58,7 @@ const int CHIP_SELECT_PIN = 10;
 #define FOG_CLK 2
 #define PERIOD 10000
 
-bool clk_status = 0;
+bool clk_status = 1;
 unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
 
@@ -76,9 +78,10 @@ void SERCOM0_Handler()
 
 
 void setup() {
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  
+  // SPI.begin();
+  // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  Wire.begin();
+  Wire.setClock(400000);
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -94,22 +97,22 @@ void setup() {
 //  while (!Serial);
   pinMode(FOG_CLK,OUTPUT);
 	digitalWrite(FOG_CLK, 0);
-// if (!IMU.begin()) {
-//   while (1);
-// }
-//  SPI.begin();
-//  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+// if (!IMU.LTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   pinMode(CHIP_SELECT_PIN, OUTPUT);
+  digitalWrite(CHIP_SELECT_PIN, 0);
+  
   //Configure ADXL355:
-  writeRegister(RST, 0x52);
+  // writeRegister(RST, 0x52);
+  I2CWriteData(RST, 0x52);
   delay(100);
-  writeRegister(RANGE, RANGE_8G); // 2G
+  // writeRegister(RANGE, RANGE_8G); // 2G
+  I2CWriteData(RANGE, RANGE_8G);
   delay(100);
-  writeRegister(FILTER, 0b00000100); //ODR 0b100@250Hz 0b101@125Hz
+  I2CWriteData(FILTER, 0b00000100); //ODR 0b100@250Hz 0b101@125Hz
   delay(100);
-  writeRegister(SYNC, 0b010); 
+  I2CWriteData(SYNC, 0b010); 
   delay(100);
-  writeRegister(POWER_CTL, MEASURE_MODE); // Enable measure mode
+  I2CWriteData(POWER_CTL, MEASURE_MODE); // Enable measure mode
   // Give the sensor time to set up:
   delay(100);
 
@@ -125,7 +128,10 @@ void loop() {
 //   digitalWrite(FOG_CLK, 0);
 //   if((readRegistry(STATUS)&0x01) == 1)
 //   {	
+//  Serial.print(1);
 		output_fogClk(start_time);
+//    Serial.print("clk_status: ");
+//		 Serial.println(clk_status);
 		if(clk_status) 
 		{
 			start_time = micros();
@@ -148,31 +154,27 @@ void request_adxl355(int accX, int accY, int accZ) {
   byte temp_ay1, temp_ay2, temp_ay3;
   byte temp_az1, temp_az2, temp_az3;
 
-
-//  Serial.print("SYNC: ");
-//  Serial.println(readRegistry(SYNC),BIN);
-//  Serial.print("FILTER: ");
-//  Serial.println(readRegistry(FILTER),BIN);
-  
-  if((readRegistry(STATUS)&0x01) == 1){
-      temp_ax1 = readRegistry(XDATA3);
-      temp_ax2 = readRegistry(XDATA2);
-      temp_ax3 = readRegistry(XDATA1);
+//	Serial.print("STATUS: ");
+//  Serial.println(I2CReadData(STATUS), BIN);
+  if((I2CReadData(STATUS)&0x01) == 1){
+      temp_ax1 = I2CReadData(XDATA3);
+      temp_ax2 = I2CReadData(XDATA2);
+      temp_ax3 = I2CReadData(XDATA1);
       accX = temp_ax1<<12 | temp_ax2<<4 | temp_ax3>>4;
       if((accX>>19) == 1) accX = accX - 1048576;
     
-      temp_ay1 = readRegistry(YDATA3);
-      temp_ay2 = readRegistry(YDATA2);
-      temp_ay3 = readRegistry(YDATA1);
+      temp_ay1 = I2CReadData(YDATA3);
+      temp_ay2 = I2CReadData(YDATA2);
+      temp_ay3 = I2CReadData(YDATA1);
       accY = temp_ay1<<12 | temp_ay2<<4 | temp_ay3>>4;
       if((accY>>19) == 1) accY = accY - 1048576;
     
-      temp_az1 = readRegistry(ZDATA3);
-      temp_az2 = readRegistry(ZDATA2);
-      temp_az3 = readRegistry(ZDATA1);
+      temp_az1 = I2CReadData(ZDATA3);
+      temp_az2 = I2CReadData(ZDATA2);
+      temp_az3 = I2CReadData(ZDATA1);
       accZ = temp_az1<<12 | temp_az2<<4 | temp_az3>>4;
       if((accZ>>19) == 1) accZ = accZ - 1048576;
-  
+		
       if(PRINT_ADXL355)
       {
         t_new = micros();
@@ -343,6 +345,54 @@ unsigned int readRegistry(byte thisRegister) {
   result = SPI.transfer(0x00);
   digitalWrite(CHIP_SELECT_PIN, HIGH);
   return result;
+}
+
+void I2CWriteData(byte addr, byte val)
+{
+  Wire.beginTransmission(ADXL355_ADDR);//
+  Wire.write(addr);//
+  Wire.write(val);
+  Wire.endTransmission();//
+}
+
+// int I2CReadData(byte addr)
+// {
+	// bool i=0;
+	// byte data[3];
+	// int acc;
+	
+	// Wire.beginTransmission(ADXL355_ADDR);//
+	// Wire.write(addr);//
+	// Wire.endTransmission();
+	
+	// Wire.requestFrom(ADXL355_ADDR,3);
+	// while (Wire.available())
+	// {
+		// data[i]=Wire.read();
+		// i++;
+	// }	
+	// acc = data[0]<<12 | data[1]<<4 | data[2]>>4;
+	// if((acc>>19) == 1) acc = acc - 1048576;		
+	
+	// return acc;
+// }
+
+byte I2CReadData(byte addr)
+{
+	bool i=0;
+	byte data;
+	
+	Wire.beginTransmission(ADXL355_ADDR);//
+	Wire.write(addr);//
+	Wire.endTransmission();
+	
+	Wire.requestFrom(ADXL355_ADDR,1);
+	while (Wire.available())
+	{
+		data=Wire.read();
+	}	
+	
+	return data;
 }
 
 /* 
