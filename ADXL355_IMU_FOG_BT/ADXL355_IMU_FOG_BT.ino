@@ -50,8 +50,8 @@ const int CHIP_SELECT_PIN = 10;
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_ADXL355 1
-#define PRINT_TIME 0
+#define PRINT_ADXL355 0
+#define PRINT_TIME 1
 #define PRINT_SFOS200 0
 #define FOG_CLK 2
 #define PERIOD 10000
