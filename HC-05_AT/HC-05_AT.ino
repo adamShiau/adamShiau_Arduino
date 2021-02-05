@@ -3,7 +3,7 @@ char val;
 void setup() {
   // put your setup code here, to run once:
   Serial1.begin(38400);
-  Serial.begin(38400);
+  Serial.begin(9600);
 }
 
 void loop() {

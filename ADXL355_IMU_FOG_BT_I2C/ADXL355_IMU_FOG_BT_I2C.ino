@@ -52,9 +52,9 @@ const int CHIP_SELECT_PIN = 10;
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_ADXL355 1
-#define PRINT_TIME 0
-#define PRINT_SFOS200 0
+#define PRINT_ADXL355 0
+#define PRINT_TIME 1
+#define PRINT_SFOS200 1
 #define FOG_CLK 2
 #define PERIOD 10000
 
@@ -63,17 +63,17 @@ unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-//Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 // Attach the interrupt handler to the SERCOM
 void SERCOM0_Handler()
 {
     mySerial5.IrqHandler();
 }
-//void SERCOM1_Handler()
-//{
-//    mySerial13.IrqHandler();
-//}
+void SERCOM1_Handler()
+{
+    mySerial13.IrqHandler();
+}
 
 
 
@@ -81,17 +81,17 @@ void setup() {
   // SPI.begin();
   // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   Wire.begin();
-  Wire.setClock(400000);
+  Wire.setClock(100000);
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
 
   // Reassign pins 13 and 8 to SERCOM (not alt this time)
-//  pinPeripheral(13, PIO_SERCOM);
-//  pinPeripheral(8, PIO_SERCOM);
+  pinPeripheral(13, PIO_SERCOM);
+  pinPeripheral(8, PIO_SERCOM);
 
   mySerial5.begin(115200); //rx:p5, tx:p6
-//  mySerial13.begin(115200);//rx:p13, tx:p8
+  mySerial13.begin(115200);//rx:p13, tx:p8
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
 //  while (!Serial);
@@ -102,10 +102,8 @@ void setup() {
   digitalWrite(CHIP_SELECT_PIN, 0);
   
   //Configure ADXL355:
-  // writeRegister(RST, 0x52);
   I2CWriteData(RST, 0x52);
   delay(100);
-  // writeRegister(RANGE, RANGE_8G); // 2G
   I2CWriteData(RANGE, RANGE_8G);
   delay(100);
   I2CWriteData(FILTER, 0b00000100); //ODR 0b100@250Hz 0b101@125Hz
@@ -136,13 +134,21 @@ void loop() {
 		{
 			start_time = micros();
 			clk_status = 0;
+//     Serial.println(1);
 			checkByte(0xAA);
+//      Serial.println(2);
 			request_xlm(ax, ay, az);
+//      Serial.println(3);
 			request_gyro(wx, wy, wz);
+//     Serial.println(4);
 			send_current_time(start_time);
+//      Serial.println(5);
 			requestSFOS200();
+//     Serial.println(6);
 			request_adxl355(ax, ay, az);
+//      Serial.println(7);
 			checkByte(0xAB);
+//      Serial.println(8);
 			digitalWrite(FOG_CLK, 0);
 		}
 	   
@@ -190,6 +196,12 @@ void request_adxl355(int accX, int accY, int accZ) {
         Serial.print(", ");
         Serial.print(accZ);
         Serial.print(", ");
+//        Serial.print(temp_az1, BIN);
+//        Serial.print(", ");
+//        Serial.print(temp_az2, BIN);
+//        Serial.print(", ");
+//        Serial.print(temp_az3, BIN);
+//        Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
         
 //        Serial.print("SYNC: ");
@@ -235,13 +247,22 @@ void requestSFOS200() {
   byte temp[10];
   int omega;
   byte header[2];
+//  unsigned int t_old=0, t_new;
 
     header[0] = mySerial5.read();
     header[1] = mySerial5.read();
-    // while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
-      // header[0] = mySerial5.read();
-      // header[1] = mySerial5.read();
-    // }
+//    t_old = micros();
+     while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
+      digitalWrite(FOG_CLK, 1);
+      delay(5);
+       header[0] = mySerial5.read();
+       header[1] = mySerial5.read();
+//       Serial.println(header[0], HEX);
+//       Serial.println(header[1], HEX);
+       digitalWrite(FOG_CLK, 0);
+       delay(5);
+//       mySerial5.flush();
+     }
     for(int i=0; i<10; i++) {
       temp[i] = mySerial5.read(); 
     }

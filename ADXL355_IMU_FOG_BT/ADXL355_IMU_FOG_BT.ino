@@ -50,8 +50,8 @@ const int CHIP_SELECT_PIN = 10;
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_ADXL355 0
-#define PRINT_TIME 1
+#define PRINT_ADXL355 1
+#define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define FOG_CLK 2
 #define PERIOD 10000
@@ -187,6 +187,12 @@ void request_adxl355(int accX, int accY, int accZ) {
         Serial.print((float)accY*SENS_8G);
         Serial.print(", ");
         Serial.print(accZ);
+        Serial.print(", ");
+        Serial.print(temp_az1, BIN);
+        Serial.print(", ");
+        Serial.print(temp_az2, BIN);
+        Serial.print(", ");
+        Serial.print(temp_az3, BIN);
         Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
         
