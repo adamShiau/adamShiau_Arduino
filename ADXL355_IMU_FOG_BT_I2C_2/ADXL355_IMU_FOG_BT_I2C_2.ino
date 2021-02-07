@@ -62,44 +62,43 @@ bool clk_status = 1;
 unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
 
-Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+// Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+// Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 // Attach the interrupt handler to the SERCOM
-void SERCOM0_Handler()
-{
-    mySerial5.IrqHandler();
-}
-void SERCOM1_Handler()
-{
-    mySerial13.IrqHandler();
-}
+// void SERCOM0_Handler()
+// {
+    // mySerial5.IrqHandler();
+// }
+// void SERCOM1_Handler()
+// {
+    // mySerial13.IrqHandler();
+// }
 
 
 
 void setup() {
-  // SPI.begin();
-  // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   Wire.begin();
   Wire.setClock(100000);
+  // analogWrite(3, 128);
   // Reassign pins 5 and 6 to SERCOM alt
-  pinPeripheral(5, PIO_SERCOM_ALT); //RX
-  pinPeripheral(6, PIO_SERCOM_ALT); //TX
+  // pinPeripheral(5, PIO_SERCOM_ALT); //RX
+  // pinPeripheral(6, PIO_SERCOM_ALT); //TX
 
   // Reassign pins 13 and 8 to SERCOM (not alt this time)
-  pinPeripheral(13, PIO_SERCOM);
-  pinPeripheral(8, PIO_SERCOM);
+  // pinPeripheral(13, PIO_SERCOM);
+  // pinPeripheral(8, PIO_SERCOM);
 
-  mySerial5.begin(115200); //rx:p5, tx:p6
-  mySerial13.begin(115200);//rx:p13, tx:p8
+  // mySerial5.begin(115200); //rx:p5, tx:p6
+  // mySerial13.begin(115200);//rx:p13, tx:p8
   Serial.begin(115200);
-  Serial1.begin(115200); //for HC-05
+  // Serial1.begin(115200); //for HC-05
 //  while (!Serial);
-  pinMode(FOG_CLK,OUTPUT);
-	digitalWrite(FOG_CLK, 0);
+  // pinMode(FOG_CLK,OUTPUT);
+	// digitalWrite(FOG_CLK, 0);
 // if (!IMU.LTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  pinMode(CHIP_SELECT_PIN, OUTPUT);
-  digitalWrite(CHIP_SELECT_PIN, 0);
+  // pinMode(CHIP_SELECT_PIN, OUTPUT);
+  // digitalWrite(CHIP_SELECT_PIN, 0);
   
   //Configure ADXL355:
   I2CWriteData(RST, 0x52);
@@ -114,44 +113,33 @@ void setup() {
   // Give the sensor time to set up:
   delay(100);
 
-  if (!IMU.begin()) {
-   while (1);
- }
+  // if (!IMU.begin()) {
+   // while (1);
+ // }
  
 }
 
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
-  // digitalWrite(FOG_CLK, 0);
+//   digitalWrite(FOG_CLK, 0);
 //   if((readRegistry(STATUS)&0x01) == 1)
 //   {	
-//  Serial.print(1);
-		output_fogClk(start_time);
+		// output_fogClk(start_time);
 //    Serial.print("clk_status: ");
 //		 Serial.println(clk_status);
-		if(clk_status) 
-		{
-			start_time = micros();
-			clk_status = 0;
-//     Serial.println(1);
-			checkByte(0xAA);
-//      Serial.println(2);
+		// if(clk_status) 
+		// {
+			// start_time = micros();
+			// clk_status = 0;
+			// checkByte(0xAA);
 			// request_xlm(ax, ay, az);
-//      Serial.println(3);
 			// request_gyro(wx, wy, wz);
-//     Serial.println(4);
-			send_current_time(start_time);
-//      Serial.println(5);
+			// send_current_time(start_time);
+			// requestSFOS200();
 			request_adxl355(ax, ay, az);
-			requestSFOS200();
-//     Serial.println(6);
-			// request_adxl355(ax, ay, az);
-//      Serial.println(7);
-			checkByte(0xAB);
-//      Serial.println(8);
-			digitalWrite(FOG_CLK, 0);
-		}
+			// checkByte(0xAB);
+		// }
 	   
 //   }
 }
@@ -165,11 +153,11 @@ void request_adxl355(int accX, int accY, int accZ) {
 
 	status = I2CReadData(STATUS);
 	isReady = status&0b00000001;
-	// Serial.print("status: ");
-	// Serial.println(status, BIN);
-	// Serial.print("isReady: ");
-	// Serial.println(isReady);
-  if(isReady){
+	Serial.print("status: ");
+	Serial.println(status, BIN);
+	Serial.print("isReady: ");
+	Serial.println(isReady);
+  if(1){
       temp_ax1 = I2CReadData(XDATA3);
       temp_ax2 = I2CReadData(XDATA2);
       temp_ax3 = I2CReadData(XDATA1);
@@ -203,25 +191,35 @@ void request_adxl355(int accX, int accY, int accZ) {
         Serial.print(", ");
         Serial.print(accZ);
         Serial.print(", ");
+//        Serial.print(temp_az1, BIN);
+//        Serial.print(", ");
+//        Serial.print(temp_az2, BIN);
+//        Serial.print(", ");
+//        Serial.print(temp_az3, BIN);
+//        Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
+        
+//        Serial.print("SYNC: ");
+//        Serial.println(readRegistry(SYNC),BIN);
+//        Serial.print("FILTER: ");
+//        Serial.println(readRegistry(FILTER),BIN);
         t_old = t_new;
       }    
-      Serial1.write(temp_ax1);
-      Serial1.write(temp_ax2);
-      Serial1.write(temp_ax3);
-      Serial1.write(temp_ay1);
-      Serial1.write(temp_ay2);
-      Serial1.write(temp_ay3);
-      Serial1.write(temp_az1);
-      Serial1.write(temp_az2);
-      Serial1.write(temp_az3);
+      // Serial1.write(temp_ax1);
+      // Serial1.write(temp_ax2);
+      // Serial1.write(temp_ax3);
+      // Serial1.write(temp_ay1);
+      // Serial1.write(temp_ay2);
+      // Serial1.write(temp_ay3);
+      // Serial1.write(temp_az1);
+      // Serial1.write(temp_az2);
+      // Serial1.write(temp_az3);
     }  
 }
 
+/***
 void send_current_time(unsigned long current_time) {
   if(PRINT_TIME) {
-    Serial.print("t");
-    Serial.print('\t');
     Serial.print(byte(current_time>>24));
     Serial.print('\t');
     Serial.print(byte(current_time>>16));
@@ -249,23 +247,25 @@ void requestSFOS200() {
     header[1] = mySerial5.read();
 //    t_old = micros();
      while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
-      digitalWrite(FOG_CLK, 1);
-      delay(5);
+      // digitalWrite(FOG_CLK, 1);
+      // delay(5);
        header[0] = mySerial5.read();
        header[1] = mySerial5.read();
-//       Serial.println(header[0], HEX);
-//       Serial.println(header[1], HEX);
-       digitalWrite(FOG_CLK, 0);
-       delay(5);
-//       mySerial5.flush();
+      // Serial.println(header[0], HEX);
+      // Serial.println(header[1], HEX);
+       // digitalWrite	(FOG_CLK, 0);
+       delay(1);
      }
+	 // Serial.print("time:");
+	 // Serial.println(micros());
     for(int i=0; i<10; i++) {
       temp[i] = mySerial5.read(); 
     }
     omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
 
     if(PRINT_SFOS200) {
-      Serial.print(mySerial5.available()); 
+      // Serial.print(mySerial5.available()); 
+	  Serial.print(micros()); 
       Serial.print("\t");
       Serial.print(header[0]<<8|header[1], HEX);
       Serial.print("\t");    
@@ -330,7 +330,7 @@ void request_gyro(int x, int y, int z) {
 void output_fogClk(unsigned long tin) {
   if(abs((micros()-tin))>=PERIOD) {
 //    start_time = micros();
-	digitalWrite(FOG_CLK, 1);
+	// digitalWrite(FOG_CLK, 1);
     clk_status = 1;
   }
 }
@@ -339,30 +339,9 @@ void checkByte(byte check) {
   Serial1.write(check);
 }
 
-/* 
- * Write registry in specific device address
- */
-void writeRegister(byte thisRegister, byte thisValue) {
-  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  SPI.transfer(thisValue);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-}
 
-/* 
- * Read registry in specific device address
- */
-unsigned int readRegistry(byte thisRegister) {
-  unsigned int result = 0;
-  byte dataToSend = (thisRegister << 1) | READ_BYTE;
 
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  result = SPI.transfer(0x00);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-  return result;
-}
+***/
 
 void I2CWriteData(byte addr, byte val)
 {
@@ -372,27 +351,6 @@ void I2CWriteData(byte addr, byte val)
   Wire.endTransmission();//
 }
 
-// int I2CReadData(byte addr)
-// {
-	// bool i=0;
-	// byte data[3];
-	// int acc;
-	
-	// Wire.beginTransmission(ADXL355_ADDR);//
-	// Wire.write(addr);//
-	// Wire.endTransmission();
-	
-	// Wire.requestFrom(ADXL355_ADDR,3);
-	// while (Wire.available())
-	// {
-		// data[i]=Wire.read();
-		// i++;
-	// }	
-	// acc = data[0]<<12 | data[1]<<4 | data[2]>>4;
-	// if((acc>>19) == 1) acc = acc - 1048576;		
-	
-	// return acc;
-// }
 
 byte I2CReadData(byte addr)
 {
@@ -412,15 +370,3 @@ byte I2CReadData(byte addr)
 	return data;
 }
 
-/* 
- * Read multiple registries
- */
-void readMultipleData(int *addresses, int dataSize, int *readedData) {
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  for(int i = 0; i < dataSize; i = i + 1) {
-    byte dataToSend = (addresses[i] << 1) | READ_BYTE;
-    SPI.transfer(dataToSend);
-    readedData[i] = SPI.transfer(0x00);
-  }
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-}
