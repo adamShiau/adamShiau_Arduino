@@ -62,11 +62,11 @@ void setup() {
 //  delay(100);
   writeRegister(RANGE, RANGE_8G); // 2G
   delay(100);
-  writeRegister(FILTER, 0b101); //ODR 250Hz
+  writeRegister(FILTER, 0b101); //ODR b101@125Hz, b100@250Hz
+  // delay(100);
+  writeRegister(SYNC, 0b010); //b000@internal, b010@sync
   delay(100);
-  writeRegister(SYNC, 0b000); 
-  delay(100);
-  writeRegister(POWER_CTL, 0x06); // Enable measure mode
+  writeRegister(POWER_CTL, MEASURE_MODE); // Enable measure mode
 
   // Give the sensor time to set up:
 //  delay(100);
@@ -84,20 +84,19 @@ unsigned int t_old=0, t_new;
 void loop() {
   byte temp1, temp2, temp3;
   int accX, accY, accZ; 
-  
+  byte status;
+  bool isReady;
 
-//  Serial.print("RANGE: ");
-//    Serial.println(readRegistry(RANGE),BIN);
-    Serial.print("SYNC: ");
-    Serial.println(readRegistry(SYNC),BIN);
-    Serial.print("FILTER: ");
-    Serial.println(readRegistry(FILTER),BIN);
-//    Serial.print("CTL: ");
-//    Serial.println(readRegistry(POWER_CTL),BIN);
-//    Serial.print("INTERRUPT: ");
-//    Serial.println(readRegistry(INTERRUPT),BIN);
-//  delay(10);
-  if((readRegistry(STATUS)&0x01) == 1)
+
+
+	status = readRegistry(STATUS);
+	isReady = status&0b00000001;
+	// Serial.print("status: ");
+	// Serial.println(status, BIN);
+	// Serial.print("isReady: ");
+	// Serial.println(isReady);
+	
+  if(isReady == 1)
   {
   	temp1 = readRegistry(XDATA3);
   	temp2 = readRegistry(XDATA2);
@@ -116,27 +115,23 @@ void loop() {
   	temp3 = readRegistry(ZDATA1);
   	accZ = temp1<<12 | temp2<<4 | temp3>>4;
   	if((accZ>>19) == 1) accZ = accZ - 1048576;
-    t_new = millis();
-  	Serial.println(t_new - t_old);
-//  	Serial.print(", ");
-//  	Serial.print((float)accX*SENS_8G);
-//  	Serial.print(", ");
-//  	Serial.print((float)accY*SENS_8G);
-//  	Serial.print(", ");
-//  	Serial.println((float)accZ*SENS_8G);
-//
-//    Serial.print("RANGE: ");
-//    Serial.println(readRegistry(RANGE),BIN);
-//    Serial.print("SYNC: ");
-//    Serial.println(readRegistry(SYNC),BIN);
-//    Serial.print("FILTER: ");
-//    Serial.println(readRegistry(FILTER),BIN);
-    t_old = t_new;
-//    Serial.print(micros());
-//    Serial.print(", ");
-//    Serial.println(readRegistry(FIFO),HEX);
-//    delay(100);
+    t_new = micros();
+        Serial.print(t_new - t_old);
+        Serial.print(", ");
+        Serial.print(accX);
+        Serial.print(", ");
+        Serial.print((float)accX*SENS_8G);
+        Serial.print(", ");
+        Serial.print(accY);
+        Serial.print(", ");
+        Serial.print((float)accY*SENS_8G);
+        Serial.print(", ");
+        Serial.print(accZ);
+		Serial.print(", ");
+        Serial.println((float)accZ*SENS_8G);
+        t_old = t_new;
   }
+  
 }
 
 /* 

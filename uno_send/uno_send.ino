@@ -14,16 +14,16 @@ void loop() {
   cnt3 = cnt >> 24;
   Serial.write(0xC0);
   Serial.write(0xC0);
-  Serial.write(cnt0);
-  Serial.write(cnt1);
-  Serial.write(cnt2);
   Serial.write(cnt3);
-  Serial.write(7);
-  Serial.write(8);
-  Serial.write(9);
-  Serial.write(10);
-  Serial.write(11);
-  Serial.write(12);
+  Serial.write(cnt2);
+  Serial.write(cnt1);
+  Serial.write(cnt0);
+//  Serial.write(7);
+//  Serial.write(8);
+//  Serial.write(9);
+//  Serial.write(10);
+//  Serial.write(11);
+//  Serial.write(12);
   cnt++;
   delay(10);
 }

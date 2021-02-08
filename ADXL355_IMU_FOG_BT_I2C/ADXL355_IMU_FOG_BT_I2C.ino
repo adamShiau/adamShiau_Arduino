@@ -55,6 +55,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_ADXL355 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
+#define PRINT_PP 0
 #define FOG_CLK 2
 #define PERIOD 10000
 
@@ -106,7 +107,7 @@ void setup() {
   delay(100);
   I2CWriteData(RANGE, RANGE_8G);
   delay(100);
-  I2CWriteData(FILTER, 0b00000100); //ODR 0b100@250Hz 0b101@125Hz
+  I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
   delay(100);
   I2CWriteData(SYNC, 0b010); 
   delay(100);
@@ -134,23 +135,15 @@ void loop() {
 		{
 			start_time = micros();
 			clk_status = 0;
-//     Serial.println(1);
 			checkByte(0xAA);
-//      Serial.println(2);
 			// request_xlm(ax, ay, az);
-//      Serial.println(3);
 			// request_gyro(wx, wy, wz);
-//     Serial.println(4);
 			send_current_time(start_time);
-//      Serial.println(5);
-			request_adxl355(ax, ay, az);
 			requestSFOS200();
-//     Serial.println(6);
-			// request_adxl355(ax, ay, az);
-//      Serial.println(7);
+			requestPP();
+			request_adxl355(ax, ay, az);
+			
 			checkByte(0xAB);
-//      Serial.println(8);
-			digitalWrite(FOG_CLK, 0);
 		}
 	   
 //   }
@@ -245,45 +238,112 @@ void requestSFOS200() {
   byte header[2];
 //  unsigned int t_old=0, t_new;
 
-    header[0] = mySerial5.read();
-    header[1] = mySerial5.read();
-//    t_old = micros();
-     while( (header[0]!=0xC0)||(header[1]!=0xC0)) {
-      digitalWrite(FOG_CLK, 1);
-      delay(5);
-       header[0] = mySerial5.read();
-       header[1] = mySerial5.read();
-//       Serial.println(header[0], HEX);
-//       Serial.println(header[1], HEX);
-       digitalWrite(FOG_CLK, 0);
-       delay(5);
-//       mySerial5.flush();
-     }
+
+	while (mySerial5.available()<24) {
+		// if(PRINT_SFOS200) {
+			// t_new = micros();
+			// Serial.print(t_new - t_old);
+			// Serial.print("\t");
+			// Serial.println(mySerial5.available()); 
+			// t_old = t_new;
+		// }  
+		Serial1.write(byte(omega>>24));
+		Serial1.write(byte(omega>>16));
+		Serial1.write(byte(omega>>8));
+		Serial1.write(byte(omega));
+	};
+		header[0] = mySerial5.read();
+		header[1] = mySerial5.read();
+		 while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
+		 {
+		 // while( ((header[0]!=0xC0)||(header[1]!=0xC0)) && (mySerial5.available()>=10)) {
+		  // if(mySerial5.available()) {
+			// Serial.println(mySerial5.available()); 
+			header[0] = mySerial5.read();
+			header[1] = mySerial5.read();
+			delay(1);
+			// Serial.println(header[0], HEX); 
+			// Serial.println(header[1], HEX); 
+		 }
+    
     for(int i=0; i<10; i++) {
       temp[i] = mySerial5.read(); 
     }
     omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
 
     if(PRINT_SFOS200) {
-      Serial.print(mySerial5.available()); 
-      Serial.print("\t");
-      Serial.print(header[0]<<8|header[1], HEX);
-      Serial.print("\t");    
-      Serial.print(temp[3]);
-      Serial.print("\t");
-      Serial.print(temp[2]);
-      Serial.print("\t");
-      Serial.print(temp[1]);
-      Serial.print("\t");
-      Serial.print(temp[0]);
-      Serial.print("\t");
-      Serial.println(omega);
-//      Serial.print("\t");
+		t_new = micros();
+		Serial.print(t_new - t_old);
+		Serial.print("\t");
+		Serial.print(mySerial5.available()); 
+		Serial.print("\t");
+		Serial.print(header[0]<<8|header[1], HEX);
+		Serial.print("\t");    
+		Serial.print(temp[3]);
+		Serial.print("\t");
+		Serial.print(temp[2]);
+		Serial.print("\t");
+		Serial.print(temp[1]);
+		Serial.print("\t");
+		Serial.print(temp[0]);
+		Serial.print("\t");
+		Serial.println(omega);
+		t_old = t_new;
     }  
     Serial1.write(temp[3]);
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);
     Serial1.write(temp[0]);
+}
+
+void requestPP() {
+
+  byte temp[10];
+  int omega;
+  byte header[2];
+
+	while (mySerial13.available()<8) {
+		Serial1.write(byte(omega>>24));
+		Serial1.write(byte(omega>>16));
+		Serial1.write(byte(omega>>8));
+		Serial1.write(byte(omega));
+	};
+		header[0] = mySerial13.read();
+		header[1] = mySerial13.read();
+		 while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
+		 {
+			header[0] = mySerial13.read();
+			header[1] = mySerial13.read();
+			delay(1);
+		 }
+    
+    for(int i=0; i<4; i++) {
+      temp[i] = mySerial13.read(); 
+    }
+    omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
+
+    if(PRINT_PP) {
+		t_new = micros();
+		Serial.print(millis());
+		Serial.print("\t");
+		Serial.print(mySerial13.available()); 
+		Serial.print("\t");
+		Serial.print(header[0]<<8|header[1], HEX);
+		Serial.print("\t");    
+		Serial.print(temp[0]);
+		Serial.print("\t");
+		Serial.print(temp[1]);
+		Serial.print("\t");
+		Serial.print(temp[2]);
+		Serial.print("\t");
+		Serial.print(temp[3]);
+		Serial.print("\t");
+		Serial.println(omega);
+    }  
+    Serial1.write(temp[0]);
+    Serial1.write(temp[1]);
+    Serial1.write(temp[2]);
+    Serial1.write(temp[3]);
 }
 
 void request_xlm(int x, int y, int z) {
@@ -330,7 +390,7 @@ void request_gyro(int x, int y, int z) {
 void output_fogClk(unsigned long tin) {
   if(abs((micros()-tin))>=PERIOD) {
 //    start_time = micros();
-	digitalWrite(FOG_CLK, 1);
+	// digitalWrite(FOG_CLK, 1);
     clk_status = 1;
   }
 }
