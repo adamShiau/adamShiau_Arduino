@@ -96,11 +96,7 @@ void setup() {
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
 //  while (!Serial);
-  pinMode(FOG_CLK,OUTPUT);
-	digitalWrite(FOG_CLK, 0);
-// if (!IMU.LTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  pinMode(CHIP_SELECT_PIN, OUTPUT);
-  digitalWrite(CHIP_SELECT_PIN, 0);
+  pinMode(FOG_CLK,INPUT);
   
   //Configure ADXL355:
   I2CWriteData(RST, 0x52);
@@ -115,38 +111,29 @@ void setup() {
   // Give the sensor time to set up:
   delay(100);
 
-  if (!IMU.begin()) {
-   while (1);
- }
+  // if (!IMU.begin()) {
+   // while (1);
+ // }
  
 }
 
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
-  // digitalWrite(FOG_CLK, 0);
-//   if((readRegistry(STATUS)&0x01) == 1)
-//   {	
-//  Serial.print(1);
-		output_fogClk(start_time);
-//    Serial.print("clk_status: ");
-//		 Serial.println(clk_status);
+		// output_fogClk(start_time);
+		clk_status = digitalRead(FOG_CLK);
 		if(clk_status) 
 		{
 			start_time = micros();
 			clk_status = 0;
 			checkByte(0xAA);
-			// request_xlm(ax, ay, az);
-			// request_gyro(wx, wy, wz);
 			send_current_time(start_time);
 			requestSFOS200();
 			requestPP();
 			request_adxl355(ax, ay, az);
-			
 			checkByte(0xAB);
 		}
 	   
-//   }
 }
 
 void request_adxl355(int accX, int accY, int accZ) {
@@ -238,20 +225,14 @@ void requestSFOS200() {
   byte header[2];
 //  unsigned int t_old=0, t_new;
 
-
-	while (mySerial5.available()<24) {
-		// if(PRINT_SFOS200) {
-			// t_new = micros();
-			// Serial.print(t_new - t_old);
-			// Serial.print("\t");
-			// Serial.println(mySerial5.available()); 
-			// t_old = t_new;
-		// }  
-		Serial1.write(byte(omega>>24));
-		Serial1.write(byte(omega>>16));
-		Serial1.write(byte(omega>>8));
-		Serial1.write(byte(omega));
-	};
+/***sync clock 與MCU smapling time有一點差別時會造成buffer累積，當sync clock比較快時data送進buffer比清空的速度快，
+buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在buffer快接近爆掉時須先清掉一些。
+而當sync clock比較慢時data送進buffer比清空的速度慢，buffer會見底，因此當buffer快沒時須等待buffer補充。
+***/
+	while (mySerial5.available()<24) {}; 
+	if(mySerial5.available()>250) {
+		for(int i=0; i<220; i++) mySerial5.read(); 
+	}
 		header[0] = mySerial5.read();
 		header[1] = mySerial5.read();
 		 while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
@@ -302,15 +283,13 @@ void requestPP() {
   int omega;
   byte header[2];
 
-	while (mySerial13.available()<8) {
-		Serial1.write(byte(omega>>24));
-		Serial1.write(byte(omega>>16));
-		Serial1.write(byte(omega>>8));
-		Serial1.write(byte(omega));
-	};
+	while (mySerial13.available()<16) {};
+	if(mySerial13.available()>250) {
+		for(int i=0; i<220; i++) mySerial13.read(); 
+	}
 		header[0] = mySerial13.read();
 		header[1] = mySerial13.read();
-		 while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
+		 while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
 		 {
 			header[0] = mySerial13.read();
 			header[1] = mySerial13.read();
@@ -389,7 +368,6 @@ void request_gyro(int x, int y, int z) {
 
 void output_fogClk(unsigned long tin) {
   if(abs((micros()-tin))>=PERIOD) {
-//    start_time = micros();
 	// digitalWrite(FOG_CLK, 1);
     clk_status = 1;
   }
@@ -397,31 +375,6 @@ void output_fogClk(unsigned long tin) {
 
 void checkByte(byte check) {
   Serial1.write(check);
-}
-
-/* 
- * Write registry in specific device address
- */
-void writeRegister(byte thisRegister, byte thisValue) {
-  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  SPI.transfer(thisValue);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-}
-
-/* 
- * Read registry in specific device address
- */
-unsigned int readRegistry(byte thisRegister) {
-  unsigned int result = 0;
-  byte dataToSend = (thisRegister << 1) | READ_BYTE;
-
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  result = SPI.transfer(0x00);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-  return result;
 }
 
 void I2CWriteData(byte addr, byte val)
@@ -432,27 +385,6 @@ void I2CWriteData(byte addr, byte val)
   Wire.endTransmission();//
 }
 
-// int I2CReadData(byte addr)
-// {
-	// bool i=0;
-	// byte data[3];
-	// int acc;
-	
-	// Wire.beginTransmission(ADXL355_ADDR);//
-	// Wire.write(addr);//
-	// Wire.endTransmission();
-	
-	// Wire.requestFrom(ADXL355_ADDR,3);
-	// while (Wire.available())
-	// {
-		// data[i]=Wire.read();
-		// i++;
-	// }	
-	// acc = data[0]<<12 | data[1]<<4 | data[2]>>4;
-	// if((acc>>19) == 1) acc = acc - 1048576;		
-	
-	// return acc;
-// }
 
 byte I2CReadData(byte addr)
 {
