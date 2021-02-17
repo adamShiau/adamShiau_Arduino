@@ -53,7 +53,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 1
-#define PRINT_TIME 0
+#define PRINT_TIME 1
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
 #define FOG_CLK 2
@@ -116,7 +116,7 @@ void setup() {
  // }
  
 }
-
+int cnt=0;
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
@@ -132,6 +132,9 @@ void loop() {
 			requestPP();
 			request_adxl355(ax, ay, az);
 			checkByte(0xAB);
+			// if(cnt%1000==0) checkByte(0xAC);
+			// else checkByte(0xAB);
+			cnt++;
 		}
 	   
 }
@@ -145,10 +148,11 @@ void request_adxl355(int accX, int accY, int accZ) {
 
 	status = I2CReadData(STATUS);
 	isReady = status&0b00000001;
-	// Serial.print("status: ");
-	// Serial.println(status, BIN);
-	// Serial.print("isReady: ");
-	// Serial.println(isReady);
+	// while(!isReady) {
+		// status = I2CReadData(STATUS);
+		// isReady = status&0b00000001;
+		// delay(1);
+	// }
   if(isReady){
       temp_ax1 = I2CReadData(XDATA3);
       temp_ax2 = I2CReadData(XDATA2);
@@ -184,17 +188,34 @@ void request_adxl355(int accX, int accY, int accZ) {
         Serial.print(accZ);
         Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
+		/*** below for degug***/
+		// Serial.print("ax:");
+		// Serial.print(", ");
+		// Serial.print(temp_ax1);
+		// Serial.print(", ");
+		// Serial.print(temp_ax2);
+		// Serial.print(", ");
+		// Serial.println(temp_ax3);
+		// Serial.print("ay:");
+		// Serial.print(temp_ay1);
+		// Serial.print(", ");
+		// Serial.print(temp_ay2);
+		// Serial.print(", ");
+		// Serial.println(temp_ay3);
         t_old = t_new;
-      }    
-      Serial1.write(temp_ax1);
-      Serial1.write(temp_ax2);
-      Serial1.write(temp_ax3);
-      Serial1.write(temp_ay1);
-      Serial1.write(temp_ay2);
-      Serial1.write(temp_ay3);
-      Serial1.write(temp_az1);
-      Serial1.write(temp_az2);
-      Serial1.write(temp_az3);
+      } 
+		Serial1.write(0xC2);
+		Serial1.write(temp_ax1);
+		Serial1.write(temp_ax2);
+		Serial1.write(temp_ax3);
+		Serial1.write(0xC3);
+		Serial1.write(temp_ay1);
+		Serial1.write(temp_ay2);
+		Serial1.write(temp_ay3);
+		Serial1.write(0xC4);
+		Serial1.write(temp_az1);
+		Serial1.write(temp_az2);
+		Serial1.write(temp_az3);
     }  
 }
 
@@ -230,7 +251,7 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 而當sync clock比較慢時data送進buffer比清空的速度慢，buffer會見底，因此當buffer快沒時須等待buffer補充。
 ***/
 	while (mySerial5.available()<24) {}; 
-	if(mySerial5.available()>250) {
+	if(mySerial5.available()>230) {
 		for(int i=0; i<220; i++) mySerial5.read(); 
 	}
 		header[0] = mySerial5.read();
@@ -254,6 +275,8 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
+		Serial.print(cnt);
+		Serial.print("\t");
 		Serial.print(t_new - t_old);
 		Serial.print("\t");
 		Serial.print(mySerial5.available()); 
@@ -271,6 +294,7 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 		Serial.println(omega);
 		t_old = t_new;
     }  
+	Serial1.write(0xC0);
     Serial1.write(temp[3]);
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);
@@ -284,7 +308,7 @@ void requestPP() {
   byte header[2];
 
 	while (mySerial13.available()<16) {};
-	if(mySerial13.available()>250) {
+	if(mySerial13.available()>230) {
 		for(int i=0; i<220; i++) mySerial13.read(); 
 	}
 		header[0] = mySerial13.read();
@@ -298,6 +322,7 @@ void requestPP() {
     
     for(int i=0; i<4; i++) {
       temp[i] = mySerial13.read(); 
+	  // temp[i] = 255;
     }
     omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
 
@@ -319,6 +344,7 @@ void requestPP() {
 		Serial.print("\t");
 		Serial.println(omega);
     }  
+	Serial1.write(0xC1);
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);
