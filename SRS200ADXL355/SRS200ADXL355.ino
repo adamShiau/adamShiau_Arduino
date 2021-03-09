@@ -53,15 +53,16 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_TIME 0
+#define PRINT_TIME 1
 #define PRINT_SFOS200 0
-#define PRINT_PP 1
+#define PRINT_PP 0
 #define FOG_CLK 2
 #define PERIOD 10000
 
 bool clk_status = 1;
 unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
+unsigned int t_old_355=0, t_new_355;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -129,9 +130,9 @@ void loop() {
 			checkByte(0xAA);
 			send_current_time(start_time);
 			requestSFOS200();
-			requestPP();
+			// requestPP();
 			request_adxl355(ax, ay, az);
-			checkByte(0xAB);
+			// checkByte(0xAB);
 			// if(cnt%1000==0) checkByte(0xAC);
 			// else checkByte(0xAB);
 			cnt++;
@@ -174,45 +175,45 @@ void request_adxl355(int accX, int accY, int accZ) {
 		
       if(PRINT_ADXL355)
       {
-        t_new = micros();
-        Serial.print(t_new - t_old);
-        Serial.print(", ");
-        Serial.print(accX);
-        Serial.print(", ");
-        Serial.print((float)accX*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accY);
-        Serial.print(", ");
-        Serial.print((float)accY*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accZ);
-        Serial.print(", ");
-        Serial.println((float)accZ*SENS_8G);
+        // t_new_355 = micros();
+        // Serial.print(t_new_355 - t_old_355);
+        // Serial.print(", ");
+        // Serial.print(accX);
+        // Serial.print(", ");
+        // Serial.print((float)accX*SENS_8G);
+        // Serial.print(", ");
+        // Serial.print(accY);
+        // Serial.print(", ");
+        // Serial.print((float)accY*SENS_8G);
+        // Serial.print(", ");
+        // Serial.print(accZ);
+        // Serial.print(", ");
+        // Serial.println((float)accZ*SENS_8G);
 		/*** below for degug***/
-		// Serial.print("ax:");
-		// Serial.print(", ");
-		// Serial.print(temp_ax1);
-		// Serial.print(", ");
-		// Serial.print(temp_ax2);
-		// Serial.print(", ");
-		// Serial.println(temp_ax3);
-		// Serial.print("ay:");
-		// Serial.print(temp_ay1);
-		// Serial.print(", ");
-		// Serial.print(temp_ay2);
-		// Serial.print(", ");
-		// Serial.println(temp_ay3);
-        t_old = t_new;
+		Serial.print("ax:");
+		Serial.print(", ");
+		Serial.print(temp_ax1);
+		Serial.print(", ");
+		Serial.print(temp_ax2);
+		Serial.print(", ");
+		Serial.println(temp_ax3);
+		Serial.print("ay:");
+		Serial.print(temp_ay1);
+		Serial.print(", ");
+		Serial.print(temp_ay2);
+		Serial.print(", ");
+		Serial.println(temp_ay3);
+        t_old_355 = t_new_355;
       } 
-		Serial1.write(0xC2);
+		// Serial1.write(0xC2);
 		Serial1.write(temp_ax1);
 		Serial1.write(temp_ax2);
 		Serial1.write(temp_ax3);
-		Serial1.write(0xC3);
+		// Serial1.write(0xC3);
 		Serial1.write(temp_ay1);
 		Serial1.write(temp_ay2);
 		Serial1.write(temp_ay3);
-		Serial1.write(0xC4);
+		// Serial1.write(0xC4);
 		Serial1.write(temp_az1);
 		Serial1.write(temp_az2);
 		Serial1.write(temp_az3);
@@ -275,14 +276,14 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
-		Serial.print(cnt);
-		Serial.print("\t");
-		Serial.print(t_new - t_old);
-		Serial.print("\t");
-		Serial.print(mySerial5.available()); 
-		Serial.print("\t");
-		Serial.print(header[0]<<8|header[1], HEX);
-		Serial.print("\t");    
+		// Serial.print(cnt);
+		// Serial.print("\t");
+		// Serial.print(t_new - t_old);
+		// Serial.print("\t");
+		// Serial.print(mySerial5.available()); 
+		// Serial.print("\t");
+		// Serial.print(header[0]<<8|header[1], HEX);
+		// Serial.print("\t");    
 		Serial.print(temp[3]);
 		Serial.print("\t");
 		Serial.print(temp[2]);
@@ -294,7 +295,7 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 		Serial.println(omega);
 		t_old = t_new;
     }  
-	Serial1.write(0xC0);
+	// Serial1.write(0xC0);
     Serial1.write(temp[3]);
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);

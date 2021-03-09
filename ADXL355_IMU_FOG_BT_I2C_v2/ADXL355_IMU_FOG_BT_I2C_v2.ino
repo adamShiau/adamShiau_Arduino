@@ -53,9 +53,9 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_TIME 0
+#define PRINT_TIME 1
 #define PRINT_SFOS200 0
-#define PRINT_PP 1
+#define PRINT_PP 0
 #define FOG_CLK 2
 #define PERIOD 10000
 
@@ -129,9 +129,9 @@ void loop() {
 			checkByte(0xAA);
 			send_current_time(start_time);
 			requestSFOS200();
-			requestPP();
+			// requestPP();
 			request_adxl355(ax, ay, az);
-			checkByte(0xAB);
+			// checkByte(0xAB);
 			// if(cnt%1000==0) checkByte(0xAC);
 			// else checkByte(0xAB);
 			cnt++;
@@ -204,15 +204,15 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// Serial.println(temp_ay3);
         t_old = t_new;
       } 
-		Serial1.write(0xC2);
+		// Serial1.write(0xC2);
 		Serial1.write(temp_ax1);
 		Serial1.write(temp_ax2);
 		Serial1.write(temp_ax3);
-		Serial1.write(0xC3);
+		// Serial1.write(0xC3);
 		Serial1.write(temp_ay1);
 		Serial1.write(temp_ay2);
 		Serial1.write(temp_ay3);
-		Serial1.write(0xC4);
+		// Serial1.write(0xC4);
 		Serial1.write(temp_az1);
 		Serial1.write(temp_az2);
 		Serial1.write(temp_az3);
@@ -294,7 +294,7 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 		Serial.println(omega);
 		t_old = t_new;
     }  
-	Serial1.write(0xC0);
+	// Serial1.write(0xC0);
     Serial1.write(temp[3]);
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);
@@ -344,7 +344,7 @@ void requestPP() {
 		Serial.print("\t");
 		Serial.println(omega);
     }  
-	Serial1.write(0xC1);
+	// Serial1.write(0xC1);
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);
