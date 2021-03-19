@@ -57,7 +57,8 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_ADXL355 0
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
-#define PRINT_PP 1
+#define PRINT_PP 0
+#define PRINT_SPEED 1
 #define FOG_CLK 2
 #define PERIOD 10000
 
@@ -97,8 +98,10 @@ void setup() {
   mySerial13.begin(115200);//rx:p13, tx:p8
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
+  Serial2.begin(115200);
 //  while (!Serial);
   pinMode(FOG_CLK,INPUT);
+  pinMode(3,INPUT);
   
   //Configure ADXL355:
   I2CWriteData(RST, 0x52);
@@ -132,6 +135,7 @@ void loop() {
 			send_current_time(start_time);
 			requestSFOS200();
 			requestPP();
+			requestSpeed();
 			request_adxl355(ax, ay, az);
 			// checkByte(0xAB);
 			// if(cnt%1000==0) checkByte(0xAC);
@@ -366,46 +370,55 @@ void requestPP() {
     Serial1.write(temp[3]);
 }
 
-void request_xlm(int x, int y, int z) {
-  while (!IMU.accelerationAvailable()); 
-    IMU.readAcceleration(x, y, z);
-    if(PRINT_XLM) {
-      Serial.print("a");
-      Serial.print('\t');
-      Serial.print(x);
-      Serial.print('\t');
-      Serial.print(y);
-      Serial.print('\t');
-      Serial.println(z);
+void requestSpeed() {
+
+  byte temp[10];
+  int omega;
+  byte header[2];
+
+	while (Serial2.available()<16) {};
+	if(Serial2.available()>230) {
+		for(int i=0; i<220; i++) Serial2.read(); 
+	}
+		// header[0] = mySerial13.read();
+		// header[1] = mySerial13.read();
+		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
+		 // {
+			// header[0] = mySerial13.read();
+			// header[1] = mySerial13.read();
+			// delay(1);
+		 // }
+    
+    for(int i=0; i<4; i++) {
+      temp[i] = Serial2.read(); 
+	  // temp[i] = 255;
     }
-    Serial1.write(x>>8);
-    Serial1.write(x);
-    Serial1.write(y>>8);
-    Serial1.write(y);
-    Serial1.write(z>>8);
-    Serial1.write(z);
+    omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
+
+    if(PRINT_SPEED) {
+		t_new = micros();
+		Serial.print(millis());
+		Serial.print("\t");
+		Serial.print(Serial2.available()); 
+		Serial.print("\t");
+		// Serial.print(header[0]<<8|header[1], HEX);
+		// Serial.print("\t");    
+		Serial.print(temp[0]);
+		Serial.print("\t");
+		Serial.print(temp[1]);
+		Serial.print("\t");
+		Serial.print(temp[2]);
+		Serial.print("\t");
+		Serial.print(temp[3]);
+		Serial.print("\t");
+		Serial.println(omega);
+    }  
+    Serial1.write(temp[0]);
+    Serial1.write(temp[1]);
+    Serial1.write(temp[2]);
+    Serial1.write(temp[3]);
 }
 
-
-void request_gyro(int x, int y, int z) {
-  while (!IMU.gyroscopeAvailable()); 
-    IMU.readGyroscope(x, y, z);
-    if(PRINT_GYRO) {
-      Serial.print("w");
-      Serial.print('\t');
-      Serial.print(x);
-      Serial.print('\t');
-      Serial.print(y);
-      Serial.print('\t');
-      Serial.println(z);
-    }
-    Serial1.write(x>>8);
-    Serial1.write(x);
-    Serial1.write(y>>8);
-    Serial1.write(y);
-    Serial1.write(z>>8);
-    Serial1.write(z);
-}
 
 void output_fogClk(unsigned long tin) {
   if(abs((micros()-tin))>=PERIOD) {

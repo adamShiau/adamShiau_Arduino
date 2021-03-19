@@ -44,6 +44,7 @@ const int RANGE_4G = 0x02;
 const int RANGE_8G = 0x03;
 const int MEASURE_MODE = 0x06; // Only accelerometer
 const int MEASUREwTEMP_MODE = 0x04;
+
 // Operations
 const int READ_BYTE = 0x01;
 const int WRITE_BYTE = 0x00;
@@ -54,16 +55,17 @@ const int CHIP_SELECT_PIN = 10;
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_ADXL355 0
+#define PRINT_ADXL355 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
-#define PRINT_PP 1
+#define PRINT_PP 0
 #define FOG_CLK 2
 #define PERIOD 10000
 
 bool clk_status = 1;
 unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
+unsigned int t_old_355=0, t_new_355;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -130,8 +132,8 @@ void loop() {
 			clk_status = 0;
 			checkByte(0xAA);
 			send_current_time(start_time);
-			requestSFOS200();
-			requestPP();
+			// requestSFOS200();
+			// requestPP();
 			request_adxl355(ax, ay, az);
 			// checkByte(0xAB);
 			// if(cnt%1000==0) checkByte(0xAC);
@@ -181,11 +183,10 @@ void request_adxl355(int accX, int accY, int accZ) {
 	  temp2 = I2CReadData(TEMP2);
 	  RT = (temp2&0x07)<<8 | temp1;
 	  // RTf = 25 - ((float)RT-1885.0)/9.05;
-		
       if(PRINT_ADXL355)
       {
-        t_new = micros();
-        Serial.print(t_new - t_old);
+        t_new_355 = micros();
+        Serial.print(t_new_355 - t_old_355);
         Serial.print(", ");
 		Serial.print(RT);
         Serial.print(", ");
@@ -201,6 +202,10 @@ void request_adxl355(int accX, int accY, int accZ) {
         Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
 		/*** below for degug***/
+		// Serial.print(temp2,HEX);
+		// Serial.print(", ");
+		// Serial.println(temp1,HEX);
+		// Serial.print(", ");
 		// Serial.print("ax:");
 		// Serial.print(", ");
 		// Serial.print(temp_ax1);
@@ -214,7 +219,7 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// Serial.print(temp_ay2);
 		// Serial.print(", ");
 		// Serial.println(temp_ay3);
-        t_old = t_new;
+        t_old_355 = t_new_355;
       } 
 		// Serial1.write(0xC2);
 		Serial1.write(temp_ax1);
@@ -228,7 +233,6 @@ void request_adxl355(int accX, int accY, int accZ) {
 		Serial1.write(temp_az1);
 		Serial1.write(temp_az2);
 		Serial1.write(temp_az3);
-		
 		Serial1.write(temp2);
 		Serial1.write(temp1);
     }  
@@ -290,14 +294,14 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
-		Serial.print(cnt);
-		Serial.print("\t");
-		Serial.print(t_new - t_old);
-		Serial.print("\t");
-		Serial.print(mySerial5.available()); 
-		Serial.print("\t");
-		Serial.print(header[0]<<8|header[1], HEX);
-		Serial.print("\t");    
+		// Serial.print(cnt);
+		// Serial.print("\t");
+		// Serial.print(t_new - t_old);
+		// Serial.print("\t");
+		// Serial.print(mySerial5.available()); 
+		// Serial.print("\t");
+		// Serial.print(header[0]<<8|header[1], HEX);
+		// Serial.print("\t");    
 		Serial.print(temp[3]);
 		Serial.print("\t");
 		Serial.print(temp[2]);
@@ -326,14 +330,14 @@ void requestPP() {
 	if(mySerial13.available()>230) {
 		for(int i=0; i<220; i++) mySerial13.read(); 
 	}
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
-		 // {
-			// header[0] = mySerial13.read();
-			// header[1] = mySerial13.read();
-			// delay(1);
-		 // }
+		header[0] = mySerial13.read();
+		header[1] = mySerial13.read();
+		 while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
+		 {
+			header[0] = mySerial13.read();
+			header[1] = mySerial13.read();
+			delay(1);
+		 }
     
     for(int i=0; i<4; i++) {
       temp[i] = mySerial13.read(); 
@@ -347,8 +351,8 @@ void requestPP() {
 		Serial.print("\t");
 		Serial.print(mySerial13.available()); 
 		Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
+		Serial.print(header[0]<<8|header[1], HEX);
+		Serial.print("\t");    
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.print(temp[1]);
@@ -359,7 +363,7 @@ void requestPP() {
 		Serial.print("\t");
 		Serial.println(omega);
     }  
-	// Serial1.write(0xC1);
+	Serial1.write(0xC1);
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);

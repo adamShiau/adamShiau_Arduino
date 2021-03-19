@@ -10,8 +10,6 @@
 #define SENS_2G 0.0000039
 #define ADXL355_ADDR 0x1D
 // Memory register addresses:
-const int TEMP2  = 0x06;
-const int TEMP1  = 0x07;
 const int XDATA3 = 0x08;
 const int XDATA2 = 0x09;
 const int XDATA1 = 0x0A;
@@ -43,7 +41,7 @@ const int RANGE_2G = 0x01;
 const int RANGE_4G = 0x02;
 const int RANGE_8G = 0x03;
 const int MEASURE_MODE = 0x06; // Only accelerometer
-const int MEASUREwTEMP_MODE = 0x04;
+
 // Operations
 const int READ_BYTE = 0x01;
 const int WRITE_BYTE = 0x00;
@@ -64,6 +62,7 @@ const int CHIP_SELECT_PIN = 10;
 bool clk_status = 1;
 unsigned long start_time = 0;
 unsigned int t_old=0, t_new;
+unsigned int t_old_SRS=0, t_new_SRS;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -83,8 +82,9 @@ void SERCOM1_Handler()
 void setup() {
   // SPI.begin();
   // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  Wire.begin();
-  Wire.setClock(100000);
+  // Wire.begin();
+  // Wire.setClock(100000);
+  
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -101,17 +101,17 @@ void setup() {
   pinMode(FOG_CLK,INPUT);
   
   //Configure ADXL355:
-  I2CWriteData(RST, 0x52);
-  delay(100);
-  I2CWriteData(RANGE, RANGE_8G);
-  delay(100);
-  I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
-  delay(100);
-  I2CWriteData(SYNC, 0b010); 
-  delay(100);
-  I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
+  // I2CWriteData(RST, 0x52);
+  // delay(100);
+  // I2CWriteData(RANGE, RANGE_8G);
+  // delay(100);
+  // I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
+  // delay(100);
+  // I2CWriteData(SYNC, 0b010); 
+  // delay(100);
+  // I2CWriteData(POWER_CTL, MEASURE_MODE); // Enable measure mode
   // Give the sensor time to set up:
-  delay(100);
+  // delay(100);
 
   // if (!IMU.begin()) {
    // while (1);
@@ -130,9 +130,9 @@ void loop() {
 			clk_status = 0;
 			checkByte(0xAA);
 			send_current_time(start_time);
-			requestSFOS200();
+			// requestSFOS200();
 			requestPP();
-			request_adxl355(ax, ay, az);
+			// request_adxl355(ax, ay, az);
 			// checkByte(0xAB);
 			// if(cnt%1000==0) checkByte(0xAC);
 			// else checkByte(0xAB);
@@ -145,10 +145,7 @@ void request_adxl355(int accX, int accY, int accZ) {
   byte temp_ax1, temp_ax2, temp_ax3;
   byte temp_ay1, temp_ay2, temp_ay3;
   byte temp_az1, temp_az2, temp_az3;
-  byte temp1, temp2;
   byte status;
-  int RT;
-  float RTf;
   bool isReady;
 
 	status = I2CReadData(STATUS);
@@ -177,17 +174,10 @@ void request_adxl355(int accX, int accY, int accZ) {
       accZ = temp_az1<<12 | temp_az2<<4 | temp_az3>>4;
       if((accZ>>19) == 1) accZ = accZ - 1048576;
 		
-	  temp1 = I2CReadData(TEMP1);
-	  temp2 = I2CReadData(TEMP2);
-	  RT = (temp2&0x07)<<8 | temp1;
-	  // RTf = 25 - ((float)RT-1885.0)/9.05;
-		
       if(PRINT_ADXL355)
       {
         t_new = micros();
         Serial.print(t_new - t_old);
-        Serial.print(", ");
-		Serial.print(RT);
         Serial.print(", ");
         Serial.print(accX);
         Serial.print(", ");
@@ -216,21 +206,18 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// Serial.println(temp_ay3);
         t_old = t_new;
       } 
-		// Serial1.write(0xC2);
+		Serial1.write(0xC2);
 		Serial1.write(temp_ax1);
 		Serial1.write(temp_ax2);
 		Serial1.write(temp_ax3);
-		// Serial1.write(0xC3);
+		Serial1.write(0xC3);
 		Serial1.write(temp_ay1);
 		Serial1.write(temp_ay2);
 		Serial1.write(temp_ay3);
-		// Serial1.write(0xC4);
+		Serial1.write(0xC4);
 		Serial1.write(temp_az1);
 		Serial1.write(temp_az2);
 		Serial1.write(temp_az3);
-		
-		Serial1.write(temp2);
-		Serial1.write(temp1);
     }  
 }
 
@@ -289,10 +276,10 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
     omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
 
     if(PRINT_SFOS200) {
-		t_new = micros();
+		t_new_SRS = micros();
 		Serial.print(cnt);
 		Serial.print("\t");
-		Serial.print(t_new - t_old);
+		Serial.print(t_new_SRS - t_old_SRS);
 		Serial.print("\t");
 		Serial.print(mySerial5.available()); 
 		Serial.print("\t");
@@ -307,7 +294,7 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.println(omega);
-		t_old = t_new;
+		t_old_SRS = t_new_SRS;
     }  
 	// Serial1.write(0xC0);
     Serial1.write(temp[3]);

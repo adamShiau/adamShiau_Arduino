@@ -1,4 +1,4 @@
-long cnt = 0;
+long cnt = 23456;
 byte cnt0, cnt1, cnt2, cnt3;
 
 void setup() {
@@ -12,18 +12,18 @@ void loop() {
   cnt1 = cnt >> 8;
   cnt2 = cnt >> 16;
   cnt3 = cnt >> 24;
-  Serial.write(0xC1);
-  Serial.write(0xC1);
-  Serial.write(cnt3);
-  Serial.write(cnt2);
-  Serial.write(cnt1);
-  Serial.write(cnt0);
-//  Serial.write(7);
-//  Serial.write(8);
-//  Serial.write(9);
-//  Serial.write(10);
+ // Serial.write(0xC1);
+ // Serial.write(0xC1);
+   Serial.write(cnt3);
+   Serial.write(cnt2);
+   Serial.write(cnt1);
+   Serial.write(cnt0);
+// Serial.write(1);
+// Serial.write(2);
+// Serial.write(3);
+// Serial.write(4);
 //  Serial.write(11);
 //  Serial.write(12);
-  cnt++;
-  delayMicroseconds(10000);
+//  cnt++;
+  delayMicroseconds(5000);
 }
