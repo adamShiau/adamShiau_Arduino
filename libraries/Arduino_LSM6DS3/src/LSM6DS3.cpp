@@ -236,10 +236,11 @@ int LSM6DS3Class::readRegisters(uint8_t address, uint8_t* data, size_t length)
     _spi->transfer(data, length);
     digitalWrite(_csPin, HIGH);
     _spi->endTransaction();
+	// Serial.println(11);
   } else {
     _wire->beginTransmission(_slaveAddress);
     _wire->write(address);
-
+// Serial.println(12);
     if (_wire->endTransmission(false) != 0) {
       return -1;
     }
