@@ -55,8 +55,8 @@ const int CHIP_SELECT_PIN = 10;
 /*********************************************/
 
 #define PRINT_GYRO 0
-#define PRINT_XLM 1
-#define PRINT_ADXL355 1
+#define PRINT_XLM 0
+#define PRINT_ADXL355 0
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
@@ -67,7 +67,7 @@ const int CHIP_SELECT_PIN = 10;
 #define sclPin  12
 
 bool clk_status = 1;
-unsigned long start_time = 0;
+unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
@@ -98,8 +98,9 @@ void setup() {
   // Wire.setClock(100000);
   sw.setTxBuffer(swTxBuffer, sizeof(swTxBuffer));
   sw.setRxBuffer(swRxBuffer, sizeof(swRxBuffer));
-  // sw.setDelay_us(5);
-  // sw.setTimeout(1000);
+  sw.setDelay_us(5);
+  sw.setTimeout(1000);
+  sw.setClock(1000000);
   sw.begin();
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
@@ -147,10 +148,12 @@ void loop() {
 		if(clk_status) 
 		{
 			start_time = micros();
+			Serial.println(start_time - old_time);
+			old_time = start_time;
 			clk_status = 0;
 			checkByte(0xAA);
-			// send_current_time(start_time);
-			// requestSFOS200();
+			send_current_time(start_time);
+			requestSFOS200();
 			// requestPP();
 			// requestSpeed();
 			request_adxl355(ax, ay, az);
@@ -159,6 +162,7 @@ void loop() {
 			// if(cnt%1000==0) checkByte(0xAC);
 			// else checkByte(0xAB);
 			cnt++;
+			
 		}
 	   
 }
