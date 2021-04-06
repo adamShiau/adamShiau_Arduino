@@ -57,10 +57,15 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
+#define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
 #define PRINT_SPEED 0
+
+
+#define SERIAL2_RX 3
+#define SERIALHCI_RX 6
 #define FOG_CLK 2
 #define PERIOD 10000
 #define sdaPin  11
@@ -114,32 +119,32 @@ void setup() {
   mySerial13.begin(115200);//rx:p13, tx:p8
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
-  Serial2.begin(115200);
-//  while (!Serial);
+  Serial2.begin(115200); //
+  SerialHCI.begin(115200);
+  
+  mySerial13.println("readSPI 17 1"); //start running Sparrow to send data
+  
   pinMode(FOG_CLK,INPUT);
-  pinMode(3,INPUT);
+  pinMode(SERIAL2_RX,INPUT);
+  pinMode(SERIALHCI_RX,INPUT);
   
   //Configure ADXL355:
-  I2CWriteData(RST, 0x52);
+  Soft_I2CWriteData(RST, 0x52);
   delay(100);
-  I2CWriteData(RANGE, RANGE_8G);
+  Soft_I2CWriteData(RANGE, RANGE_8G);
   delay(100);
-  I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
+  Soft_I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
   delay(100);
-  I2CWriteData(SYNC, 0b010); 
+  Soft_I2CWriteData(SYNC, 0b010); 
   delay(100);
-  I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
+  Soft_I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
   // Give the sensor time to set up:
   delay(100);
-  
-  
-
   if (!IMU.begin()) {
    while (1);
  }
 	
 }
-int cnt=0;
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
@@ -148,21 +153,17 @@ void loop() {
 		if(clk_status) 
 		{
 			start_time = micros();
-			Serial.println(start_time - old_time);
+			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
 			old_time = start_time;
 			clk_status = 0;
 			checkByte(0xAA);
 			send_current_time(start_time);
 			requestSFOS200();
-			// requestPP();
-			// requestSpeed();
+			requestPP();
+			requestSpeed();
 			request_adxl355(ax, ay, az);
-			request_nano33_xlm();
-			// checkByte(0xAB);
-			// if(cnt%1000==0) checkByte(0xAC);
-			// else checkByte(0xAB);
-			cnt++;
-			
+			request_nano33_gyro(); 
+			// request_nano33_xlm(); 
 		}
 	   
 }
@@ -177,7 +178,7 @@ void request_adxl355(int accX, int accY, int accZ) {
   float RTf;
   bool isReady;
 
-	status = I2CReadData(STATUS); //0x04
+	status = Soft_I2CReadData(STATUS); //0x04
 	isReady = status&0b00000001;
 	// while(!isReady) {
 		// status = I2CReadData(STATUS);
@@ -185,26 +186,26 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// delay(1);
 	// }
   if(isReady){
-      temp_ax1 = I2CReadData(XDATA3); //0x08
-      temp_ax2 = I2CReadData(XDATA2); //0x09
-      temp_ax3 = I2CReadData(XDATA1); //0x0A
+      temp_ax1 = Soft_I2CReadData(XDATA3); //0x08
+      temp_ax2 = Soft_I2CReadData(XDATA2); //0x09
+      temp_ax3 = Soft_I2CReadData(XDATA1); //0x0A
       accX = temp_ax1<<12 | temp_ax2<<4 | temp_ax3>>4;
       if((accX>>19) == 1) accX = accX - 1048576;
     
-      temp_ay1 = I2CReadData(YDATA3); //0x0B
-      temp_ay2 = I2CReadData(YDATA2); //0x0C
-      temp_ay3 = I2CReadData(YDATA1); //0x0D
+      temp_ay1 = Soft_I2CReadData(YDATA3); //0x0B
+      temp_ay2 = Soft_I2CReadData(YDATA2); //0x0C
+      temp_ay3 = Soft_I2CReadData(YDATA1); //0x0D
       accY = temp_ay1<<12 | temp_ay2<<4 | temp_ay3>>4;
       if((accY>>19) == 1) accY = accY - 1048576;
     
-      temp_az1 = I2CReadData(ZDATA3); //0x0E
-      temp_az2 = I2CReadData(ZDATA2); //0x0F
-      temp_az3 = I2CReadData(ZDATA1); //0x10
+      temp_az1 = Soft_I2CReadData(ZDATA3); //0x0E
+      temp_az2 = Soft_I2CReadData(ZDATA2); //0x0F
+      temp_az3 = Soft_I2CReadData(ZDATA1); //0x10
       accZ = temp_az1<<12 | temp_az2<<4 | temp_az3>>4;
       if((accZ>>19) == 1) accZ = accZ - 1048576;
 		
-	  temp1 = I2CReadData(TEMP1);
-	  temp2 = I2CReadData(TEMP2);
+	  temp1 = Soft_I2CReadData(TEMP1);
+	  temp2 = Soft_I2CReadData(TEMP2);
 	  RT = (temp2&0x07)<<8 | temp1;
 	  // RTf = 25 - ((float)RT-1885.0)/9.05;
 		
@@ -317,8 +318,6 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
-		Serial.print(cnt);
-		Serial.print("\t");
 		Serial.print(t_new - t_old);
 		Serial.print("\t");
 		Serial.print(mySerial5.available()); 
@@ -345,37 +344,33 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
 void requestPP() {
 
-  byte temp[10];
-  int omega;
-  byte header[2];
+	byte temp[10];
+	int omega;
+	byte header;
 
-	while (mySerial13.available()<16) {};
+	while (mySerial13.available()<12) {};
 	if(mySerial13.available()>230) {
 		for(int i=0; i<220; i++) mySerial13.read(); 
 	}
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
-		 // {
-			// header[0] = mySerial13.read();
-			// header[1] = mySerial13.read();
-			// delay(1);
-		 // }
+	header = mySerial13.read();
+	while( header != 0xAB ) 
+	{
+		header = mySerial13.read();
+		delay(1);
+	}
     
     for(int i=0; i<4; i++) {
       temp[i] = mySerial13.read(); 
-	  // temp[i] = 255;
     }
     omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
 
     if(PRINT_PP) {
-		t_new = micros();
 		Serial.print(millis());
 		Serial.print("\t");
 		Serial.print(mySerial13.available()); 
 		Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
+		Serial.print(header, HEX);
+		Serial.print("\t");    
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.print(temp[1]);
@@ -397,35 +392,31 @@ void requestSpeed() {
 
   byte temp[10];
   int omega;
-  byte header[2];
+  byte header;
 
 	while (Serial2.available()<16) {};
 	if(Serial2.available()>230) {
 		for(int i=0; i<220; i++) Serial2.read(); 
 	}
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
-		 // {
-			// header[0] = mySerial13.read();
-			// header[1] = mySerial13.read();
-			// delay(1);
-		 // }
+		header = Serial2.read();
+		while( header != 0xAB ) 
+		{
+			header = Serial2.read();
+			delay(1);
+		}
     
     for(int i=0; i<4; i++) {
       temp[i] = Serial2.read(); 
-	  // temp[i] = 255;
     }
     omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
 
     if(PRINT_SPEED) {
-		t_new = micros();
 		Serial.print(millis());
 		Serial.print("\t");
 		Serial.print(Serial2.available()); 
 		Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
+		Serial.print(header, HEX);
+		Serial.print("\t");    
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.print(temp[1]);
@@ -447,13 +438,13 @@ void request_nano33_xlm() {
   while (!IMU.accelerationAvailable()); 
     IMU.readAcceleration(x, y, z);
     if(PRINT_XLM) {
-      Serial.print("a");
+      Serial.print("nano33 axlm");
       Serial.print('\t');
-      Serial.print(x*4.0/32768.0);
+      Serial.print(x);
       Serial.print('\t');
-      Serial.print(y*4.0/32768.0);
+      Serial.print(y);
       Serial.print('\t');
-      Serial.println(z*4.0/32768.0);
+      Serial.println(z);
     }
     Serial1.write(x>>8);
     Serial1.write(x);
@@ -470,7 +461,7 @@ void request_nano33_gyro() {
   while (!IMU.gyroscopeAvailable()); 
     IMU.readGyroscope(x, y, z);
     if(PRINT_GYRO) {
-      Serial.print("w");
+      Serial.print("nano33 gyro");
       Serial.print('\t');
       Serial.print(x);
       Serial.print('\t');
@@ -499,11 +490,14 @@ void checkByte(byte check) {
 
 void I2CWriteData(byte addr, byte val)
 {
-  // Wire.beginTransmission(ADXL355_ADDR);//
-  // Wire.write(addr);//
-  // Wire.write(val);
-  // Wire.endTransmission();//
-  
+  Wire.beginTransmission(ADXL355_ADDR);//
+  Wire.write(addr);//
+  Wire.write(val);
+  Wire.endTransmission();//
+}
+
+void Soft_I2CWriteData(byte addr, byte val)
+{  
   sw.beginTransmission(ADXL355_ADDR);//
   sw.write(addr);//
   sw.write(val);
@@ -516,15 +510,24 @@ byte I2CReadData(byte addr)
 	bool i=0;
 	byte data;
 	
-	// Wire.beginTransmission(ADXL355_ADDR);//
-	// Wire.write(addr);//
-	// Wire.endTransmission();
+	Wire.beginTransmission(ADXL355_ADDR);//
+	Wire.write(addr);//
+	Wire.endTransmission();
 	
-	// Wire.requestFrom(ADXL355_ADDR,1);
-	// while (Wire.available())
-	// {
-		// data=Wire.read();
-	// }	
+	Wire.requestFrom(ADXL355_ADDR,1);
+	while (Wire.available())
+	{
+		data=Wire.read();
+	}	
+		
+	return data;
+}
+
+byte Soft_I2CReadData(byte addr)
+{
+	bool i=0;
+	byte data;
+	
 	
 	sw.beginTransmission(ADXL355_ADDR);//
 	sw.write(addr);//
