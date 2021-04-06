@@ -3,6 +3,8 @@
 #include <Arduino_LSM6DS3.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <SoftWire.h>
+#include <AsyncDelay.h>
 
 /*** ADXL355***/
 #define SENS_8G 0.0000156
@@ -53,21 +55,29 @@ const int CHIP_SELECT_PIN = 10;
 /*********************************************/
 
 #define PRINT_GYRO 0
-#define PRINT_XLM 1
-#define PRINT_ADXL355 1
+#define PRINT_XLM 0
+#define PRINT_ADXL355 0
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
 #define PRINT_SPEED 0
 #define FOG_CLK 2
 #define PERIOD 10000
+#define sdaPin  11
+#define sclPin  12
 
 bool clk_status = 1;
-unsigned long start_time = 0;
+unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+
+SoftWire sw(sdaPin, sclPin);
+char swTxBuffer[24];
+char swRxBuffer[24];
+
+AsyncDelay readInterval;
 
 // Attach the interrupt handler to the SERCOM
 void SERCOM0_Handler()
@@ -84,8 +94,14 @@ void SERCOM1_Handler()
 void setup() {
   // SPI.begin();
   // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  Wire.begin();
-  Wire.setClock(100000);
+  // Wire.begin();
+  // Wire.setClock(100000);
+  sw.setTxBuffer(swTxBuffer, sizeof(swTxBuffer));
+  sw.setRxBuffer(swRxBuffer, sizeof(swRxBuffer));
+  sw.setDelay_us(5);
+  sw.setTimeout(1000);
+  sw.setClock(1000000);
+  sw.begin();
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -115,11 +131,13 @@ void setup() {
   I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
   // Give the sensor time to set up:
   delay(100);
+  
+  
 
   if (!IMU.begin()) {
    while (1);
  }
- 
+	
 }
 int cnt=0;
 void loop() {
@@ -130,10 +148,12 @@ void loop() {
 		if(clk_status) 
 		{
 			start_time = micros();
+			Serial.println(start_time - old_time);
+			old_time = start_time;
 			clk_status = 0;
 			checkByte(0xAA);
-			// send_current_time(start_time);
-			// requestSFOS200();
+			send_current_time(start_time);
+			requestSFOS200();
 			// requestPP();
 			// requestSpeed();
 			request_adxl355(ax, ay, az);
@@ -142,6 +162,7 @@ void loop() {
 			// if(cnt%1000==0) checkByte(0xAC);
 			// else checkByte(0xAB);
 			cnt++;
+			
 		}
 	   
 }
@@ -478,10 +499,15 @@ void checkByte(byte check) {
 
 void I2CWriteData(byte addr, byte val)
 {
-  Wire.beginTransmission(ADXL355_ADDR);//
-  Wire.write(addr);//
-  Wire.write(val);
-  Wire.endTransmission();//
+  // Wire.beginTransmission(ADXL355_ADDR);//
+  // Wire.write(addr);//
+  // Wire.write(val);
+  // Wire.endTransmission();//
+  
+  sw.beginTransmission(ADXL355_ADDR);//
+  sw.write(addr);//
+  sw.write(val);
+  sw.endTransmission();//
 }
 
 
@@ -490,14 +516,24 @@ byte I2CReadData(byte addr)
 	bool i=0;
 	byte data;
 	
-	Wire.beginTransmission(ADXL355_ADDR);//
-	Wire.write(addr);//
-	Wire.endTransmission();
+	// Wire.beginTransmission(ADXL355_ADDR);//
+	// Wire.write(addr);//
+	// Wire.endTransmission();
 	
-	Wire.requestFrom(ADXL355_ADDR,1);
-	while (Wire.available())
+	// Wire.requestFrom(ADXL355_ADDR,1);
+	// while (Wire.available())
+	// {
+		// data=Wire.read();
+	// }	
+	
+	sw.beginTransmission(ADXL355_ADDR);//
+	sw.write(addr);//
+	sw.endTransmission();
+	
+	sw.requestFrom(ADXL355_ADDR,1);
+	while (sw.available())
 	{
-		data=Wire.read();
+		data=sw.read();
 	}	
 	
 	return data;

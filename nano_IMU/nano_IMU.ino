@@ -2,8 +2,8 @@
 #include "wiring_private.h"
 #include <Arduino_LSM6DS3.h>
 
-#define PRINT_GYRO 0
-#define PRINT_XLM 0
+#define PRINT_GYRO 1
+#define PRINT_XLM 1
 #define PRINT_TIME 0
 #define PERIOD 10000
 
@@ -23,11 +23,11 @@ void loop() {
   if(clk_status) {
     start_time = micros();
     clk_status = 0;
-    checkByte(0xAA);
+    // checkByte(0xAA);
     request_xlm(ax, ay, az);
     request_gyro(wx, wy, wz);
-    send_current_time(start_time);
-    checkByte(0xAB);
+    // send_current_time(start_time);
+    // checkByte(0xAB);
 //    Serial.println(millis());
   }
   output_fogClk(start_time);
@@ -51,18 +51,18 @@ void request_xlm(int x, int y, int z) {
     if(PRINT_XLM) {
       Serial.print("a");
       Serial.print('\t');
-      Serial.print(x);
+      Serial.print(x*4.0/32768.0);
       Serial.print('\t');
-      Serial.print(y);
+      Serial.print(y*4.0/32768.0);
       Serial.print('\t');
-      Serial.println(z);
+      Serial.println(z*4.0/32768.0);
     }
-    Serial.write(x>>8);
-    Serial.write(x);
-    Serial.write(y>>8);
-    Serial.write(y);
-    Serial.write(z>>8);
-    Serial.write(z);
+    // Serial.write(x>>8);
+    // Serial.write(x);
+    // Serial.write(y>>8);
+    // Serial.write(y);
+    // Serial.write(z>>8);
+    // Serial.write(z);
 }
 
 void request_gyro(int x, int y, int z) {
@@ -77,12 +77,12 @@ void request_gyro(int x, int y, int z) {
       Serial.print('\t');
       Serial.println(z);
     }
-    Serial.write(x>>8);
-    Serial.write(x);
-    Serial.write(y>>8);
-    Serial.write(y);
-    Serial.write(z>>8);
-    Serial.write(z);
+    // Serial.write(x>>8);
+    // Serial.write(x);
+    // Serial.write(y>>8);
+    // Serial.write(y);
+    // Serial.write(z>>8);
+    // Serial.write(z);
 }
 
 void output_fogClk(unsigned long tin) {
