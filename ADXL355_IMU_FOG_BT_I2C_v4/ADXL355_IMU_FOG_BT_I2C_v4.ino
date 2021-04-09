@@ -57,7 +57,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_UPDATE_TIME 1
+#define PRINT_UPDATE_TIME 0
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
@@ -121,8 +121,6 @@ void setup() {
   Serial1.begin(115200); //for HC-05
   Serial2.begin(115200); //
   SerialHCI.begin(115200);
-  
-  mySerial13.println("readSPI 17 1"); //start running Sparrow to send data
   
   pinMode(FOG_CLK,INPUT);
   pinMode(SERIAL2_RX,INPUT);
