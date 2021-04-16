@@ -115,8 +115,8 @@ void setup() {
   pinPeripheral(13, PIO_SERCOM);
   pinPeripheral(8, PIO_SERCOM);
 
-  mySerial5.begin(115200); //rx:p5, tx:p6
-  mySerial13.begin(115200);//rx:p13, tx:p8
+  mySerial5.begin(115200); //rx:p5, tx:p6, SRS200
+  mySerial13.begin(115200);//rx:p13, tx:p8, PP
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
   Serial2.begin(115200); //
@@ -124,7 +124,7 @@ void setup() {
   
   pinMode(FOG_CLK,INPUT);
   pinMode(SERIAL2_RX,INPUT);
-  pinMode(SERIALHCI_RX,INPUT);
+  // pinMode(SERIALHCI_RX,INPUT);
   
   //Configure ADXL355:
   Soft_I2CWriteData(RST, 0x52);
@@ -156,12 +156,13 @@ void loop() {
 			clk_status = 0;
 			checkByte(0xAA);
 			send_current_time(start_time);
-			requestSFOS200();
+			 requestSFOS200();
 			requestPP();
-			requestSpeed();
+//			requestSpeed();
 			request_adxl355(ax, ay, az);
 			request_nano33_gyro(); 
 			// request_nano33_xlm(); 
+//     Serial.println(millis());
 		}
 	   
 }
@@ -291,7 +292,9 @@ void requestSFOS200() {
 buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在buffer快接近爆掉時須先清掉一些。
 而當sync clock比較慢時data送進buffer比清空的速度慢，buffer會見底，因此當buffer快沒時須等待buffer補充。
 ***/
-	while (mySerial5.available()<24) {}; 
+	while (mySerial5.available()<24) {
+//	    Serial.println(mySerial5.available());
+	  }; 
 	if(mySerial5.available()>230) {
 		for(int i=0; i<220; i++) mySerial5.read(); 
 	}
