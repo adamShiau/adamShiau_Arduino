@@ -57,7 +57,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_UPDATE_TIME 0
+#define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
@@ -138,34 +138,18 @@ void setup() {
   Soft_I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
   // Give the sensor time to set up:
   delay(100);
-  if (!IMU.begin()) {
-   while (1);
- }
+//  if (!IMU.begin()) {
+//   while (1);
+// }
 	
 }
 void loop() {
-  int ax, ay, az, wx, wy, wz;
-  
-		// output_fogClk(start_time);
-		clk_status = digitalRead(FOG_CLK);
-		if(clk_status) 
-		{
-			start_time = millis();
-			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
-			old_time = start_time;
-			clk_status = 0;
-			checkByte(0xAA);
-			send_current_time(start_time);
-			 requestSFOS200();
-			requestPP();
-//			requestSpeed();
-			request_adxl355(ax, ay, az);
-			request_nano33_gyro(); 
-			// request_nano33_xlm(); 
-     checkByte(0xAB);
-//     Serial.println(millis());
-		}
-	   
+
+	// start_time = millis();
+	// if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
+	// old_time = start_time;
+	VBOX();
+
 }
 
 void request_adxl355(int accX, int accY, int accZ) {
@@ -342,6 +326,65 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);
     Serial1.write(temp[0]);
+}
+
+int cnt = 0;
+void VBOX() {
+
+  byte temp[3];
+  int speed;
+  short acc;
+  byte header[7];
+	while (Serial2.available()<73) {
+//	    Serial.println(Serial2.available());
+	  }; 
+	// if(Serial2.available()>230) {
+		// for(int i=0; i<220; i++) Serial2.read(); 
+	// }
+	for(int i=0; i<7; i++) header[i] = Serial2.read();
+	while( ((header[0]!=0x24)||(header[1]!=0x56)||(header[2]!=0x42)||(header[3]!=0x33)||(header[4]!=0x69)||(header[5]!=0x73)||(header[6]!=0x24))) 
+	{
+		// for(int j=0; j<7; j++) {
+			// Serial.println(header[j], HEX);
+		// }
+		// Serial.println("done");
+		for(int j=0; j<6; j++) header[j] = header[j+1];
+		header[6] = Serial2.read();
+		
+		delayMicroseconds(1);
+	}
+	cnt++;
+	
+	/***  below read VBOX speed ***/
+	// for(int i=0; i<14; i++) Serial2.read();
+    // for(int i=0; i<3; i++) {
+      // temp[i] = Serial2.read(); 
+    // }
+    // speed = temp[0]<<16 | temp[1]<<8 | temp[0];
+	// Serial.println(speed*0.001);
+	
+	// if(1) {
+		// Serial.print(millis());
+		// Serial.print("\t");
+		// Serial.print(Serial2.available()); 
+		// Serial.print("\t");
+		// Serial.print(temp[0]);
+		// Serial.print("\t");
+		// Serial.print(temp[1]);
+		// Serial.print("\t");
+		// Serial.print(temp[2]);
+		// Serial.print("\t");
+		// Serial.println(speed*0.001);
+    // }  
+	
+	/***  below read VBOX z-axis acc ***/
+	for(int i=0; i<42; i++) Serial2.read();
+    for(int i=0; i<2; i++) {
+      temp[i] = Serial2.read(); 
+    }
+    acc = temp[0]<<8 | temp[1];
+	Serial.println(acc);
+
 }
 
 void requestPP() {

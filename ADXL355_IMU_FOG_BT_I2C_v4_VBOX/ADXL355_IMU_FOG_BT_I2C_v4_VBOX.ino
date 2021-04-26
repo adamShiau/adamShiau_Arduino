@@ -57,11 +57,12 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_UPDATE_TIME 0
+#define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
 #define PRINT_SPEED 0
+#define PRINT_VBOX 0
 
 
 #define SERIAL2_RX 3
@@ -146,25 +147,22 @@ void setup() {
 void loop() {
   int ax, ay, az, wx, wy, wz;
   
-		// output_fogClk(start_time);
 		clk_status = digitalRead(FOG_CLK);
-		if(clk_status) 
-		{
+		// if(clk_status) 
+		// {
 			start_time = millis();
 			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
 			old_time = start_time;
 			clk_status = 0;
-			checkByte(0xAA);
-			send_current_time(start_time);
-			 requestSFOS200();
-			requestPP();
-//			requestSpeed();
-			request_adxl355(ax, ay, az);
-			request_nano33_gyro(); 
-			// request_nano33_xlm(); 
-     checkByte(0xAB);
-//     Serial.println(millis());
-		}
+			checkByte(0xAA);//1
+			send_current_time(start_time);//4
+			requestSFOS200();//4
+			requestPP();//4
+			requestSpeed();//3
+			request_adxl355(ax, ay, az);//11
+			request_nano33_gyro(); //6
+			checkByte(0xAB);//1
+		// }
 	   
 }
 
@@ -259,7 +257,7 @@ void request_adxl355(int accX, int accY, int accZ) {
 		Serial1.write(temp2);
 		Serial1.write(temp1);
     }  
-	else Serial.println("is ready = 0");
+	// else Serial.println("is ready = 0");
 }
 
 void send_current_time(unsigned long current_time) {
@@ -390,6 +388,7 @@ void requestPP() {
     Serial1.write(temp[3]);
 }
 
+
 void requestSpeed() {
 
   byte temp[10];
@@ -407,10 +406,11 @@ void requestSpeed() {
 			delay(1);
 		}
     
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<3; i++) {
       temp[i] = Serial2.read(); 
     }
-    omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
+    // omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
+	omega = temp[0]<<16 | temp[1]<<8 | temp[2];
 
     if(PRINT_SPEED) {
 		Serial.print(millis());
@@ -425,14 +425,14 @@ void requestSpeed() {
 		Serial.print("\t");
 		Serial.print(temp[2]);
 		Serial.print("\t");
-		Serial.print(temp[3]);
-		Serial.print("\t");
+		// Serial.print(temp[3]);
+		// Serial.print("\t");
 		Serial.println(omega);
     }  
     Serial1.write(temp[0]);
     Serial1.write(temp[1]);
     Serial1.write(temp[2]);
-    Serial1.write(temp[3]);
+    // Serial1.write(temp[3]);
 }
 
 void request_nano33_xlm() {
