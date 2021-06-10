@@ -3,12 +3,24 @@
 #include <Arduino_LSM6DS3.h>
 #include <SPI.h>
 #include <Wire.h>
+// #include <SoftWire.h>
+// #include <AsyncDelay.h>
+
+/*** Nano33 ***/
+#define SENS_XLM 0.000122
 
 /*** ADXL355***/
 #define SENS_8G 0.0000156
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
 #define ADXL355_ADDR 0x1D
+
+/*** Adxl355 gloabal var***/
+byte temp_ax1, temp_ax2, temp_ax3;
+byte temp_ay1, temp_ay2, temp_ay3;
+byte temp_az1, temp_az2, temp_az3;
+byte temp1, temp2;
+
 // Memory register addresses:
 const int TEMP2  = 0x06;
 const int TEMP1  = 0x07;
@@ -54,20 +66,34 @@ const int CHIP_SELECT_PIN = 10;
 
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
-#define PRINT_ADXL355 1
+#define PRINT_ADXL355 0
+#define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
 #define PRINT_SPEED 0
-#define FOG_CLK 2
-#define PERIOD 10000
 
-bool clk_status = 1;
-unsigned long start_time = 0;
+
+#define SERIAL2_RX 3
+#define SERIALHCI_RX 6
+#define FOG_CLK 14
+#define PERIOD 10000
+#define sdaPin  11
+#define sclPin  10
+#define I2C_MUXEN  12
+
+bool clk_status = 1, clk_status_old = 0;
+unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+
+// SoftWire sw(sdaPin, sclPin);
+// char swTxBuffer[24];
+// char swRxBuffer[24];
+
+// AsyncDelay readInterval;
 
 // Attach the interrupt handler to the SERCOM
 void SERCOM0_Handler()
@@ -82,10 +108,18 @@ void SERCOM1_Handler()
 
 
 void setup() {
-  // SPI.begin();
-  // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  Wire.begin();
-  Wire.setClock(100000);
+   // SPI.begin();
+   // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+   Wire.begin();
+   Wire.setClock(100000);
+  
+  // sw.setTxBuffer(swTxBuffer, sizeof(swTxBuffer));
+  // sw.setRxBuffer(swRxBuffer, sizeof(swRxBuffer));
+  // sw.setDelay_us(5);
+  // sw.setTimeout(1000);
+  // sw.setClock(1000000);
+  // sw.begin();
+  
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -94,68 +128,69 @@ void setup() {
   pinPeripheral(13, PIO_SERCOM);
   pinPeripheral(8, PIO_SERCOM);
 
-  mySerial5.begin(115200); //rx:p5, tx:p6
-  mySerial13.begin(115200);//rx:p13, tx:p8
+  mySerial5.begin(115200); //rx:p5, tx:p6, SRS200
+  mySerial13.begin(115200);//rx:p13, tx:p8, PP
   Serial.begin(115200);
   Serial1.begin(115200); //for HC-05
-  Serial2.begin(115200);
-//  while (!Serial);
+  Serial2.begin(115200); //
+  SerialHCI.begin(115200);
+  
   pinMode(FOG_CLK,INPUT);
-  pinMode(3,INPUT);
+  pinMode(SERIAL2_RX,INPUT);
+  pinMode(I2C_MUXEN, OUTPUT);
+
+  // pinMode(SERIALHCI_RX,INPUT);
+  digitalWrite(I2C_MUXEN, 0);
   
   //Configure ADXL355:
-  I2CWriteData(RST, 0x52);
-  delay(100);
-  I2CWriteData(RANGE, RANGE_8G);
-  delay(100);
-  I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
-  delay(100);
-  I2CWriteData(SYNC, 0b010); 
-  delay(100);
-  I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
-  // Give the sensor time to set up:
-  delay(100);
-
+	I2CWriteData(RST, 0x52);
+	delay(100);
+	I2CWriteData(RANGE, RANGE_8G);
+	delay(100);
+	I2CWriteData(FILTER, 0b100); //ODR 0b100@250Hz 0b101@125Hz
+	delay(100);
+	I2CWriteData(SYNC, 0b010); 
+	delay(100);
+	I2CWriteData(POWER_CTL, MEASUREwTEMP_MODE); // Enable measure mode
+	// Give the sensor time to set up:
+	delay(100);
   if (!IMU.begin()) {
    while (1);
  }
- 
+	digitalWrite(I2C_MUXEN, 1);
+
 }
-int cnt=0;
 void loop() {
   int ax, ay, az, wx, wy, wz;
-  
-		// output_fogClk(start_time);
 		clk_status = digitalRead(FOG_CLK);
-		if(clk_status) 
-		{
-			start_time = micros();
-			clk_status = 0;
-//			checkByte(0xAA);
-			// send_current_time(start_time);
-			// requestSFOS200();
+		if(clk_status & ~clk_status_old) 
+		{	
+			start_time = millis();
+			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
+			old_time = start_time;
+			
+			 checkByte(0xAA);
+			send_current_time(start_time);
+			 // requestSFOS200();
 			// requestPP();
-			// requestSpeed();
 			request_adxl355(ax, ay, az);
-//			request_nano33_xlm();
-			// checkByte(0xAB);
-			// if(cnt%1000==0) checkByte(0xAC);
-			// else checkByte(0xAB);
-			cnt++;
+			request_nano33_gyro(); 
+			request_nano33_xlm(); 
+			checkByte(0xAB);
 		}
-	   
+	   clk_status_old = clk_status;
 }
 
 void request_adxl355(int accX, int accY, int accZ) {
-  byte temp_ax1, temp_ax2, temp_ax3;
-  byte temp_ay1, temp_ay2, temp_ay3;
-  byte temp_az1, temp_az2, temp_az3;
-  byte temp1, temp2;
+  // byte temp_ax1, temp_ax2, temp_ax3;
+  // byte temp_ay1, temp_ay2, temp_ay3;
+  // byte temp_az1, temp_az2, temp_az3;
+  // byte temp1, temp2;
   byte status;
   int RT;
   float RTf;
   bool isReady;
-
+	digitalWrite(I2C_MUXEN, 0);
 	status = I2CReadData(STATUS); //0x04
 	isReady = status&0b00000001;
 	// while(!isReady) {
@@ -163,6 +198,12 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// isReady = status&0b00000001;
 		// delay(1);
 	// }
+	// Serial.print("DEVID_AD: "); 
+	// Serial.println(I2CReadData(DEVID_AD), HEX);
+	// Serial.print("RANGE: "); 
+	// Serial.println(I2CReadData(RANGE), BIN); 
+	// Serial.print("FILTER: "); 
+	// Serial.println(I2CReadData(FILTER), BIN);  
   if(isReady){
       temp_ax1 = I2CReadData(XDATA3); //0x08
       temp_ax2 = I2CReadData(XDATA2); //0x09
@@ -186,7 +227,7 @@ void request_adxl355(int accX, int accY, int accZ) {
 	  temp2 = I2CReadData(TEMP2);
 	  RT = (temp2&0x07)<<8 | temp1;
 	  // RTf = 25 - ((float)RT-1885.0)/9.05;
-		
+		digitalWrite(I2C_MUXEN, 1);
       if(PRINT_ADXL355)
       {
         t_new = micros();
@@ -237,7 +278,20 @@ void request_adxl355(int accX, int accY, int accZ) {
 		Serial1.write(temp2);
 		Serial1.write(temp1);
     }  
-	else Serial.println("is ready = 0");
+	else {
+		digitalWrite(I2C_MUXEN, 1);
+		Serial1.write(temp_ax1);
+		Serial1.write(temp_ax2);
+		Serial1.write(temp_ax3);
+		Serial1.write(temp_ay1);
+		Serial1.write(temp_ay2);
+		Serial1.write(temp_ay3);
+		Serial1.write(temp_az1);
+		Serial1.write(temp_az2);
+		Serial1.write(temp_az3);
+		Serial1.write(temp2);
+		Serial1.write(temp1);
+	}
 }
 
 void send_current_time(unsigned long current_time) {
@@ -271,7 +325,9 @@ void requestSFOS200() {
 buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在buffer快接近爆掉時須先清掉一些。
 而當sync clock比較慢時data送進buffer比清空的速度慢，buffer會見底，因此當buffer快沒時須等待buffer補充。
 ***/
-	while (mySerial5.available()<24) {}; 
+	while (mySerial5.available()<24) {
+//	    Serial.println(mySerial5.available());
+	  }; 
 	if(mySerial5.available()>230) {
 		for(int i=0; i<220; i++) mySerial5.read(); 
 	}
@@ -296,8 +352,6 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
-		Serial.print(cnt);
-		Serial.print("\t");
 		Serial.print(t_new - t_old);
 		Serial.print("\t");
 		Serial.print(mySerial5.available()); 
@@ -324,37 +378,33 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
 void requestPP() {
 
-  byte temp[10];
-  int omega;
-  byte header[2];
+	byte temp[10];
+	int omega;
+	byte header;
 
-	while (mySerial13.available()<16) {};
+	while (mySerial13.available()<12) {};
 	if(mySerial13.available()>230) {
 		for(int i=0; i<220; i++) mySerial13.read(); 
 	}
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
-		 // {
-			// header[0] = mySerial13.read();
-			// header[1] = mySerial13.read();
-			// delay(1);
-		 // }
+	header = mySerial13.read();
+	while( header != 0xAB ) 
+	{
+		header = mySerial13.read();
+		delay(1);
+	}
     
     for(int i=0; i<4; i++) {
       temp[i] = mySerial13.read(); 
-	  // temp[i] = 255;
     }
     omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
 
     if(PRINT_PP) {
-		t_new = micros();
 		Serial.print(millis());
 		Serial.print("\t");
 		Serial.print(mySerial13.available()); 
 		Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
+		Serial.print(header, HEX);
+		Serial.print("\t");    
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.print(temp[1]);
@@ -376,35 +426,31 @@ void requestSpeed() {
 
   byte temp[10];
   int omega;
-  byte header[2];
+  byte header;
 
 	while (Serial2.available()<16) {};
 	if(Serial2.available()>230) {
 		for(int i=0; i<220; i++) Serial2.read(); 
 	}
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		 // while( ((header[0]!=0xC1)||(header[1]!=0xC1))) 
-		 // {
-			// header[0] = mySerial13.read();
-			// header[1] = mySerial13.read();
-			// delay(1);
-		 // }
+		header = Serial2.read();
+		while( header != 0xAB ) 
+		{
+			header = Serial2.read();
+			delay(1);
+		}
     
     for(int i=0; i<4; i++) {
       temp[i] = Serial2.read(); 
-	  // temp[i] = 255;
     }
     omega = temp[0]<<24 | temp[1]<<16 | temp[2]<<8 | temp[3];
 
     if(PRINT_SPEED) {
-		t_new = micros();
 		Serial.print(millis());
 		Serial.print("\t");
 		Serial.print(Serial2.available()); 
 		Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
+		Serial.print(header, HEX);
+		Serial.print("\t");    
 		Serial.print(temp[0]);
 		Serial.print("\t");
 		Serial.print(temp[1]);
@@ -426,13 +472,13 @@ void request_nano33_xlm() {
   while (!IMU.accelerationAvailable()); 
     IMU.readAcceleration(x, y, z);
     if(PRINT_XLM) {
-      Serial.print("a");
+      Serial.print("nano33 axlm");
       Serial.print('\t');
-      Serial.print(x*4.0/32768.0);
+      Serial.print(x*SENS_XLM);
       Serial.print('\t');
-      Serial.print(y*4.0/32768.0);
+      Serial.print(y*SENS_XLM);
       Serial.print('\t');
-      Serial.println(z*4.0/32768.0);
+      Serial.println(z*SENS_XLM);
     }
     Serial1.write(x>>8);
     Serial1.write(x);
@@ -449,7 +495,7 @@ void request_nano33_gyro() {
   while (!IMU.gyroscopeAvailable()); 
     IMU.readGyroscope(x, y, z);
     if(PRINT_GYRO) {
-      Serial.print("w");
+      Serial.print("nano33 gyro");
       Serial.print('\t');
       Serial.print(x);
       Serial.print('\t');
@@ -484,6 +530,14 @@ void I2CWriteData(byte addr, byte val)
   Wire.endTransmission();//
 }
 
+// void Soft_I2CWriteData(byte addr, byte val)
+// {  
+  // sw.beginTransmission(ADXL355_ADDR);//
+  // sw.write(addr);//
+  // sw.write(val);
+  // sw.endTransmission();//
+// }
+
 
 byte I2CReadData(byte addr)
 {
@@ -499,9 +553,28 @@ byte I2CReadData(byte addr)
 	{
 		data=Wire.read();
 	}	
-	
+		
 	return data;
 }
+
+// byte Soft_I2CReadData(byte addr)
+// {
+	// bool i=0;
+	// byte data;
+	
+	
+	// sw.beginTransmission(ADXL355_ADDR);//
+	// sw.write(addr);//
+	// sw.endTransmission();
+	
+	// sw.requestFrom(ADXL355_ADDR,1);
+	// while (sw.available())
+	// {
+		// data=sw.read();
+	// }	
+	
+	// return data;
+// }
 
 /* 
  * Read multiple registries

@@ -6,11 +6,21 @@
 #include <SoftWire.h>
 #include <AsyncDelay.h>
 
+/*** Nano33 ***/
+#define SENS_XLM 0.000122
+
 /*** ADXL355***/
 #define SENS_8G 0.0000156
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
 #define ADXL355_ADDR 0x1D
+
+/*** Adxl355 gloabal var***/
+byte temp_ax1, temp_ax2, temp_ax3;
+byte temp_ay1, temp_ay2, temp_ay3;
+byte temp_az1, temp_az2, temp_az3;
+byte temp1, temp2;
+
 // Memory register addresses:
 const int TEMP2  = 0x06;
 const int TEMP1  = 0x07;
@@ -57,7 +67,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_GYRO 0
 #define PRINT_XLM 0
 #define PRINT_ADXL355 0
-#define PRINT_UPDATE_TIME 0
+#define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
 #define PRINT_PP 0
@@ -71,7 +81,7 @@ const int CHIP_SELECT_PIN = 10;
 #define sdaPin  11
 #define sclPin  12
 
-bool clk_status = 1;
+bool clk_status = 1, clk_status_old = 0;;
 unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
 
@@ -148,7 +158,7 @@ void loop() {
   
 		// output_fogClk(start_time);
 		clk_status = digitalRead(FOG_CLK);
-		if(clk_status) 
+		if(clk_status & ~clk_status_old) 
 		{
 			start_time = millis();
 			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
@@ -156,23 +166,23 @@ void loop() {
 			clk_status = 0;
 			checkByte(0xAA);
 			send_current_time(start_time);
-			 requestSFOS200();
-			requestPP();
+//			 requestSFOS200();
+//			requestPP();
 //			requestSpeed();
 			request_adxl355(ax, ay, az);
 			request_nano33_gyro(); 
-			// request_nano33_xlm(); 
+			request_nano33_xlm(); 
      checkByte(0xAB);
 //     Serial.println(millis());
 		}
-	   
+	   clk_status_old = clk_status;
 }
 
 void request_adxl355(int accX, int accY, int accZ) {
-  byte temp_ax1, temp_ax2, temp_ax3;
-  byte temp_ay1, temp_ay2, temp_ay3;
-  byte temp_az1, temp_az2, temp_az3;
-  byte temp1, temp2;
+  // byte temp_ax1, temp_ax2, temp_ax3;
+  // byte temp_ay1, temp_ay2, temp_ay3;
+  // byte temp_az1, temp_az2, temp_az3;
+  // byte temp1, temp2;
   byte status;
   int RT;
   float RTf;
@@ -185,6 +195,10 @@ void request_adxl355(int accX, int accY, int accZ) {
 		// isReady = status&0b00000001;
 		// delay(1);
 	// }
+//  Serial.print("RANGE: "); 
+//  Serial.println(Soft_I2CReadData(RANGE), BIN); 
+//  Serial.print("FILTER: "); 
+//  Serial.println(Soft_I2CReadData(FILTER), BIN); 
   if(isReady){
       temp_ax1 = Soft_I2CReadData(XDATA3); //0x08
       temp_ax2 = Soft_I2CReadData(XDATA2); //0x09
@@ -442,11 +456,11 @@ void request_nano33_xlm() {
     if(PRINT_XLM) {
       Serial.print("nano33 axlm");
       Serial.print('\t');
-      Serial.print(x);
+      Serial.print(x*SENS_XLM);
       Serial.print('\t');
-      Serial.print(y);
+      Serial.print(y*SENS_XLM);
       Serial.print('\t');
-      Serial.println(z);
+      Serial.println(z*SENS_XLM);
     }
     Serial1.write(x>>8);
     Serial1.write(x);
