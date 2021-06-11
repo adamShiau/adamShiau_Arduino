@@ -111,7 +111,7 @@ void setup() {
    // SPI.begin();
    // SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
    Wire.begin();
-   Wire.setClock(100000);
+   // Wire.setClock(400000L);
   
   // sw.setTxBuffer(swTxBuffer, sizeof(swTxBuffer));
   // sw.setRxBuffer(swRxBuffer, sizeof(swRxBuffer));
@@ -157,6 +157,7 @@ void setup() {
   if (!IMU.begin()) {
    while (1);
  }
+	Wire.setClock(400000L); //don't move to otrher position
 	digitalWrite(I2C_MUXEN, 1);
 
 }
