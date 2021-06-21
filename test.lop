@@ -2,5 +2,5 @@ inlucde 'abc.lib'
 
 start fn1
 print("hi")
-
+print("hi2")
 end fn1
