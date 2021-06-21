@@ -1,0 +1,6 @@
+inlucde 'abc.lib'
+
+start fn1
+print("hi")
+
+end fn1
