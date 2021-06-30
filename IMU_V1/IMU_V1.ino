@@ -234,20 +234,22 @@ void request_adxl355(int accX, int accY, int accZ) {
       if(PRINT_ADXL355)
       {
         t_new = micros();
-        Serial.print(t_new - t_old);
-        Serial.print(", ");
-		Serial.print(RT);
-        Serial.print(", ");
-        Serial.print(accX);
-        Serial.print(", ");
+        // Serial.print(t_new - t_old);
+        // Serial.print(", ");
+		// Serial.print(RT);
+        // Serial.print(", ");
+        // Serial.print(accX);
+        // Serial.print(", ");
+		Serial.print("ADXL355: ");
+        Serial.print('\t');
         Serial.print((float)accX*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accY);
-        Serial.print(", ");
+        Serial.print('\t');
+        // Serial.print(accY);
+        // Serial.print(", ");
         Serial.print((float)accY*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accZ);
-        Serial.print(", ");
+        Serial.print('\t');
+        // Serial.print(accZ);
+        // Serial.print(", ");
         Serial.println((float)accZ*SENS_8G);
 		/*** below for degug***/
 		// Serial.print("ax:");
@@ -524,7 +526,7 @@ void request_nano33_xlm() {
   while (!IMU.accelerationAvailable()); 
     IMU.readAcceleration(x, y, z);
     if(PRINT_XLM) {
-      Serial.print("nano33 axlm");
+      Serial.print("nano33: ");
       Serial.print('\t');
       Serial.print(x*SENS_XLM);
       Serial.print('\t');
