@@ -106,9 +106,7 @@ void VBOX() {
   long speed;
   int acc;
   byte header[7];
-	while (Serial1.available()<73) {
-	    // Serial.println(Serial1.available());
-	  }; 
+	while (Serial1.available()<73) {}; 
 	// if(Serial2.available()>230) {
 		// for(int i=0; i<220; i++) Serial2.read(); 
 	// }
@@ -124,29 +122,31 @@ void VBOX() {
 		
 		delayMicroseconds(1);
 	}
-	 Serial.println("pass");
+	 // Serial.println("pass");
 	 
 	/***  below read VBOX speed ***/
-	for(int i=0; i<14; i++) Serial1.read();
-    for(int i=0; i<3; i++) {
-      temp[i] = Serial1.read(); 
-    }
-    speed = temp[0]<<16 | temp[1]<<8 | temp[2];
-    Serial.print(temp[0]);
-    Serial.print(", ");
-    Serial.print(temp[1]);
-    Serial.print(", ");
-    Serial.print(temp[2]);
-    Serial.print(", ");
-	Serial.println(speed*0.001);
+	// for(int i=0; i<14; i++) Serial1.read();
+    // for(int i=0; i<3; i++) {
+      // temp[i] = Serial1.read(); 
+    // }
+    // speed = temp[0]<<16 | temp[1]<<8 | temp[2];
+    // Serial.print(temp[0]);
+    // Serial.print(", ");
+    // Serial.print(temp[1]);
+    // Serial.print(", ");
+    // Serial.print(temp[2]);
+    // Serial.print(", ");
+	// Serial.println(speed*0.001);
 	
 	/***  below read VBOX z-axis acc ***/
-//	 for(int i=0; i<42; i++) Serial1.read();
-//     for(int i=0; i<2; i++) {
-//       temp[i] = Serial1.read(); 
-//     }
-//     acc = temp[0]<<8 | temp[1];
-//	 Serial.println(acc);
+	 for(int i=0; i<42; i++) Serial1.read();
+    for(int i=0; i<2; i++) {
+      temp[i] = Serial1.read(); 
+    }
+    acc = temp[0]<<8 | temp[1];
+	 // Serial.println(acc);
+	 
+	 /*** ***/
 	// if(PRINT_VBOX) {
 		// Serial.print(millis());
 		// Serial.print("\t");

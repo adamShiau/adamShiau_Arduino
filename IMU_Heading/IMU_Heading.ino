@@ -17,19 +17,16 @@
 
 /*** VBOX HEADER***/
 const char VBOX_HEADER[7] = {'$', 'V', 'B', '3', 'i', 's', '$'};
-const byte GPSSAT_INCR = 7;
-const byte LATITUDE_INCR = 13;
-const byte LONGITUDE_INCR = 17;
-const byte VELOCITY_INCR = 21;
-const byte ALTITUDE_INCR = 26;
-const byte V_VELOCITY_INCR = 29;
-const byte PITCH_INCR = 33;
-const byte ROLL_INCR = 35;
-const byte HEADING_INCR = 37;
-const byte PITCH_RATE = 39;
-const byte ROLL_RATE = 41;
-const byte YAW_RATE = 43;
-const byte ACCZ_INCR = 49;
+const byte GPSSAT_INCR = 0;
+const byte LATITUDE_INCR = 5;
+const byte LONGITUDE_INCR = 0;
+const byte VELOCITY_INCR = 0;
+const byte ALTITUDE_INCR = 2;
+const byte V_VELOCITY_INCR = 0;
+const byte PITCH_INCR = 1;
+const byte ROLL_INCR = 0;
+const byte HEADING_INCR = 0;
+const byte ACCZ_INCR = 42;
 
 
 /*** Adxl355 gloabal var***/
@@ -87,6 +84,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_UPDATE_TIME 1
 #define PRINT_TIME 0
 #define PRINT_SFOS200 0
+#define PRINT_SRS200 0
 #define PRINT_PP 0
 #define PRINT_UART2 0
 #define PRINT_SPEED 0 
@@ -178,7 +176,7 @@ void setup() {
  }
 	Wire.setClock(400000L); //don't move to otrher position
 	digitalWrite(I2C_MUXEN, 1);
-	
+
 }
 void loop() {
   int ax, ay, az, wx, wy, wz;
@@ -195,15 +193,15 @@ void loop() {
 			old_time = start_time;
 			 checkByte(0xAA);
 			send_current_time(start_time);
-			
+			// send_constant();
 			requestSFOS200();
-			// requestSRS200();
-			requestPP();
+			requestSRS200();
+			// requestPP();
 			// request_UART2();
 			request_adxl355(ax, ay, az);
-			request_nano33_gyro(); 
+			// request_nano33_gyro(); 
 			// request_nano33_xlm(); 
-			requestVBOX();
+			// requestVBOX();
 			checkByte(0xAB);
 		}
 	   clk_status_old = clk_status;
@@ -325,6 +323,14 @@ void request_adxl355(int accX, int accY, int accZ) {
 	}
 }
 
+void send_constant(){
+	Serial1.write(0x1);
+	Serial1.write(0x2);
+	Serial1.write(0x3);
+	Serial1.write(0x4);
+	
+}
+
 void send_current_time(unsigned long current_time) {
   if(PRINT_TIME) {
     Serial.print("t");
@@ -350,7 +356,6 @@ void requestSFOS200() {
   byte temp[10];
   int omega;
   byte header[2];
-  byte bf;
 //  unsigned int t_old=0, t_new;
 
 /***sync clock 與MCU smapling time有一點差別時會造成buffer累積，當sync clock比較快時data送進buffer比清空的速度快，
@@ -384,6 +389,8 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
 
     if(PRINT_SFOS200) {
 		t_new = micros();
+		Serial.print("SRS200_1: ");
+		Serial.print("\t");
 		Serial.print(t_new - t_old);
 		Serial.print("\t");
 		Serial.print(mySerial5.available()); 
@@ -406,70 +413,62 @@ buffer累積到255時會爆掉歸零，此時data傳輸會怪怪的，因此在b
     Serial1.write(temp[2]);
     Serial1.write(temp[1]);
     Serial1.write(temp[0]);
-	
-	bf = mySerial5.available();
-	Serial1.write(bf);
 }
 
 void requestSRS200() {
 
-  // byte temp[10];
-  // int omega;
-  // byte header[2];
-  byte bf;
+  byte temp[10];
+  int omega;
+  byte header[2];
 
-	
-	// while (mySerial13.available()<12) {
-	  // }; 
+	while (mySerial13.available()<24) {
+	  }; 
 	  
-	// if(mySerial13.available()>230) {
-		// for(int i=0; i<220; i++) mySerial5.read(); 
-	// }
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-	// while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
-	// {
-		// header[0] = mySerial13.read();
-		// header[1] = mySerial13.read();
-		// delay(1);
-	// }
-    
-    // for(int i=0; i<10; i++) {
-      // temp[i] = mySerial13.read(); 
-    // }
-    // omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
-
-    // if(PRINT_SRS200) {
-		// t_new = micros();
-		// Serial.print("SRS200_2: ");
-		// Serial.print("\t");
-		// Serial.print(t_new - t_old);
-		// Serial.print("\t");
-		// Serial.print(mySerial13.available()); 
-		// Serial.print("\t");
-		// Serial.print(header[0]<<8|header[1], HEX);
-		// Serial.print("\t");    
-		// Serial.print(temp[3]);
-		// Serial.print("\t");
-		// Serial.print(temp[2]);
-		// Serial.print("\t");
-		// Serial.print(temp[1]);
-		// Serial.print("\t");
-		// Serial.print(temp[0]);
-		// Serial.print("\t");
-		// Serial.println(omega);
-		// t_old = t_new;
-    // }  
-	for(int i=0; i<12; i++) {
-		Serial1.write(mySerial5.read());
+	if(mySerial13.available()>230) {
+		for(int i=0; i<220; i++) mySerial5.read(); 
 	}
-	bf = mySerial5.available();
-	Serial1.write(bf);
-	// Serial.println(bf);
-    // Serial1.write(temp[3]);
-    // Serial1.write(temp[2]);
-    // Serial1.write(temp[1]);
-    // Serial1.write(temp[0]);
+		header[0] = mySerial13.read();
+		header[1] = mySerial13.read();
+	while( ((header[0]!=0xC0)||(header[1]!=0xC0))) 
+	{
+		header[0] = mySerial13.read();
+		header[1] = mySerial13.read();
+		delay(1);
+	}
+    
+    for(int i=0; i<10; i++) {
+      temp[i] = mySerial13.read(); 
+    }
+    omega = temp[3]<<24 | temp[2]<<16 | temp[1]<<8 | temp[0];
+
+    if(PRINT_SRS200) {
+		t_new = micros();
+		Serial.print("SRS200_2: ");
+		Serial.print("\t");
+		Serial.print(t_new - t_old);
+		Serial.print("\t");
+		Serial.print(mySerial13.available()); 
+		Serial.print("\t");
+		Serial.print(header[0]<<8|header[1], HEX);
+		Serial.print("\t");    
+		Serial.print(temp[3]);
+		Serial.print("\t");
+		Serial.print(temp[2]);
+		Serial.print("\t");
+		Serial.print(temp[1]);
+		Serial.print("\t");
+		Serial.print(temp[0]);
+		Serial.print("\t");
+		Serial.println(omega);
+		t_old = t_new;
+    }  
+	// for(int i=0; i<24; i++) {
+		// Serial1.write(mySerial13.read());
+	// }
+    Serial1.write(temp[3]);
+    Serial1.write(temp[2]);
+    Serial1.write(temp[1]);
+    Serial1.write(temp[0]);
 }
 
 void request_UART2() {
@@ -567,174 +566,54 @@ void requestPP() {
     Serial1.write(temp[3]);
 }
 
-void requestVBOX() {
+void requestVBOX_bk() {
+	byte temp[146];
+	// while (Serial2.available()<146) {};
+	// Serial1.write(0xAB);
+	for(int i=0; i<146; i++) {
+		temp[146];
+		Serial1.write(Serial2.read());
+	}
+	// for(int i=0; i<36; i++){
+		// Serial1.write(i);
+	// }
 	
-	char header[7];
-	byte VBOX_temp[50];
-	byte gpssat;
-	int latitude, longitude, velocity, altitude, v_velocity;
-	short pitch, roll, heading, p_rate, r_rate, y_rate, accz;
 
-	while (Serial2.available()<10) {};
-	
-	Serial2.readBytes(header, 7);
+}
+
+void requestVBOX() {
+
+	byte temp[67];
+	long speed;
+	int gpssat, latitude, longitude, velocity, altitude, v_velocity, pitch, roll, heading, accz;
+	byte header[7];
+	while (Serial2.available()<73) {
+		delayMicroseconds(1);
+		// Serial.println(Serial2.available());
+	}; 
+	for(int i=0; i<7; i++) header[i] = Serial2.read();
 	
 	while( ((header[0]!=VBOX_HEADER[0])||(header[1]!=VBOX_HEADER[1])||(header[2]!=VBOX_HEADER[2])||
 	(header[3]!=VBOX_HEADER[3])||(header[4]!=VBOX_HEADER[4])||(header[5]!=VBOX_HEADER[5])||(header[6]!=VBOX_HEADER[6]))) 
 	{
-		for(int j=0; j<6; j++) {
-			header[j] = header[j+1];
-		}
+		for(int j=0; j<6; j++) header[j] = header[j+1];
 		header[6] = Serial2.read();
-		delayMicroseconds(100);
 	}
-	// Serial.println(header);
-	Serial2.readBytes(VBOX_temp, 50);
-	
-	// for(int i=0; i<50; i++) {
-		// Serial.print(VBOX_temp[i], HEX);
-		// Serial.print(", ");
-	// }
-	
-	gpssat = VBOX_temp[GPSSAT_INCR-7];
-	latitude = VBOX_temp[LATITUDE_INCR-7]<<24 | VBOX_temp[LATITUDE_INCR-6]<<16 | VBOX_temp[LATITUDE_INCR-5]<<8| VBOX_temp[LATITUDE_INCR-4];
-	longitude = VBOX_temp[LONGITUDE_INCR-7]<<24 | VBOX_temp[LONGITUDE_INCR-6]<<16 | VBOX_temp[LONGITUDE_INCR-5]<<8| VBOX_temp[LONGITUDE_INCR-4]; 
-	velocity = VBOX_temp[VELOCITY_INCR-7]<<16 | VBOX_temp[VELOCITY_INCR-6]<<8| VBOX_temp[VELOCITY_INCR-5]; 
-	altitude = VBOX_temp[ALTITUDE_INCR-7]<<16 | VBOX_temp[ALTITUDE_INCR-6]<<8| VBOX_temp[ALTITUDE_INCR-5]; 
-	v_velocity = VBOX_temp[V_VELOCITY_INCR-7]<<16 | VBOX_temp[V_VELOCITY_INCR-6]<<8| VBOX_temp[V_VELOCITY_INCR-5]; 
-	p_rate = VBOX_temp[PITCH_RATE-7]<<8 | VBOX_temp[PITCH_RATE-6];
-	r_rate = VBOX_temp[ROLL_RATE-7]<<8 | VBOX_temp[ROLL_RATE-6];
-	y_rate = VBOX_temp[YAW_RATE-7]<<8 | VBOX_temp[YAW_RATE-6];
-	pitch = VBOX_temp[PITCH_INCR-7]<<8 | VBOX_temp[PITCH_INCR-6];
-	roll = VBOX_temp[ROLL_INCR-7]<<8 | VBOX_temp[ROLL_INCR-6];
-	heading = VBOX_temp[HEADING_INCR-7]<<8 | VBOX_temp[HEADING_INCR-6];
-	accz = VBOX_temp[ACCZ_INCR-7]<<8 | VBOX_temp[ACCZ_INCR-6];
-	
-	if(PRINT_VBOX) {
-		Serial.print(millis());
-		Serial.print("\t");
-		Serial.print(Serial2.available()); 
-		Serial.print("\t");
-		Serial.print(gpssat);
-		Serial.print("\t");
-		Serial.print(latitude);
-		Serial.print("\t");
-		Serial.print(longitude);
-		Serial.print("\t");
-		Serial.print(velocity);
-		Serial.print("\t");
-		Serial.print(altitude);
-		Serial.print("\t");
-		Serial.print(v_velocity);
-		Serial.print("\t");
-		Serial.print(pitch);
-		Serial.print("\t");
-		Serial.print(roll);
-		Serial.print("\t");
-		Serial.print(heading);
-		Serial.print("\t");
-		Serial.print(p_rate);
-		Serial.print("\t");
-		Serial.print(r_rate);
-		Serial.print("\t");
-		Serial.print(y_rate);
-		Serial.print("\t");
-		Serial.print(accz);
-		Serial.print("\n");
-	}  
-	Serial1.write(gpssat);
-	Serial1.write(latitude>>24);
-	Serial1.write(latitude>>16);
-	Serial1.write(latitude>>8);
-	Serial1.write(latitude);
-	Serial1.write(longitude>>24);
-	Serial1.write(longitude>>16);
-	Serial1.write(longitude>>8);
-	Serial1.write(longitude);
-	Serial1.write(velocity>>16);
-	Serial1.write(velocity>>8);
-	Serial1.write(velocity);
-	Serial1.write(altitude>>16);
-	Serial1.write(altitude>>8);
-	Serial1.write(altitude);
-	Serial1.write(v_velocity>>16);
-	Serial1.write(v_velocity>>8);
-	Serial1.write(v_velocity);
-	Serial1.write(pitch>>8);
-	Serial1.write(pitch);
-	Serial1.write(roll>>8);
-	Serial1.write(roll);
-	Serial1.write(heading>>8);
-	Serial1.write(heading);
-	Serial1.write(accz>>8);
-	Serial1.write(accz);
-}
-
-void requestVBOX_bk() {
-
-	byte VBOX_temp[150];
-	byte idx;
-	long speed;
-	int gpssat, latitude, longitude, velocity, altitude, v_velocity, pitch, roll, heading, accz;
-	short p_rate, r_rate, y_rate;
-	// char header[7];
-	idx = 0;
-	while (Serial2.available()<150) {};
-	Serial2.readBytes(VBOX_temp, 150);
-	// for(int i=0; i<73; i++) {
-		// temp[i] = Serial2.read();
-		// Serial.print((char)temp[i]);
-	// }
-	// Serial.println("");
-	
-	while(1)
-	{
-		for(int i=0; i<73; i++) {
-			if( ((VBOX_temp[i]==VBOX_HEADER[0])&&(VBOX_temp[i+1]==VBOX_HEADER[1])&&(VBOX_temp[i+2]==VBOX_HEADER[2])&&(VBOX_temp[i+3]==VBOX_HEADER[3])&&(VBOX_temp[i+4]==VBOX_HEADER[4])&&(VBOX_temp[i+5]==VBOX_HEADER[5])&&(VBOX_temp[i+6]==VBOX_HEADER[6])) )
-			{
-				idx = i;
-				break;
-			}
-		}
-		break;
-	}
-	// for(int i=73; i<150; i++) {
-		// VBOX_temp[i] = Serial2.read();
-	// }
-	Serial.print("idx: ");
-	Serial.println(idx);
-	
-	for(int i=idx; i<idx+7; i++) Serial.print((char)VBOX_temp[i]);
-	Serial.println("");
-	
-	// while( ((header[0]!=VBOX_HEADER[0])||(header[1]!=VBOX_HEADER[1])||(header[2]!=VBOX_HEADER[2])||
-	// (header[3]!=VBOX_HEADER[3])||(header[4]!=VBOX_HEADER[4])||(header[5]!=VBOX_HEADER[5])||(header[6]!=VBOX_HEADER[6]))) 
-	// {
-		// for(int j=0; j<6; j++) {
-			// Serial.print(header[j]);
-			// Serial.print("\t");
-			// header[j] = header[j+1];
-		// }
-		// header[6] = Serial2.read();
-		// Serial.println(header[6]);
-	// }
 	 
-	// for(int i=0; i<67; i++) temp[i] = Serial2.read();
+	for(int i=0; i<66; i++) temp[i] = Serial2.read();
 	
-	// gpssat = temp[GPSSAT_INCR];
-	// latitude = temp[LATITUDE_INCR]<<24 | temp[LATITUDE_INCR+1]<<16 | temp[LATITUDE_INCR+2]<<8| temp[LATITUDE_INCR+3];
-	// longitude = temp[LONGITUDE_INCR]<<24 | temp[LONGITUDE_INCR+1]<<16 | temp[LONGITUDE_INCR+2]<<8| temp[LONGITUDE_INCR+3]; 
-	// velocity = temp[VELOCITY_INCR]<<16 | temp[VELOCITY_INCR+1]<<8| temp[VELOCITY_INCR+2]; 
-	// altitude = temp[ALTITUDE_INCR]<<16 | temp[ALTITUDE_INCR+1]<<8| temp[ALTITUDE_INCR+2]; 
-	// v_velocity = temp[V_VELOCITY_INCR]<<16 | temp[V_VELOCITY_INCR+1]<<8| temp[V_VELOCITY_INCR+2]; 
-	p_rate = VBOX_temp[idx + PITCH_RATE]<<8 | VBOX_temp[idx + PITCH_RATE+1];
-	r_rate = VBOX_temp[idx + ROLL_RATE]<<8 | VBOX_temp[idx + ROLL_RATE+1];
-	y_rate = VBOX_temp[idx + YAW_RATE]<<8 | VBOX_temp[idx + YAW_RATE+1];
-	pitch = VBOX_temp[idx + PITCH_INCR]<<8 | VBOX_temp[idx + PITCH_INCR+1];
-	roll = VBOX_temp[idx + ROLL_INCR]<<8 | VBOX_temp[idx + ROLL_INCR+1];
-	heading = VBOX_temp[idx + HEADING_INCR]<<8 | VBOX_temp[idx + HEADING_INCR+1];
-	accz = VBOX_temp[idx + ACCZ_INCR]<<8 | VBOX_temp[idx + ACCZ_INCR+1];
+	gpssat = temp[GPSSAT_INCR];
+	latitude = temp[LATITUDE_INCR]<<24 | temp[LATITUDE_INCR+1]<<16 | temp[LATITUDE_INCR+2]<<8| temp[LATITUDE_INCR+3];
+	longitude = temp[LONGITUDE_INCR]<<24 | temp[LONGITUDE_INCR+1]<<16 | temp[LONGITUDE_INCR+2]<<8| temp[LONGITUDE_INCR+3]; 
+	velocity = temp[VELOCITY_INCR]<<16 | temp[VELOCITY_INCR+1]<<8| temp[VELOCITY_INCR+2]; 
+	altitude = temp[ALTITUDE_INCR]<<16 | temp[ALTITUDE_INCR+1]<<8| temp[ALTITUDE_INCR+2]; 
+	v_velocity = temp[V_VELOCITY_INCR]<<16 | temp[V_VELOCITY_INCR+1]<<8| temp[V_VELOCITY_INCR+2]; 
+	pitch = temp[PITCH_INCR]<<8 | temp[PITCH_INCR+1];
+	roll = temp[ROLL_INCR]<<8 | temp[ROLL_INCR+1];
+	heading = temp[HEADING_INCR]<<8 | temp[HEADING_INCR+1];
+	accz = temp[ACCZ_INCR]<<8 | temp[ACCZ_INCR+1];
 	
+
 	 
 	 /*** ***/
 	if(PRINT_VBOX) {
@@ -760,19 +639,14 @@ void requestVBOX_bk() {
 		Serial.print("\t");
 		Serial.print(heading);
 		Serial.print("\t");
-		// Serial.print(p_rate);
-		// Serial.print("\t");
-		// Serial.print(r_rate);
-		// Serial.print("\t");
-		// Serial.print(y_rate);
-		// Serial.print("\t");
 		Serial.print(accz);
 		Serial.print("\n");
     }  
-	// Serial1.write(0xAB);
+	Serial1.write(0xAB);
 //  Serial1.write(byte(0));
-    Serial1.write(accz>>8);
-    Serial1.write(accz);
+    Serial1.write(temp[0]);
+    Serial1.write(temp[1]);
+    Serial1.write(temp[2]);
 }
 
 
