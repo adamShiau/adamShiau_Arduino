@@ -30,7 +30,7 @@ const byte PITCH_RATE = 39;
 const byte ROLL_RATE = 41;
 const byte YAW_RATE = 43;
 const byte ACCZ_INCR = 49;
-
+const byte CRC_INCR = 71;
 
 /*** Adxl355 gloabal var***/
 byte temp_ax1, temp_ax2, temp_ax3;
@@ -104,6 +104,13 @@ const int CHIP_SELECT_PIN = 10;
 bool clk_status = 1, clk_status_old = 0;
 unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
+bool vbox_bad_flag_arr[3] = {0, 0, 0};
+bool vbox_bad_flag = 0, vbox_init_flag = 1;
+byte bf_idx = 0;
+byte g_gpssat;
+int g_latitude, g_longitude, g_velocity, g_altitude, g_v_velocity;
+short g_pitch, g_roll, g_heading, g_p_rate, g_r_rate, g_y_rate;
+int g_accz;
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -570,10 +577,14 @@ void requestPP() {
 void requestVBOX() {
 	
 	char header[7];
-	byte VBOX_temp[50];
+	byte VBOX_temp[65];
+	// byte crc_chk[72];
 	byte gpssat;
 	int latitude, longitude, velocity, altitude, v_velocity;
-	short pitch, roll, heading, p_rate, r_rate, y_rate, accz;
+	short pitch, roll, heading, p_rate, r_rate, y_rate;
+	int accz;
+	int crc;
+	// byte temp;
 
 	while (Serial2.available()<10) {};
 	
@@ -589,13 +600,32 @@ void requestVBOX() {
 		delayMicroseconds(100);
 	}
 	// Serial.println(header);
-	Serial2.readBytes(VBOX_temp, 50);
+	Serial2.readBytes(VBOX_temp, 65);
+	
+	// for(int i=0; i<72; i++) {
+		// if(i<7) temp = header[i];
+		// else temp = VBOX_temp[i];
+		
+		// crc = crc ^ (int(temp) << 8);
+		// crc = crc%65536;
+		
+		// for(int j = 0; j<8; j++) {
+			// if ( (crc & 32768)==32768){
+				// crc = crc << 1 ;
+				// crc = crc ^ 4129;
+			// }
+			// else crc= crc << 1 ;
+		// crc = crc % 65536;
+		// }
+	// }
+	
+	// Serial.println(crc);	
 	
 	// for(int i=0; i<50; i++) {
 		// Serial.print(VBOX_temp[i], HEX);
 		// Serial.print(", ");
 	// }
-	
+	// Serial.println("");
 	gpssat = VBOX_temp[GPSSAT_INCR-7];
 	latitude = VBOX_temp[LATITUDE_INCR-7]<<24 | VBOX_temp[LATITUDE_INCR-6]<<16 | VBOX_temp[LATITUDE_INCR-5]<<8| VBOX_temp[LATITUDE_INCR-4];
 	longitude = VBOX_temp[LONGITUDE_INCR-7]<<24 | VBOX_temp[LONGITUDE_INCR-6]<<16 | VBOX_temp[LONGITUDE_INCR-5]<<8| VBOX_temp[LONGITUDE_INCR-4]; 
@@ -609,65 +639,159 @@ void requestVBOX() {
 	roll = VBOX_temp[ROLL_INCR-7]<<8 | VBOX_temp[ROLL_INCR-6];
 	heading = VBOX_temp[HEADING_INCR-7]<<8 | VBOX_temp[HEADING_INCR-6];
 	accz = VBOX_temp[ACCZ_INCR-7]<<8 | VBOX_temp[ACCZ_INCR-6];
+	crc = VBOX_temp[CRC_INCR-7]<<8 | VBOX_temp[CRC_INCR-6];
+	
+	if(vbox_init_flag) {
+		vbox_init_flag = 0;
+		g_accz = accz;
+		g_gpssat = gpssat;
+		g_latitude = latitude;
+		g_longitude = longitude;
+		g_velocity = velocity;
+		g_altitude = altitude;
+		g_v_velocity = v_velocity;
+		g_pitch = pitch;
+		g_roll = roll;
+		g_heading = heading;
+		g_p_rate = p_rate;
+		g_r_rate = r_rate;
+		g_y_rate = y_rate;
+		g_accz = accz;
+	}
+	
+	if( (g_accz-accz)>200 || (g_accz-accz)<-200 ) vbox_bad_flag_arr[bf_idx] = 1;
+	else vbox_bad_flag_arr[bf_idx] = 0;
+	
+	vbox_bad_flag = vbox_bad_flag_arr[bf_idx];
+	bf_idx++;
+	if(bf_idx==3) bf_idx = 0;
+	
+	if( vbox_bad_flag_arr[0]&vbox_bad_flag_arr[1]&vbox_bad_flag_arr[2] ) vbox_bad_flag = 0;
+	
+	
+	// Serial.print(g_accz);
+	// Serial.print("\t");
+	// Serial.print(accz);
+	// Serial.print("\t");
+	// Serial.print(vbox_bad_flag);
+	// Serial.print("\t");
+	// Serial.print(vbox_bad_flag_arr[0]);
+	// Serial.print("\t");
+	// Serial.print(vbox_bad_flag_arr[1]);
+	// Serial.print("\t");
+	// Serial.print(vbox_bad_flag_arr[2]);
+	// Serial.print("\n");
+	
+	if(!vbox_bad_flag) {
+		g_accz = accz;
+		g_gpssat = gpssat;
+		g_latitude = latitude;
+		g_longitude = longitude;
+		g_velocity = velocity;
+		g_altitude = altitude;
+		g_v_velocity = v_velocity;
+		g_pitch = pitch;
+		g_roll = roll;
+		g_heading = heading;
+		g_p_rate = p_rate;
+		g_r_rate = r_rate;
+		g_y_rate = y_rate;
+		g_accz = accz;
+	}
+	// vbox_bad_flag_r = vbox_bad_flag;
 	
 	if(PRINT_VBOX) {
 		Serial.print(millis());
 		Serial.print("\t");
 		Serial.print(Serial2.available()); 
 		Serial.print("\t");
-		Serial.print(gpssat);
+		Serial.print(g_gpssat);
 		Serial.print("\t");
-		Serial.print(latitude);
+		Serial.print(g_latitude);
 		Serial.print("\t");
-		Serial.print(longitude);
+		Serial.print(g_longitude);
 		Serial.print("\t");
-		Serial.print(velocity);
+		Serial.print(g_velocity);
 		Serial.print("\t");
-		Serial.print(altitude);
+		Serial.print(g_altitude);
 		Serial.print("\t");
-		Serial.print(v_velocity);
+		Serial.print(g_v_velocity);
 		Serial.print("\t");
-		Serial.print(pitch);
+		Serial.print(g_pitch);
 		Serial.print("\t");
-		Serial.print(roll);
+		Serial.print(g_roll);
 		Serial.print("\t");
-		Serial.print(heading);
+		Serial.print(g_heading);
 		Serial.print("\t");
-		Serial.print(p_rate);
+		Serial.print(g_p_rate);
 		Serial.print("\t");
-		Serial.print(r_rate);
+		Serial.print(g_r_rate);
 		Serial.print("\t");
-		Serial.print(y_rate);
+		Serial.print(g_y_rate);
 		Serial.print("\t");
-		Serial.print(accz);
+		Serial.print((short)g_accz);
+		Serial.print("\t");
+		Serial.print(crc);
 		Serial.print("\n");
+		
+		// Serial.print(millis());
+		// Serial.print("\t");
+		// Serial.print(Serial2.available()); 
+		// Serial.print("\t");
+		// Serial.print(gpssat);
+		// Serial.print("\t");
+		// Serial.print(latitude);
+		// Serial.print("\t");
+		// Serial.print(longitude);
+		// Serial.print("\t");
+		// Serial.print(velocity);
+		// Serial.print("\t");
+		// Serial.print(altitude);
+		// Serial.print("\t");
+		// Serial.print(v_velocity);
+		// Serial.print("\t");
+		// Serial.print(pitch);
+		// Serial.print("\t");
+		// Serial.print(roll);
+		// Serial.print("\t");
+		// Serial.print(heading);
+		// Serial.print("\t");
+		// Serial.print(p_rate);
+		// Serial.print("\t");
+		// Serial.print(r_rate);
+		// Serial.print("\t");
+		// Serial.print(y_rate);
+		// Serial.print("\t");
+		// Serial.print(accz);
+		// Serial.print("\n");
 	}  
-	Serial1.write(gpssat);
-	Serial1.write(latitude>>24);
-	Serial1.write(latitude>>16);
-	Serial1.write(latitude>>8);
-	Serial1.write(latitude);
-	Serial1.write(longitude>>24);
-	Serial1.write(longitude>>16);
-	Serial1.write(longitude>>8);
-	Serial1.write(longitude);
-	Serial1.write(velocity>>16);
-	Serial1.write(velocity>>8);
-	Serial1.write(velocity);
-	Serial1.write(altitude>>16);
-	Serial1.write(altitude>>8);
-	Serial1.write(altitude);
-	Serial1.write(v_velocity>>16);
-	Serial1.write(v_velocity>>8);
-	Serial1.write(v_velocity);
-	Serial1.write(pitch>>8);
-	Serial1.write(pitch);
-	Serial1.write(roll>>8);
-	Serial1.write(roll);
-	Serial1.write(heading>>8);
-	Serial1.write(heading);
-	Serial1.write(accz>>8);
-	Serial1.write(accz);
+	
+	Serial1.write(g_gpssat);
+	Serial1.write(g_latitude>>24);
+	Serial1.write(g_latitude>>16);
+	Serial1.write(g_latitude>>8);
+	Serial1.write(g_latitude);
+	Serial1.write(g_longitude>>24);
+	Serial1.write(g_longitude>>16);
+	Serial1.write(g_longitude>>8);
+	Serial1.write(g_longitude);
+	Serial1.write(g_velocity>>16);
+	Serial1.write(g_velocity>>8);
+	Serial1.write(g_velocity);
+	Serial1.write(g_altitude>>16);
+	Serial1.write(g_altitude>>8);
+	Serial1.write(g_altitude);
+	Serial1.write(g_v_velocity>>16);
+	Serial1.write(g_v_velocity>>8);
+	Serial1.write(g_v_velocity);
+	Serial1.write(g_pitch>>8);
+	Serial1.write(g_pitch);
+	Serial1.write(g_roll>>8);
+	Serial1.write(g_roll);
+	Serial1.write(g_heading>>8);
+	Serial1.write(g_heading);
+	Serial1.write(g_accz>>8);
+	Serial1.write(g_accz);
 }
 
 void requestVBOX_bk() {
