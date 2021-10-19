@@ -7,7 +7,8 @@
 // #include <AsyncDelay.h>
 
 /*** Nano33 ***/
-#define SENS_XLM 0.000122
+#define SENS_XLM 0.000122 // +/- 4g, 4/32768
+#define SENS_GYRO 0.00763 // +/- 250dps, 250/32768
 
 /*** ADXL355***/
 #define SENS_8G 0.0000156
@@ -91,6 +92,7 @@ const int CHIP_SELECT_PIN = 10;
 #define PRINT_UART2 0
 #define PRINT_SPEED 0 
 #define PRINT_VBOX 0
+#define PRINT_VBOX_BAD_FLAG 0
 
 
 #define SERIAL2_RX 3
@@ -201,16 +203,15 @@ void loop() {
 			if(PRINT_UPDATE_TIME) Serial.println(start_time - old_time);
 			old_time = start_time;
 			 checkByte(0xAA);
+			 checkByte(0xAC);
 			send_current_time(start_time);
-			
+			// send_current_time(0xAABBCCDD);
 			requestSFOS200();
-			// requestSRS200();
 			requestPP();
-			// request_UART2();
 			request_adxl355(ax, ay, az);
+			// request_nano33_xlm();//for test
 			request_nano33_gyro(); 
-			// request_nano33_xlm(); 
-			requestVBOX();
+			// requestVBOX();
 			checkByte(0xAB);
 		}
 	   clk_status_old = clk_status;
@@ -346,6 +347,7 @@ void send_current_time(unsigned long current_time) {
     Serial.print('\t');
     Serial.println(current_time);
   }
+  // Serial1.write(0xAD);
   Serial1.write(current_time>>24);
   Serial1.write(current_time>>16);
   Serial1.write(current_time>>8);
@@ -584,7 +586,6 @@ void requestVBOX() {
 	short pitch, roll, heading, p_rate, r_rate, y_rate;
 	int accz;
 	int crc;
-	// byte temp;
 
 	while (Serial2.available()<10) {};
 	
@@ -631,7 +632,9 @@ void requestVBOX() {
 	longitude = VBOX_temp[LONGITUDE_INCR-7]<<24 | VBOX_temp[LONGITUDE_INCR-6]<<16 | VBOX_temp[LONGITUDE_INCR-5]<<8| VBOX_temp[LONGITUDE_INCR-4]; 
 	velocity = VBOX_temp[VELOCITY_INCR-7]<<16 | VBOX_temp[VELOCITY_INCR-6]<<8| VBOX_temp[VELOCITY_INCR-5]; 
 	altitude = VBOX_temp[ALTITUDE_INCR-7]<<16 | VBOX_temp[ALTITUDE_INCR-6]<<8| VBOX_temp[ALTITUDE_INCR-5]; 
-	v_velocity = VBOX_temp[V_VELOCITY_INCR-7]<<16 | VBOX_temp[V_VELOCITY_INCR-6]<<8| VBOX_temp[V_VELOCITY_INCR-5]; 
+	v_velocity = (VBOX_temp[V_VELOCITY_INCR-7]<<16 | VBOX_temp[V_VELOCITY_INCR-6]<<8| VBOX_temp[V_VELOCITY_INCR-5]); 
+	// Serial.println(v_velocity);
+	// if((v_velocity >> 23)) v_velocity = v_velocity - 16777216;
 	p_rate = VBOX_temp[PITCH_RATE-7]<<8 | VBOX_temp[PITCH_RATE-6];
 	r_rate = VBOX_temp[ROLL_RATE-7]<<8 | VBOX_temp[ROLL_RATE-6];
 	y_rate = VBOX_temp[YAW_RATE-7]<<8 | VBOX_temp[YAW_RATE-6];
@@ -656,7 +659,7 @@ void requestVBOX() {
 		g_p_rate = p_rate;
 		g_r_rate = r_rate;
 		g_y_rate = y_rate;
-		g_accz = accz;
+		// g_accz = accz;
 	}
 	
 	if( (g_accz-accz)>200 || (g_accz-accz)<-200 ) vbox_bad_flag_arr[bf_idx] = 1;
@@ -666,21 +669,22 @@ void requestVBOX() {
 	bf_idx++;
 	if(bf_idx==3) bf_idx = 0;
 	
-	if( vbox_bad_flag_arr[0]&vbox_bad_flag_arr[1]&vbox_bad_flag_arr[2] ) vbox_bad_flag = 0;
+	if( vbox_bad_flag_arr[0]&&vbox_bad_flag_arr[1]&&vbox_bad_flag_arr[2] ) vbox_bad_flag = 0;
 	
-	
-	// Serial.print(g_accz);
-	// Serial.print("\t");
-	// Serial.print(accz);
-	// Serial.print("\t");
-	// Serial.print(vbox_bad_flag);
-	// Serial.print("\t");
-	// Serial.print(vbox_bad_flag_arr[0]);
-	// Serial.print("\t");
-	// Serial.print(vbox_bad_flag_arr[1]);
-	// Serial.print("\t");
-	// Serial.print(vbox_bad_flag_arr[2]);
-	// Serial.print("\n");
+	if(PRINT_VBOX_BAD_FLAG) {
+		Serial.print(g_accz);
+		Serial.print("\t");
+		Serial.print(accz);
+		Serial.print("\t");
+		Serial.print(vbox_bad_flag);
+		Serial.print("\t");
+		Serial.print(vbox_bad_flag_arr[0]);
+		Serial.print("\t");
+		Serial.print(vbox_bad_flag_arr[1]);
+		Serial.print("\t");
+		Serial.print(vbox_bad_flag_arr[2]);
+		Serial.print("\n");
+	}
 	
 	if(!vbox_bad_flag) {
 		g_accz = accz;
@@ -732,38 +736,7 @@ void requestVBOX() {
 		Serial.print((short)g_accz);
 		Serial.print("\t");
 		Serial.print(crc);
-		Serial.print("\n");
-		
-		// Serial.print(millis());
-		// Serial.print("\t");
-		// Serial.print(Serial2.available()); 
-		// Serial.print("\t");
-		// Serial.print(gpssat);
-		// Serial.print("\t");
-		// Serial.print(latitude);
-		// Serial.print("\t");
-		// Serial.print(longitude);
-		// Serial.print("\t");
-		// Serial.print(velocity);
-		// Serial.print("\t");
-		// Serial.print(altitude);
-		// Serial.print("\t");
-		// Serial.print(v_velocity);
-		// Serial.print("\t");
-		// Serial.print(pitch);
-		// Serial.print("\t");
-		// Serial.print(roll);
-		// Serial.print("\t");
-		// Serial.print(heading);
-		// Serial.print("\t");
-		// Serial.print(p_rate);
-		// Serial.print("\t");
-		// Serial.print(r_rate);
-		// Serial.print("\t");
-		// Serial.print(y_rate);
-		// Serial.print("\t");
-		// Serial.print(accz);
-		// Serial.print("\n");
+		Serial.print("\n");		
 	}  
 	
 	Serial1.write(g_gpssat);
@@ -930,11 +903,11 @@ void request_nano33_gyro() {
     if(PRINT_GYRO) {
       Serial.print("nano33 gyro");
       Serial.print('\t');
-      Serial.print(x);
+      Serial.print(x*SENS_GYRO);
       Serial.print('\t');
-      Serial.print(y);
+      Serial.print(y*SENS_GYRO);
       Serial.print('\t');
-      Serial.println(z);
+      Serial.println(z*SENS_GYRO);
     }
     Serial1.write(x>>8);
     Serial1.write(x);
