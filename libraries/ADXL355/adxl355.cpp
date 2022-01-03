@@ -1,8 +1,8 @@
+#include "Arduino.h"
 #include "adxl355.h"
-#include <Wire.h>
-#include <Arduino.h>
 
-#define ADXL355_ADDR 0x1D	//I2C address
+#define ADXL355_ADDR 		0x1D	//I2C address
+#define PIN_SCL_EN			12
 #define I2C_STANDARD_MODE 	100000
 #define I2C_FAST_MODE 		400000
 
@@ -57,17 +57,18 @@
 #define MEASURE_MODE	0x00 
 #define TEMP_OFF_MSK	0x02
 
-adxl355::adxl355(char pin_scl_en)
+
+adxl355::adxl355(int scl_en)
 {
 	Wire.begin();
 	Serial.begin(115200);
-	p_scl_en = pin_scl_en;
+	_scl_en = scl_en;
 }
 
 void adxl355::init() 
 {
 	Wire.setClock(I2C_FAST_MODE);
-	pinMode(p_scl_en, OUTPUT);
+	pinMode(PIN_SCL_EN, OUTPUT);
 	p_scl_mux_enable();
 	setRegVal(RST_ADDR, 0x52);
 	setRegVal(RANGE_ADDR, F_MODE | RANGE_8G);
@@ -76,7 +77,6 @@ void adxl355::init()
 	setRegVal(POWER_CTL_ADDR, MEASURE_MODE);
 	p_scl_mux_disable();
 }
-
 void adxl355::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
@@ -112,7 +112,7 @@ unsigned char adxl355::p_I2CReadData(unsigned char addr)
 	unsigned char data;
 	
 	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);//
+	Wire.write(addr);
 	Wire.endTransmission();
 	Wire.requestFrom(ADXL355_ADDR,1);
 	while (Wire.available()) data=Wire.read();
@@ -123,11 +123,12 @@ unsigned char adxl355::p_I2CReadData(unsigned char addr)
 
 void adxl355::p_scl_mux_enable()
 {
-	digitalWrite(p_scl_en, 0);
+	digitalWrite(PIN_SCL_EN, 0);
 }
 
 void adxl355::p_scl_mux_disable()
 {
-	digitalWrite(p_scl_en, 1);
+	digitalWrite(PIN_SCL_EN, 1);
 	delayMicroseconds(20);
 }
+

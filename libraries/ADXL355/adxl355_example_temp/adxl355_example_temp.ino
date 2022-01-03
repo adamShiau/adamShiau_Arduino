@@ -58,52 +58,43 @@
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
 /*** power control parameter***/
-#define MEASURE_MODE	0x00 
+#define MEASURE_MODE	0x00
 #define TEMP_OFF_MSK	0x02
+#define DRDY_OFF_MSK	0x04
 
+
+/*** trig pin***/
+#define SYS_TRIG 14
 
 /*********************************************/
 
-
-
-// bool clk_status = 1, clk_status_old = 0;
-// unsigned long start_time = 0, old_time = 0;
 unsigned int t_old=0, t_new;
-// bool vbox_bad_flag_arr[3] = {0, 0, 0};
-// bool vbox_bad_flag = 0, vbox_init_flag = 1;
-// byte bf_idx = 0;
-// byte g_gpssat;
-// int g_latitude, g_longitude, g_velocity, g_altitude, g_v_velocity;
-// short g_pitch, g_roll, g_heading, g_p_rate, g_r_rate, g_y_rate;
-// int g_accz;
-
-
+bool trig_status[2] = {0, 0};
 
 void setup() {
 	Wire.begin();
-	Wire.setClock(I2C_STANDARD_MODE);
+	Wire.setClock(I2C_FAST_MODE);
 	Serial.begin(115200); // arduino monitor
+	Serial1.begin(115200);
 	pinMode(I2C_MUXEN, OUTPUT);
 
 	SCL_MUX_ENABLE();
-	I2CWriteData(RST_ADDR, 0x52);
-	delay(1);
-	I2CWriteData(RANGE_ADDR, F_MODE | RANGE_8G);
-	delay(1); 
-	I2CWriteData(FILTER_ADDR, ODR_500);
-	delay(1);
-	I2CWriteData(SYNC_ADDR, EXT_SYNC); 
-	delay(1);
-	I2CWriteData(POWER_CTL_ADDR, MEASURE_MODE);
-	delay(1);
-	SCL_MUX_DISABLE();
+	setRegVal(RST_ADDR, 0x52);
+	setRegVal(RANGE_ADDR, F_MODE | RANGE_8G);
+	setRegVal(FILTER_ADDR, ODR_500);
+	setRegVal(SYNC_ADDR, EXT_SYNC_INTFILTER);
+	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
 	
+	pinMode(SYS_TRIG, INPUT);
 }
 void loop() {
 	int ax, ay, az;
+	trig_status[0] = digitalRead(SYS_TRIG);
 	// printRegAll();
-	readData(ax, ay, az);
-	// delay(5);
+	if(trig_status[0] & ~trig_status[1]) {
+		readData(ax, ay, az);
+	}
+	trig_status[1] = trig_status[0];
 }
 
 void SCL_MUX_ENABLE()
@@ -120,7 +111,8 @@ void SCL_MUX_DISABLE()
 void printRegAll()
 {
 	printRegVal("DEV_ID", DEVID_AD_ADDR, HEX);
-	printRegVal("SYNC", SYNC_ADDR, BIN);
+	printRegVal("SYNC", SYNC_ADDR, HEX);
+	printRegVal("POWER_CTL", POWER_CTL_ADDR, HEX);
 	printRegVal("ODR", FILTER_ADDR, BIN);
 }
 
@@ -133,11 +125,17 @@ void printRegVal(char name[], byte addr, byte rep)
 	SCL_MUX_DISABLE();
 }
 
-void readData(int accX, int accY, int accZ) {
+void setRegVal(unsigned char addr, unsigned char val)
+{
+	I2CWriteData(addr, val);
+	delay(100);
+}
+
+void readData(int &accX, int &accY, int &accZ) {
 	byte temp_ax[3], temp_ay[3], temp_az[3];	
 	
 	SCL_MUX_ENABLE();
-	while(!(I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)); //wait ADXL322 data available
+	while(!(I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
 	temp_ax[0] = I2CReadData(XDATA3_ADDR); 
 	temp_ax[1] = I2CReadData(XDATA2_ADDR); 
 	temp_ax[2] = I2CReadData(XDATA1_ADDR); 
@@ -170,6 +168,15 @@ void readData(int accX, int accY, int accZ) {
 	Serial.println((float)accZ*SENS_8G);
 	t_old = t_new;
   } 	
+  // Serial1.write(temp_ax[0]);
+  // Serial1.write(temp_ax[1]);
+  // Serial1.write(temp_ax[2]);
+  // Serial1.write(temp_ay[0]);
+  // Serial1.write(temp_ay[1]);
+  // Serial1.write(temp_ay[2]);
+  // Serial1.write(temp_az[0]);
+  // Serial1.write(temp_az[1]);
+  // Serial1.write(temp_az[2]);
 }
 
 void I2CWriteData(byte addr, byte val)
