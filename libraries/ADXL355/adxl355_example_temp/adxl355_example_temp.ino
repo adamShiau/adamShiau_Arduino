@@ -84,7 +84,7 @@ void setup() {
 	setRegVal(FILTER_ADDR, ODR_500);
 	setRegVal(SYNC_ADDR, EXT_SYNC_INTFILTER);
 	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
-	
+	SCL_MUX_DISABLE();
 	pinMode(SYS_TRIG, INPUT);
 }
 void loop() {
@@ -114,6 +114,7 @@ void printRegAll()
 	printRegVal("SYNC", SYNC_ADDR, HEX);
 	printRegVal("POWER_CTL", POWER_CTL_ADDR, HEX);
 	printRegVal("ODR", FILTER_ADDR, BIN);
+	printRegVal("INT MAP", INTERRUPT_ADDR, HEX);
 }
 
 void printRegVal(char name[], byte addr, byte rep)

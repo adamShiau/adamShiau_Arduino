@@ -45,6 +45,24 @@
 #define LSM6DS3_OUTZ_L_XL          0X2C
 #define LSM6DS3_OUTZ_H_XL          0X2D
 
+/*** CTRL1_XL register parameters***/
+#define ODR_104		0x40
+#define ODR_208		0x50
+#define ODR_416		0x60
+#define FS_2G		0b0000
+#define FS_4G		0b1000
+#define FS_8G		0b1100
+#define FS_16G		0b0100
+#define BW_50Hz		0b0011
+#define BW_100Hz	0b0010
+#define BW_200Hz	0b0001
+#define BW_400Hz	0b0000
+
+/*** CTRL2_G register parameters***/
+#define FS_250DPS	0b0000
+#define FS_500DPS	0b0100
+#define FS_1000DPS	0b1000
+#define FS_2000DPS	0b1100
 
 LSM6DS3Class::LSM6DS3Class(TwoWire& wire, uint8_t slaveAddress) :
   _wire(&wire),
@@ -82,11 +100,11 @@ int LSM6DS3Class::begin()
   }
 
   //set the gyroscope control register to work at 208 Hz, 250 dps and in bypass mode
-  writeRegister(LSM6DS3_CTRL2_G, 0x50);
+  writeRegister(LSM6DS3_CTRL2_G, ODR_416|FS_250DPS);
 
   // Set the Accelerometer control register to work at 208 Hz, +/-4G,and in bypass mode and enable ODR/4
   // low pass filter(check figure9 of LSM6DS3's datasheet)
-  writeRegister(LSM6DS3_CTRL1_XL, 0x5A);
+  writeRegister(LSM6DS3_CTRL1_XL, ODR_416|FS_4G|BW_100Hz);
 
   // set gyroscope power mode to high performance and bandwidth to 16 MHz
   writeRegister(LSM6DS3_CTRL7_G, 0x00);
@@ -131,21 +149,22 @@ int LSM6DS3Class::readAcceleration(float& x, float& y, float& z)
 
 int LSM6DS3Class::readAcceleration(int& x, int& y, int& z)
 {
-  int16_t data[3];
+	int16_t data[3];
 
-  if (!readRegisters(LSM6DS3_OUTX_L_XL, (uint8_t*)data, sizeof(data))) {
-    x = NAN;
-    y = NAN;
-    z = NAN;
+	while(!accelerationAvailable());
+	if (!readRegisters(LSM6DS3_OUTX_L_XL, (uint8_t*)data, sizeof(data))) {
+	x = NAN;
+	y = NAN;
+	z = NAN;
 
-    return 0;
-  }
-/*** +/- 4g w/ 16bit ***/
-  x = (int)data[0];
-  y = (int)data[1];
-  z = (int)data[2];
+	return 0;
+	}
+	/*** +/- 4g w/ 16bit ***/
+	x = (int)data[0];
+	y = (int)data[1];
+	z = (int)data[2];
 
-  return 1;
+	return 1;
 }
 
 int LSM6DS3Class::accelerationAvailable()
@@ -184,22 +203,22 @@ int LSM6DS3Class::readGyroscope(float& x, float& y, float& z)
 
 int LSM6DS3Class::readGyroscope(int& x, int& y, int& z)
 {
-  int16_t data[3];
+	int16_t data[3];
 
-  if (!readRegisters(LSM6DS3_OUTX_L_G, (uint8_t*)data, sizeof(data))) {
-    x = NAN;
-    y = NAN;
-    z = NAN;
+	while(!gyroscopeAvailable());
+	if (!readRegisters(LSM6DS3_OUTX_L_G, (uint8_t*)data, sizeof(data))) {
+	x = NAN;
+	y = NAN;
+	z = NAN;
 
-    return 0;
-  }
-/*** +/- 2000 w/ 16bit ***/
+	return 0;
+	}
 
-  x = (int)data[0];
-  y = (int)data[1];
-  z = (int)data[2];
+	x = (int)data[0];
+	y = (int)data[1];
+	z = (int)data[2];
 
-  return 1;
+	return 1;
 }
 
 int LSM6DS3Class::gyroscopeAvailable()

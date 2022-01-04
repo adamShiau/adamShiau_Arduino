@@ -1,8 +1,6 @@
-#include "Arduino.h"
 #include "adxl355.h"
 
-#define ADXL355_ADDR 		0x1D	//I2C address
-#define PIN_SCL_EN			12
+#define ADXL355_ADDR 		0x1D	//Adxl355 I2C address
 #define I2C_STANDARD_MODE 	100000
 #define I2C_FAST_MODE 		400000
 
@@ -35,7 +33,12 @@
 #define RANGE_4G 	0x02
 #define RANGE_8G 	0x03
 
-/*** ODR ***/
+#define SENS_8G 0.0000156
+#define SENS_4G 0.0000078
+#define SENS_2G 0.0000039
+/*** reset parameter ***/
+#define POR 		0x52
+/*** ODR parameter ***/
 #define ODR_4000	0b0000
 #define ODR_2000 	0b0001
 #define ODR_1000 	0b0010
@@ -44,9 +47,8 @@
 #define ODR_125 	0b0101
 
 /*** sync parameter ***/
-#define INT_SYNC			0x00
-#define EXT_SYNC			0x01
-#define EXT_SYNC_INTFILTER	0x02
+#define INT_SYNC	0x00
+#define EXT_SYNC	0x02
 
 /*** status reg mask***/
 #define DATA_RDY_MSK 	0x01
@@ -57,33 +59,62 @@
 #define MEASURE_MODE	0x00 
 #define TEMP_OFF_MSK	0x02
 
-
-adxl355::adxl355(int scl_en)
+Adxl355::Adxl355(int scl_en)
 {
-	Wire.begin();
 	Serial.begin(115200);
 	_scl_en = scl_en;
 }
 
-void adxl355::init() 
-{
+void Adxl355::init() 
+{	
+	Wire.begin();
 	Wire.setClock(I2C_FAST_MODE);
-	pinMode(PIN_SCL_EN, OUTPUT);
+	pinMode(_scl_en, OUTPUT);
+	/*** set adxl355 parameters ***/
 	p_scl_mux_enable();
-	setRegVal(RST_ADDR, 0x52);
+	setRegVal(RST_ADDR, POR);
 	setRegVal(RANGE_ADDR, F_MODE | RANGE_8G);
 	setRegVal(FILTER_ADDR, ODR_500);
 	setRegVal(SYNC_ADDR, EXT_SYNC); 
-	setRegVal(POWER_CTL_ADDR, MEASURE_MODE);
+	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
 	p_scl_mux_disable();
 }
-void adxl355::setRegVal(unsigned char addr, unsigned char val)
+
+unsigned char* Adxl355::readData(unsigned char temp_a[9]) 
+{
+	int accX, accY, accZ;
+	
+	p_scl_mux_enable();
+	while(!(p_I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
+	temp_a[0] = p_I2CReadData(XDATA3_ADDR); 
+	temp_a[1] = p_I2CReadData(XDATA2_ADDR); 
+	temp_a[2] = p_I2CReadData(XDATA1_ADDR); 
+	accX = temp_a[0]<<12 | temp_a[1]<<4 | temp_a[2]>>4;
+	if((accX>>19) == 1) accX = accX - (1<<20); //acc data is signed 20bit 
+
+	temp_a[3] = p_I2CReadData(YDATA3_ADDR); 
+	temp_a[4] = p_I2CReadData(YDATA2_ADDR); 
+	temp_a[5] = p_I2CReadData(YDATA1_ADDR); 
+	accY = temp_a[3]<<12 | temp_a[4]<<4 | temp_a[5]>>4;
+	if((accY>>19) == 1) accY = accY - (1<<20);
+
+	temp_a[6] = p_I2CReadData(ZDATA3_ADDR); 
+	temp_a[7] = p_I2CReadData(ZDATA2_ADDR); 
+	temp_a[8] = p_I2CReadData(ZDATA1_ADDR); 
+	accZ = temp_a[6]<<12 | temp_a[7]<<4 | temp_a[8]>>4;
+	if((accZ>>19) == 1) accZ = accZ - (1<<20);
+	p_scl_mux_disable();
+	
+	return temp_a;
+} 
+
+void Adxl355::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
-	delay(1);
+	// delay(1);
 }
 
-void adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
+void Adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
 {
 	p_scl_mux_enable();
 	Serial.print(name);
@@ -92,14 +123,16 @@ void adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
 	p_scl_mux_disable();
 }
 
-void adxl355::printRegAll()
+void Adxl355::printRegAll()
 {
 	printRegVal("DEV_ID", DEVID_AD_ADDR, HEX);
-	printRegVal("SYNC", SYNC_ADDR, BIN);
-	printRegVal("ODR", FILTER_ADDR, BIN);
+	printRegVal("SYNC", SYNC_ADDR, HEX);
+	printRegVal("POWER_CTL", POWER_CTL_ADDR, HEX);
+	printRegVal("ODR", FILTER_ADDR, HEX);
+	printRegVal("INT MAP", INTERRUPT_ADDR, HEX);
 }
 
-void adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
+void Adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
 {
 	Wire.beginTransmission(ADXL355_ADDR);
 	Wire.write(addr);
@@ -107,7 +140,7 @@ void adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
 	Wire.endTransmission();
 }
 
-unsigned char adxl355::p_I2CReadData(unsigned char addr)
+unsigned char Adxl355::p_I2CReadData(unsigned char addr)
 {
 	unsigned char data;
 	
@@ -119,16 +152,13 @@ unsigned char adxl355::p_I2CReadData(unsigned char addr)
 	return data;
 }
 
-
-
-void adxl355::p_scl_mux_enable()
+void Adxl355::p_scl_mux_enable()
 {
-	digitalWrite(PIN_SCL_EN, 0);
+	digitalWrite(_scl_en, 0);
 }
 
-void adxl355::p_scl_mux_disable()
+void Adxl355::p_scl_mux_disable()
 {
-	digitalWrite(PIN_SCL_EN, 1);
+	digitalWrite(_scl_en, 1);
 	delayMicroseconds(20);
 }
-

@@ -5,17 +5,19 @@
 #include <Wire.h>
 
 
-class adxl355
+class Adxl355
 {
 	public:
-		adxl355(int scl_en);
+		Adxl355(int);
 		void init(void);
 		void setRegVal(unsigned char, unsigned char);
 		void printRegVal(char [], unsigned char, unsigned char);
 		void printRegAll(void);
-	
+		unsigned char* readData(unsigned char []);
+		
 	private:
 		int _scl_en;
+		int _ext_sync;
 		
 		void p_I2CWriteData(unsigned char, unsigned char);
 		unsigned char p_I2CReadData(unsigned char);
