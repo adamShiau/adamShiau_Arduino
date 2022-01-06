@@ -13,14 +13,58 @@
 /*** trig pin***/
 #define SYS_TRIG 14
 
+/*** PIG***/
+#define CMD_FOG_MOD_FREQ	8
+#define CMD_FOG_MOD_AMP_H	9
+#define CMD_FOG_MOD_AMP_L	10
+#define CMD_FOG_ERR_OFFSET	11
+#define CMD_FOG_POLARITY	12
+#define CMD_FOG_WAIT_CNT	13
+#define CMD_FOG_ERR_TH		14
+#define CMD_FOG_ERR_AVG		15
+#define CMD_FOG_TIMER_RST	16
+#define CMD_FOG_GAIN1		17
+#define CMD_FOG_GAIN2		18
+#define CMD_FOG_FB_ON		19
+#define CMD_FOG_CONST_STEP	20
+#define CMD_FOG_FPGA_Q		21
+#define CMD_FOG_FPGA_R		22
 
+#define MOD_FREQ_ADDR			0
+#define MOD_AMP_H_ADDR  		1
+#define MOD_AMP_L_ADDR  		2
+#define ERR_OFFSET_ADDR 		3
+#define POLARITY_ADDR  			4
+#define WAIT_CNT_ADDR  			5
+#define ERR_TH_ADDR  			6
+#define ERR_AVG_ADDR  			7
+#define TIMER_RST_ADDR  		8
+#define GAIN1_ADDR  			9
+#define GAIN2_ADDR  			10
+#define FB_ON_ADDR  			11
+#define CONST_STEP_ADDR  		12
+#define FPGA_Q_ADDR				13
+#define FPGA_R_ADDR  			14
+#define DAC_GAIN_ADDR  			50
+#define DATA_RATE_ADDR 			98
+#define DATA_OUT_START_ADDR		99
+/*** global var***/
 int pin_scl_mux = 12;
 bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
 
+/*** serial data from PC***/
+byte rx_cnt = 0, cmd;
+unsigned int value;
+bool cmd_complete;
+
+/*** output mode mux flag***/
+bool mux_flag = 0;
+
 Adxl355 adxl355(pin_scl_mux);
 
 void setup() {
+	Serial1.begin(115200);
 	IMU.begin();
 	adxl355.init();
 	pinMode(SYS_TRIG, INPUT);
@@ -30,18 +74,27 @@ void loop() {
 	byte *a_adxl355, acc[9];
 	int wx_nano33, wy_nano33, wz_nano33;
 	int ax_nano33, ay_nano33, az_nano33;
+
 	
+	getCmdValue(cmd, value, cmd_complete);
+	cmd_mux(cmd_complete, cmd, mux_flag);
+	parameter_setting(mux_flag, cmd, value);
+	output_setting(cmd, value);
+	// printVal("mux_flag: ", mux_flag);
+	
+	/***
 	trig_status[0] = digitalRead(SYS_TRIG);
 	if(trig_status[0] & ~trig_status[1]) {
 		// adxl355.printRegAll();
 		a_adxl355 = adxl355.readData(acc);
 		IMU.readGyroscope(wx_nano33, wy_nano33, wz_nano33);
 		IMU.readAcceleration(ax_nano33, ay_nano33, az_nano33);
-		// print_adxl355Data(a_adxl355);
+		print_adxl355Data(a_adxl355);
 		// print_nano33GyroData(wx_nano33, wy_nano33, wz_nano33);
 		// print_nano33XlmData(ax_nano33, ay_nano33, az_nano33);
 	}
 	trig_status[1] = trig_status[0];
+	***/
 }
 
 void print_nano33GyroData(int wx, int wy, int wz)
@@ -90,4 +143,174 @@ void print_adxl355Data(byte *temp_a)
 	Serial.print('\t');
 	Serial.println((float)accZ*ADXL355_8G);
 	t_old = t_new;
+}
+
+void printVal(char name[], int val)
+{
+	Serial1.print(name);
+	Serial1.print(": ");
+	Serial1.println(val);
+}
+
+void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
+{
+	if (Serial.available()){
+		switch(rx_cnt) {
+		case 0: {
+			uart_cmd = Serial.read();
+			rx_cnt = 1;
+			break;
+		}
+		case 1: {
+			uart_value = Serial.read()<<24;
+			rx_cnt = 2;
+			break;
+		}
+		case 2: {
+			uart_value |= Serial.read()<<16;
+			rx_cnt = 3;
+			break;
+		}
+		case 3: {
+			uart_value |= Serial.read()<<8;
+			rx_cnt = 4;
+			break;
+		}
+		case 4: {
+			uart_value |= Serial.read();
+			rx_cnt = 0;
+			uart_complete = 1;
+			break;
+		}
+		}
+	}
+}
+
+void cmd_mux(bool &cmd_complete, byte &cmd, bool &mux_flag)
+{
+	if(cmd_complete)
+	{
+		cmd_complete = 0;
+		if(cmd >7) mux_flag = 1; // setting parameters
+		else mux_flag = 0;
+	}
+}
+
+void sendCmd(byte addr, unsigned int value)
+{
+	Serial1.write(addr);
+	Serial1.write(value>>24 & 0xFF);
+	Serial1.write(value>>16 & 0xFF);
+	Serial1.write(value>>8 & 0xFF);
+	Serial1.write(value & 0xFF);
+	delay(1);
+}
+
+void parameter_setting(bool &mux_flag, byte &cmd, unsigned int &value) 
+{
+	if(mux_flag){
+		mux_flag = 0;
+		switch(cmd) {
+			case CMD_FOG_MOD_FREQ: {
+				sendCmd(MOD_FREQ_ADDR, value);
+				break;
+			}
+			case CMD_FOG_MOD_AMP_H: {
+				sendCmd(MOD_AMP_H_ADDR, value);
+				break;
+			}
+			case CMD_FOG_MOD_AMP_L: {
+				sendCmd(MOD_AMP_L_ADDR, value);
+				break;
+			}
+			case CMD_FOG_ERR_OFFSET: {
+				sendCmd(ERR_OFFSET_ADDR, value);
+				break;
+			}
+			case CMD_FOG_POLARITY: {
+				sendCmd(POLARITY_ADDR, value);
+				break;
+			}
+			case CMD_FOG_WAIT_CNT:{
+				sendCmd(WAIT_CNT_ADDR, value);
+				break;
+			}
+			case CMD_FOG_ERR_TH: {
+				sendCmd(ERR_TH_ADDR, value);
+				break;
+			}
+			case CMD_FOG_ERR_AVG: {
+				sendCmd(ERR_AVG_ADDR, value);
+				break;
+			}
+			case CMD_FOG_TIMER_RST: {
+				sendCmd(TIMER_RST_ADDR, value);
+				break;
+			}
+			case CMD_FOG_GAIN1: {
+				sendCmd(GAIN1_ADDR, value);
+				break;
+			}
+			case CMD_FOG_GAIN2: {
+				sendCmd(GAIN2_ADDR, value);
+				break;
+			}
+			case CMD_FOG_FB_ON: {
+				sendCmd(FB_ON_ADDR, value);
+				break;
+			}
+			case CMD_FOG_CONST_STEP: {
+				sendCmd(CONST_STEP_ADDR, value);
+				break;
+			}
+			case CMD_FOG_FPGA_Q: {
+				sendCmd(FPGA_Q_ADDR, value);
+				break;
+			}
+			case CMD_FOG_FPGA_R: {
+				sendCmd(FPGA_R_ADDR, value);
+				break;
+			}
+			default: break;
+		}
+		// printVal("para cmd: ", cmd);
+		// printVal("para val: ", value);
+	}
+}
+
+#define MODE_STOP 	0
+#define MODE_FOG	1
+#define MODE_IMU	2
+#define MODE_EQ		3
+
+void output_setting(byte &mode, unsigned int &value)
+{
+	switch(mode) {
+		case MODE_STOP: {//(0, 0)
+			stop_fog();
+			break;
+		}
+		case MODE_FOG: { //(1, 0)
+			acq_fog();
+			break;
+		}
+		case MODE_IMU: {
+			
+			break;
+		}
+		case MODE_EQ: {
+			
+			break;
+		}
+		default: break;
+	}
+}
+
+void stop_fog()
+{
+	sendCmd(DATA_OUT_START_ADDR, 0);
+}
+void acq_fog()
+{
+	sendCmd(DATA_OUT_START_ADDR, 1);
 }
