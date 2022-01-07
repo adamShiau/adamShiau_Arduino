@@ -13,7 +13,7 @@ class Adxl355
 		void setRegVal(unsigned char, unsigned char);
 		void printRegVal(char [], unsigned char, unsigned char);
 		void printRegAll(void);
-		unsigned char* readData(unsigned char []);
+		void readData(unsigned char []);
 		
 	private:
 		int _scl_en;

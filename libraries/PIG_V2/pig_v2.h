@@ -10,7 +10,8 @@ class PIG
 		void init(void);
 		void sendCmd(unsigned char, unsigned int);
 		void printVal(char [], int);
-		unsigned char* readData(unsigned char []);
+		void readData(unsigned char []);
+		void readData_debug(unsigned char []);
 		
 	private:		
 

@@ -80,7 +80,7 @@ void Adxl355::init()
 	p_scl_mux_disable();
 }
 
-unsigned char* Adxl355::readData(unsigned char temp_a[9]) 
+void Adxl355::readData(unsigned char temp_a[9]) 
 {
 	int accX, accY, accZ;
 	
@@ -89,23 +89,16 @@ unsigned char* Adxl355::readData(unsigned char temp_a[9])
 	temp_a[0] = p_I2CReadData(XDATA3_ADDR); 
 	temp_a[1] = p_I2CReadData(XDATA2_ADDR); 
 	temp_a[2] = p_I2CReadData(XDATA1_ADDR); 
-	accX = temp_a[0]<<12 | temp_a[1]<<4 | temp_a[2]>>4;
-	if((accX>>19) == 1) accX = accX - (1<<20); //acc data is signed 20bit 
 
 	temp_a[3] = p_I2CReadData(YDATA3_ADDR); 
 	temp_a[4] = p_I2CReadData(YDATA2_ADDR); 
 	temp_a[5] = p_I2CReadData(YDATA1_ADDR); 
-	accY = temp_a[3]<<12 | temp_a[4]<<4 | temp_a[5]>>4;
-	if((accY>>19) == 1) accY = accY - (1<<20);
 
 	temp_a[6] = p_I2CReadData(ZDATA3_ADDR); 
 	temp_a[7] = p_I2CReadData(ZDATA2_ADDR); 
 	temp_a[8] = p_I2CReadData(ZDATA1_ADDR); 
-	accZ = temp_a[6]<<12 | temp_a[7]<<4 | temp_a[8]>>4;
-	if((accZ>>19) == 1) accZ = accZ - (1<<20);
 	p_scl_mux_disable();
 	
-	return temp_a;
 } 
 
 void Adxl355::setRegVal(unsigned char addr, unsigned char val)

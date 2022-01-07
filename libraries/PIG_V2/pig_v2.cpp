@@ -33,7 +33,7 @@ void PIG::printVal(char name[], int val)
 	Serial.println(val);
 }
 
-unsigned char* PIG::readData(unsigned char data[16])
+void PIG::readData(unsigned char data[16])
 {
 	unsigned char val1, val2, val3;
 	unsigned int time, PD_T;
@@ -46,13 +46,30 @@ unsigned char* PIG::readData(unsigned char data[16])
 		Serial1.readBytes(&val3, 1);
 	}
 	Serial1.readBytes(data, 16);
+	Serial1.readBytes(&val2, 1);
+}
+
+void PIG::readData_debug(unsigned char data[16])
+{
+	unsigned char val1, val2, val3;
+	unsigned int time, PD_T;
+	int err, step;
+	
+	Serial1.readBytes(&val1, 1);
+	Serial1.readBytes(&val3, 1);
+	while(val1 != CHECK_BYTE or val3 != CHECK_BYTE3){
+		val1 = val3;
+		Serial1.readBytes(&val3, 1);
+	}
+	Serial1.readBytes(data, 16);
+	Serial1.readBytes(&val2, 1);
 	time = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
 	err  = (int)(data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7]);
 	step = (int)(data[8]<<24 | data[9]<<16 | data[10]<<8 | data[11]);
 	PD_T = data[12]<<24 | data[13]<<16 | data[14]<<8 | data[15];
 	printVal("time: ", time);
 	printVal("err: ", err);
-	
-	return data;
+	printVal("val1: ", val1);
+	printVal("val3: ", val3);
+	printVal("val2: ", val2);
 }
-

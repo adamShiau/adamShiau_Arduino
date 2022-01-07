@@ -20,13 +20,13 @@ void setup() {
 }
 
 void loop() {
-	byte *ret, acc[9];
+	byte acc[9];
 	
 	trig_status[0] = digitalRead(SYS_TRIG);
 	if(trig_status[0] & ~trig_status[1]) {
 		// adxl355.printRegAll();
-		ret = adxl355.readData(acc);
-		print_adxl355Data(ret);
+		adxl355.readData(acc);
+		print_adxl355Data(acc);
 	}
 	trig_status[1] = trig_status[0];
 }
