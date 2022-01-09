@@ -102,6 +102,7 @@ void setup() {
 	IMU.begin();
 	adxl355.init();
 	pinMode(SYS_TRIG, INPUT);
+	
 }
 
 void loop() {
