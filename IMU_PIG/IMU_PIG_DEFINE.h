@@ -71,8 +71,8 @@
 #define SEL_FOG_1 		1<<1
 #define SEL_FOG_2		1<<2
 #define SEL_FOG_3 		1<<3
-#define SEL_ADX355 		1<<4
-#define SEL_NANO33 		1<<5
+#define SEL_IMU 		1<<4
+#define SEL_EQ	 		1<<5
 #define SEL_RESERVED	1<<6
 #define SEL_DEFAULT 	1<<7
 

@@ -19,13 +19,21 @@ byte mux_flag;
 
 /*** acq fog flag***/
 bool run_fog_flag;
-byte select_en;
 
-typedef void (*fn_ptr) (byte &, unsigned int);
-fn_ptr output_fn;
+/*** select running fn flag***/
+byte select_fn;
+bool fn_lock;
+
+
+// typedef void (*fn_ptr) (byte &, unsigned int);
+// fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 
+void temp_idle(byte &, unsigned int );
+void fn_rst(byte &, unsigned int );
+void acq_fog(byte &, unsigned int );
+void acq_imu(byte &, unsigned int );
 
 void setup() {
 	Serial1.begin(115200);
@@ -35,8 +43,9 @@ void setup() {
 	/*** var initialization***/
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE;
-	select_en = SEL_DEFAULT;
+	select_fn = SEL_DEFAULT;
 	run_fog_flag = 0;
+	fn_lock = 1;
 }
 
 void loop() {
@@ -47,8 +56,8 @@ void loop() {
 	getCmdValue(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
-	output_mode_setting(mux_flag, cmd, select_en);
-	output_fn(select_en, value);
+	output_mode_setting(mux_flag, cmd, select_fn, fn_lock);
+	output_fn(cmd, value, fn_lock);
 }
 
 void print_nano33GyroData(int wx, int wy, int wz)
@@ -141,6 +150,8 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 				uart_value |= Serial.read();
 				rx_cnt = 0;
 				uart_complete = 1;
+				// printVal_0("rx_cmd: ", uart_cmd);
+				// printVal_0("rx_val: ", uart_value);
 				break;
 			}
 		}
@@ -154,6 +165,7 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 		cmd_complete = 0;
 		if(cmd >7) mux_flag = MUX_PARAMETER; 
 		else mux_flag = MUX_OUTPUT;
+		
 	}
 }
 
@@ -186,45 +198,66 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	}
 }
 
-void output_mode_setting(byte &mux_flag, byte mode, byte &select_en)
+void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn, bool &fn_lock)
 {
 	if(mux_flag == MUX_OUTPUT)
 	{
 		mux_flag = MUX_ESCAPE;
 		switch(mode) {
 			case MODE_RST: {
-				output_fn = fn_rst;
-				select_en = SEL_RST;
+				// output_fn = fn_rst;
+				// fn = fn_rst;
+				select_fn = SEL_RST;
+				// printVal_0("output_mode_setting: ", MODE_RST);
 				break;
 			}
 			case MODE_FOG: {
-				output_fn = acq_fog;
-				select_en = SEL_FOG_1;
+				// output_fn = acq_fog;
+				select_fn = SEL_FOG_1;
+				// printVal_0("output_mode_setting: ", MODE_FOG);
+				
 				break;
 			}
 			case MODE_IMU: {
-				output_fn = acq_imu;
-				select_en = SEL_FOG_1|SEL_ADX355|SEL_NANO33;
+				// output_fn = acq_imu;
+				select_fn = SEL_IMU;
+				// printVal_0("output_mode_setting: ", MODE_IMU);
 				break;
 			}
 			case MODE_EQ: {
-				output_fn = temp_idle;
-				select_en = SEL_FOG_1|SEL_ADX355|SEL_NANO33;
+				// output_fn = temp_idle;
+				select_fn = SEL_EQ;
+				// printVal_0("output_mode_setting: ", MODE_EQ);
 				break;
 			}
 			default: break;
 		}
+		
+		fn_lock = 0;
+	}
+	// printVal_0("select_fn: ", select_fn);
+}
+
+void output_fn(byte select_fn, unsigned int CTRLREG, bool &fn_lock)
+{
+	switch(select_fn) {
+		case MODE_RST: fn_rst(fn_lock, CTRLREG); break;
+		case MODE_FOG: acq_fog(fn_lock, CTRLREG); break;
+		case MODE_IMU: acq_imu(fn_lock, CTRLREG); break;
+		case MODE_EQ:  temp_idle(fn_lock, CTRLREG); break;
 	}
 }
 
-void temp_idle(byte &select_en, unsigned int CTRLREG)
+void temp_idle(bool &fn_lock, unsigned int CTRLREG)
 {
-	clear_SEL_EN(select_en);
+	// clear_SEL_EN(select_fn);
+	// printVal_0("run fn temp_idle ", 99);
 }
 
-void fn_rst(byte &select_en, unsigned int CTRLREG)
+void fn_rst(bool &fn_lock, unsigned int CTRLREG)
 {
-	if(select_en&SEL_RST) {
+	if(!fn_lock) {
+		fn_lock = 1;
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
 				for(int i=0; i<256; i++) Serial1.read();
@@ -234,35 +267,40 @@ void fn_rst(byte &select_en, unsigned int CTRLREG)
 		}
 		
 	}
-	clear_SEL_EN(select_en);
+	// clear_SEL_EN(select_fn);
 }
 
-void acq_fog(byte &select_en, unsigned int CTRLREG)
+void acq_fog(bool &fn_lock, unsigned int CTRLREG)
 {
 	byte data[16]; 
 	unsigned int time, PD_T;
 	int err, step;
 	
-	if(select_en&SEL_FOG_1)
+	if(!fn_lock)
 	{
+		fn_lock = 1;
 		switch(CTRLREG) {
 			case INT_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 1);
 				run_fog_flag = 1;
+				printVal_0("INT_SYNC ", 99);
 				break;
 			}
 			case EXT_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 2);
 				run_fog_flag = 1;
+				printVal_0("EXT_SYNC ", 99);
 				break;
 			}
 			case STOP_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 0);
 				run_fog_flag = 0;
+				printVal_0("STOP_SYNC ", 99);
 				break;
 			}
 			default: break;
 		}
+		printVal_0("in acq_fog ", 99);
 	}
 	if(run_fog_flag){
 		pig_v2.readData(data);
@@ -270,11 +308,13 @@ void acq_fog(byte &select_en, unsigned int CTRLREG)
 		Serial.write(CHECK_BYTE3);
 		Serial.write(data, 16);
 		Serial.write(CHECK_BYTE2);
+		
 	}
-	clear_SEL_EN(select_en);	
+	// printVal_0("run fn acq_fog ", 99);
+	// clear_SEL_EN(select_fn);	
 }
 
-void acq_imu(byte &select_en, unsigned int CTRLREG)
+void acq_imu(bool &fn_lock, unsigned int CTRLREG)
 {
 	byte acc[9];
 	int wx_nano33, wy_nano33, wz_nano33;
@@ -285,19 +325,19 @@ void acq_imu(byte &select_en, unsigned int CTRLREG)
 		adxl355.readData(acc);
 		IMU.readGyroscope(wx_nano33, wy_nano33, wz_nano33);
 		IMU.readAcceleration(ax_nano33, ay_nano33, az_nano33);
-		acq_fog(select_en, CTRLREG);
+		acq_fog(fn_lock, CTRLREG);
 		// print_adxl355Data(acc);
 		// print_nano33GyroData(wx_nano33, wy_nano33, wz_nano33);
 		// print_nano33XlmData(ax_nano33, ay_nano33, az_nano33);
 	}
 	trig_status[1] = trig_status[0];
-	clear_SEL_EN(select_en);
+	// clear_SEL_EN(select_fn);
 }
 
-void clear_SEL_EN(byte &select_en)
-{
-	select_en = SEL_DEFAULT;
-}
+// void clear_SEL_EN(byte &select_fn)
+// {
+	// select_fn = SEL_DEFAULT;
+// }
 
 // void sendCmd(byte addr, unsigned int value)
 // {
