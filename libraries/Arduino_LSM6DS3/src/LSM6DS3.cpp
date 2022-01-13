@@ -147,6 +147,17 @@ int LSM6DS3Class::readAcceleration(float& x, float& y, float& z)
   return 1;
 }
 
+int LSM6DS3Class::readFakeAcceleration(int& x, int& y, int& z)
+{
+  int16_t data[3];
+
+  x = 1;
+  y = 2;
+  z = 3;
+
+  return 1;
+}
+
 int LSM6DS3Class::readAcceleration(int& x, int& y, int& z)
 {
 	int16_t data[3];
@@ -199,6 +210,18 @@ int LSM6DS3Class::readGyroscope(float& x, float& y, float& z)
   z = data[2] * 2000.0 / 32768.0;
 
   return 1;
+}
+
+int LSM6DS3Class::readFakeGyroscope(int& x, int& y, int& z)
+{
+	int16_t data[3];
+
+
+	x = 4;
+	y = 5;
+	z = 6;
+
+	return 1;
 }
 
 int LSM6DS3Class::readGyroscope(int& x, int& y, int& z)

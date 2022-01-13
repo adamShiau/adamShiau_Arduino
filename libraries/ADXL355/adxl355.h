@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-
 class Adxl355
 {
 	public:
@@ -14,6 +13,7 @@ class Adxl355
 		void printRegVal(char [], unsigned char, unsigned char);
 		void printRegAll(void);
 		void readData(unsigned char []);
+		void readFakeData(unsigned char []);
 		
 	private:
 		int _scl_en;

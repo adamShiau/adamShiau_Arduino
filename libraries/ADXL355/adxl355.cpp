@@ -101,6 +101,23 @@ void Adxl355::readData(unsigned char temp_a[9])
 	
 } 
 
+void Adxl355::readFakeData(unsigned char temp_a[9]) 
+{
+	temp_a[0] = 0; 
+	temp_a[1] = 0; 
+	temp_a[2] = 3; 
+
+	temp_a[3] = 0; 
+	temp_a[4] = 0; 
+	temp_a[5] = 5; 
+
+	temp_a[6] = 0; 
+	temp_a[7] = 0; 
+	temp_a[8] = 5; 
+	
+} 
+
+
 void Adxl355::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
