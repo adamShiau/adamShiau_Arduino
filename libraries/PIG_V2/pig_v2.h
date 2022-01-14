@@ -11,10 +11,12 @@ class PIG
 		void sendCmd(unsigned char, unsigned int);
 		void printVal(char [], int);
 		void readData(unsigned char []);
+		void readFakeData(unsigned char []);
 		void readData_debug(unsigned char []);
+		void resetFakeDataTime(void);
 		
 	private:		
-
+		unsigned int p_time_cnt;
 	
 };
 

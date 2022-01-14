@@ -13,6 +13,7 @@ void PIG::init()
 {
 	Serial.begin(115200);
 	Serial1.begin(115200);
+	p_time_cnt = 0;
 }
 
 void PIG::sendCmd(unsigned char addr, unsigned int value)
@@ -47,6 +48,32 @@ void PIG::readData(unsigned char data[16])
 	}
 	Serial1.readBytes(data, 16);
 	Serial1.readBytes(&val2, 1);
+}
+
+void PIG::resetFakeDataTime()
+{
+	p_time_cnt = 0;
+}
+
+void PIG::readFakeData(unsigned char data[16])
+{
+	data[0] = p_time_cnt >> 24;
+	data[1] = p_time_cnt >> 16;
+	data[2] = p_time_cnt >> 8;
+	data[3] = p_time_cnt ;
+	data[4] = 0;
+	data[5] = 0;
+	data[6] = 0;
+	data[7] = 1;
+	data[8] = 0;
+	data[9] = 0;
+	data[10] = 0;
+	data[11] = 2;
+	data[12] = 0;
+	data[13] = 0;
+	data[14] = 0;
+	data[15] = 3;
+	p_time_cnt++;
 }
 
 void PIG::readData_debug(unsigned char data[16])

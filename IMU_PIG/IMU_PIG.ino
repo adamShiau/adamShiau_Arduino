@@ -22,18 +22,14 @@ bool run_fog_flag;
 
 /*** select running fn flag***/
 byte select_fn;
-bool fn_lock;
+// bool fn_lock;
 
 
-// typedef void (*fn_ptr) (byte &, unsigned int);
-// fn_ptr output_fn;
+typedef void (*fn_ptr) (byte &, unsigned int);
+fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 
-void temp_idle(byte &, unsigned int );
-void fn_rst(byte &, unsigned int );
-void acq_fog(byte &, unsigned int );
-void acq_imu(byte &, unsigned int );
 
 void setup() {
 	Serial1.begin(115200);
@@ -45,7 +41,8 @@ void setup() {
 	mux_flag = MUX_ESCAPE;
 	select_fn = SEL_DEFAULT;
 	run_fog_flag = 0;
-	fn_lock = 1;
+	output_fn = temp_idle;
+	// fn_lock = 1;
 }
 
 void loop() {
@@ -56,8 +53,20 @@ void loop() {
 	getCmdValue(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
-	output_mode_setting(mux_flag, cmd, select_fn, fn_lock);
-	output_fn(cmd, value, fn_lock);
+	output_mode_setting(mux_flag, cmd, select_fn);
+	output_fn(select_fn, value);
+	delay(10);
+	// output_fn(cmd, value, fn_lock);
+	// printAdd("temp_idle", (void*)temp_idle);
+	// printAdd("acq_fog", (void*)acq_fog);
+	
+}
+
+void printAdd(char name[], void* addr)
+{
+	Serial.print(name);
+	Serial.print(": ");
+	Serial.println((unsigned int)addr, HEX);
 }
 
 void print_nano33GyroData(int wx, int wy, int wz)
@@ -198,66 +207,56 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	}
 }
 
-void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn, bool &fn_lock)
+void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 {
 	if(mux_flag == MUX_OUTPUT)
 	{
 		mux_flag = MUX_ESCAPE;
 		switch(mode) {
 			case MODE_RST: {
-				// output_fn = fn_rst;
+				output_fn = fn_rst;
 				// fn = fn_rst;
 				select_fn = SEL_RST;
-				// printVal_0("output_mode_setting: ", MODE_RST);
+				// printVal_0("output_mode_setting: MODE_RST ", MODE_RST);
+				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_FOG: {
-				// output_fn = acq_fog;
+				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
-				// printVal_0("output_mode_setting: ", MODE_FOG);
-				
+				// printVal_0("output_mode_setting: MODE_FOG ", MODE_FOG);
+				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_IMU: {
-				// output_fn = acq_imu;
+				output_fn = acq_imu;
 				select_fn = SEL_IMU;
-				// printVal_0("output_mode_setting: ", MODE_IMU);
+				// printVal_0("output_mode_setting: MODE_IMU ", MODE_IMU);
+				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_EQ: {
-				// output_fn = temp_idle;
+				output_fn = temp_idle;
 				select_fn = SEL_EQ;
-				// printVal_0("output_mode_setting: ", MODE_EQ);
+				// printVal_0("output_mode_setting: MODE_EQ ", MODE_EQ);
+				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			default: break;
 		}
 		
-		fn_lock = 0;
-	}
-	// printVal_0("select_fn: ", select_fn);
-}
-
-void output_fn(byte select_fn, unsigned int CTRLREG, bool &fn_lock)
-{
-	switch(select_fn) {
-		case MODE_RST: fn_rst(fn_lock, CTRLREG); break;
-		case MODE_FOG: acq_fog(fn_lock, CTRLREG); break;
-		case MODE_IMU: acq_imu(fn_lock, CTRLREG); break;
-		case MODE_EQ:  temp_idle(fn_lock, CTRLREG); break;
 	}
 }
 
-void temp_idle(bool &fn_lock, unsigned int CTRLREG)
+void temp_idle(byte &select_fn, unsigned int CTRLREG)
 {
-	// clear_SEL_EN(select_fn);
-	// printVal_0("run fn temp_idle ", 99);
+	clear_SEL_EN(select_fn);
+	delay(100);
 }
 
-void fn_rst(bool &fn_lock, unsigned int CTRLREG)
+void fn_rst(byte &select_fn, unsigned int CTRLREG)
 {
-	if(!fn_lock) {
-		fn_lock = 1;
+	if(select_fn&SEL_RST) {
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
 				for(int i=0; i<256; i++) Serial1.read();
@@ -267,77 +266,72 @@ void fn_rst(bool &fn_lock, unsigned int CTRLREG)
 		}
 		
 	}
-	// clear_SEL_EN(select_fn);
+	clear_SEL_EN(select_fn);
 }
 
-void acq_fog(bool &fn_lock, unsigned int CTRLREG)
+void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
 	byte data[16]; 
 	unsigned int time, PD_T;
 	int err, step;
 	
-	if(!fn_lock)
+	if(select_fn&SEL_FOG_1 || select_fn&SEL_IMU)
 	{
-		fn_lock = 1;
 		switch(CTRLREG) {
 			case INT_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 1);
 				run_fog_flag = 1;
-				printVal_0("INT_SYNC ", 99);
 				break;
 			}
 			case EXT_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 2);
 				run_fog_flag = 1;
-				printVal_0("EXT_SYNC ", 99);
 				break;
 			}
 			case STOP_SYNC: {
 				pig_v2.sendCmd(DATA_OUT_START_ADDR, 0);
+				pig_v2.resetFakeDataTime();
 				run_fog_flag = 0;
-				printVal_0("STOP_SYNC ", 99);
 				break;
 			}
 			default: break;
 		}
-		printVal_0("in acq_fog ", 99);
 	}
 	if(run_fog_flag){
-		pig_v2.readData(data);
+		// pig_v2.readData(data);
+		pig_v2.readFakeData(data);
 		Serial.write(CHECK_BYTE);
 		Serial.write(CHECK_BYTE3);
 		Serial.write(data, 16);
 		Serial.write(CHECK_BYTE2);
-		
 	}
-	// printVal_0("run fn acq_fog ", 99);
-	// clear_SEL_EN(select_fn);	
+	clear_SEL_EN(select_fn);	
 }
 
-void acq_imu(bool &fn_lock, unsigned int CTRLREG)
+void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
 	byte acc[9];
 	int wx_nano33, wy_nano33, wz_nano33;
 	int ax_nano33, ay_nano33, az_nano33;
 	
 	trig_status[0] = digitalRead(SYS_TRIG);
-	if(trig_status[0] & ~trig_status[1]) {
-		adxl355.readData(acc);
-		IMU.readGyroscope(wx_nano33, wy_nano33, wz_nano33);
-		IMU.readAcceleration(ax_nano33, ay_nano33, az_nano33);
-		acq_fog(fn_lock, CTRLREG);
+	// if(trig_status[0] & ~trig_status[1]) {
+		adxl355.readFakeData(acc);
+		IMU.readFakeGyroscope(wx_nano33, wy_nano33, wz_nano33);
+		IMU.readFakeAcceleration(ax_nano33, ay_nano33, az_nano33);
+		acq_fog(select_fn, CTRLREG);
 		// print_adxl355Data(acc);
 		// print_nano33GyroData(wx_nano33, wy_nano33, wz_nano33);
 		// print_nano33XlmData(ax_nano33, ay_nano33, az_nano33);
-	}
+	// }
 	trig_status[1] = trig_status[0];
-	// clear_SEL_EN(select_fn);
+	clear_SEL_EN(select_fn);
 }
 
-// void clear_SEL_EN(byte &select_fn)
-// {
-	// select_fn = SEL_DEFAULT;
-// }
+void clear_SEL_EN(byte &select_fn)
+{
+	select_fn = SEL_DEFAULT;
+}
 
 // void sendCmd(byte addr, unsigned int value)
 // {

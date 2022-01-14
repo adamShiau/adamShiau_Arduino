@@ -1,8 +1,10 @@
 PIG 		KEYWORD1
 pig_v2		KEYWORD1
 
-init		KEYWORD2
-sendCmd		KEYWORD2
-printVal	KEYWORD2
-readData_debug	KEYWORD2
-readData	KEYWORD2
+init			KEYWORD2
+sendCmd			KEYWORD2
+printVal		KEYWORD2
+readData_debug		KEYWORD2
+readData		KEYWORD2
+readFakeData		KEYWORD2
+resetFakeDataTime 	KEYWORD2

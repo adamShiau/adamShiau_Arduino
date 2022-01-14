@@ -32,13 +32,15 @@ table_t cmd_list[COMMAND_NUM];
 
 //long cnt=0, t1, t2;
 
-void setup() {
-
-/***** register command and act function here ******/
   cmd_list[0].cmd = "setSPI";
   cmd_list[0].action = setSPI;
   cmd_list[1].cmd ="readSPI";
   cmd_list[1].action = readSPI;
+
+void setup() {
+
+/***** register command and act function here ******/
+
 
 /****************************************************/
   pinMode(SPICHIPSEL, OUTPUT);
