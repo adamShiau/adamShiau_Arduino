@@ -272,30 +272,10 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
 	byte data[16]; 
-	unsigned int time, PD_T;
-	int err, step;
 	
-	if(select_fn&SEL_FOG_1 || select_fn&SEL_IMU)
+	if(select_fn&SEL_FOG_1)
 	{
-		switch(CTRLREG) {
-			case INT_SYNC: {
-				pig_v2.sendCmd(DATA_OUT_START_ADDR, 1);
-				run_fog_flag = 1;
-				break;
-			}
-			case EXT_SYNC: {
-				pig_v2.sendCmd(DATA_OUT_START_ADDR, 2);
-				run_fog_flag = 1;
-				break;
-			}
-			case STOP_SYNC: {
-				pig_v2.sendCmd(DATA_OUT_START_ADDR, 0);
-				pig_v2.resetFakeDataTime();
-				run_fog_flag = 0;
-				break;
-			}
-			default: break;
-		}
+		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
 	if(run_fog_flag){
 		// pig_v2.readData(data);
@@ -309,6 +289,36 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 }
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
+{
+	byte acc[9], data[16]; 
+	int wx_nano33, wy_nano33, wz_nano33;
+	int ax_nano33, ay_nano33, az_nano33;
+	
+	if(select_fn&SEL_IMU) 
+	{
+		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+	}
+	adxl355.readFakeData(acc);
+	IMU.readFakeGyroscope(wx_nano33, wy_nano33, wz_nano33);
+	IMU.readFakeAcceleration(ax_nano33, ay_nano33, az_nano33);
+	if(run_fog_flag){
+		pig_v2.readFakeData(data);
+		Serial1.write(CHECK_BYTE);
+		Serial1.write(CHECK_BYTE3);
+		Serial1.write(data, 16);
+		Serial1.write(acc, 9);
+		Serial1.write(wx_nano33);
+		Serial1.write(wy_nano33);
+		Serial1.write(ax_nano33);
+		Serial1.write(ay_nano33);
+		Serial1.write(az_nano33);
+		Serial1.write(CHECK_BYTE2);
+	}
+	
+	clear_SEL_EN(select_fn);
+}
+
+void acq_imu2(byte &select_fn, unsigned int CTRLREG)
 {
 	byte acc[9];
 	int wx_nano33, wy_nano33, wz_nano33;

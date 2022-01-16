@@ -4,6 +4,29 @@
 #define CHECK_BYTE2		171
 #define CHECK_BYTE3		172
 
+#define MOD_FREQ_ADDR			0
+#define MOD_AMP_H_ADDR  		1
+#define MOD_AMP_L_ADDR  		2
+#define ERR_OFFSET_ADDR 		3
+#define POLARITY_ADDR  			4
+#define WAIT_CNT_ADDR  			5
+#define ERR_TH_ADDR  			6
+#define ERR_AVG_ADDR  			7
+#define TIMER_RST_ADDR  		8
+#define GAIN1_ADDR  			9
+#define GAIN2_ADDR  			10
+#define FB_ON_ADDR  			11
+#define CONST_STEP_ADDR  		12
+#define FPGA_Q_ADDR				13
+#define FPGA_R_ADDR  			14
+#define DAC_GAIN_ADDR  			50
+#define DATA_INT_DELAY_ADDR 	98
+#define DATA_OUT_START_ADDR		99
+
+#define INT_SYNC	1
+#define EXT_SYNC 	1<<1
+#define STOP_SYNC 	1<<2
+
 PIG::PIG()
 {
 	
@@ -25,6 +48,32 @@ void PIG::sendCmd(unsigned char addr, unsigned int value)
 	Serial1.write(value & 0xFF);
 	delay(1);
 	
+}
+
+char PIG::setSyncMode(unsigned int CTRLREG)
+{
+	char run_fog_flag = 0;
+	
+	switch(CTRLREG) {
+		case INT_SYNC: {
+			sendCmd(DATA_OUT_START_ADDR, 1);
+			run_fog_flag = 1;
+			break;
+		}
+		case EXT_SYNC: {
+			sendCmd(DATA_OUT_START_ADDR, 2);
+			run_fog_flag = 1;
+			break;
+		}
+		case STOP_SYNC: {
+			sendCmd(DATA_OUT_START_ADDR, 0);
+			resetFakeDataTime();
+			run_fog_flag = 0;
+			break;
+		}
+		default: break;
+	}
+	return run_fog_flag;
 }
 
 void PIG::printVal(char name[], int val)

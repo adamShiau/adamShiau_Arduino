@@ -8,3 +8,5 @@ readData_debug		KEYWORD2
 readData		KEYWORD2
 readFakeData		KEYWORD2
 resetFakeDataTime 	KEYWORD2
+setSyncMode		KEYWORD2
+	

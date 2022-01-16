@@ -14,6 +14,7 @@ class PIG
 		void readFakeData(unsigned char []);
 		void readData_debug(unsigned char []);
 		void resetFakeDataTime(void);
+		char setSyncMode(unsigned int);
 		
 	private:		
 		unsigned int p_time_cnt;
