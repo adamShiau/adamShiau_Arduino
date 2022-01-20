@@ -99,10 +99,10 @@ int LSM6DS3Class::begin()
     return 0;
   }
 
-  //set the gyroscope control register to work at 208 Hz, 250 dps and in bypass mode
+  //set the gyroscope control register to work at 416 Hz, 250 dps and in bypass mode
   writeRegister(LSM6DS3_CTRL2_G, ODR_416|FS_250DPS);
 
-  // Set the Accelerometer control register to work at 208 Hz, +/-4G,and in bypass mode and enable ODR/4
+  // Set the Accelerometer control register to work at 416 Hz, +/-4G,and in bypass mode and enable ODR/4
   // low pass filter(check figure9 of LSM6DS3's datasheet)
   writeRegister(LSM6DS3_CTRL1_XL, ODR_416|FS_4G|BW_100Hz);
 
@@ -156,6 +156,20 @@ int LSM6DS3Class::readFakeAcceleration(int& x, int& y, int& z)
   z = 3;
 
   return 1;
+}
+
+int LSM6DS3Class::readAcceleration(unsigned char data[6])
+{
+	while(!accelerationAvailable());
+	if (!readRegisters(LSM6DS3_OUTX_L_XL, (uint8_t*)data, 6)) {
+		// x = NAN;
+		// y = NAN;
+		// z = NAN;
+
+		return 0;
+	}
+
+	return 1;
 }
 
 int LSM6DS3Class::readAcceleration(int& x, int& y, int& z)
@@ -224,11 +238,27 @@ int LSM6DS3Class::readFakeGyroscope(int& x, int& y, int& z)
 	return 1;
 }
 
+int LSM6DS3Class::readGyroscope(unsigned char data[6])
+{
+	while(!gyroscopeAvailable());
+	// Serial.println(sizeof(data));
+	if (!readRegisters(LSM6DS3_OUTX_L_G, (uint8_t*)data, 6)) {
+	// x = NAN;
+	// y = NAN;
+	// z = NAN;
+
+	return 0;
+	}
+
+	return 1;
+}
+
 int LSM6DS3Class::readGyroscope(int& x, int& y, int& z)
 {
 	int16_t data[3];
 
 	while(!gyroscopeAvailable());
+	// Serial.println(sizeof(data));
 	if (!readRegisters(LSM6DS3_OUTX_L_G, (uint8_t*)data, sizeof(data))) {
 	x = NAN;
 	y = NAN;
@@ -278,11 +308,9 @@ int LSM6DS3Class::readRegisters(uint8_t address, uint8_t* data, size_t length)
     _spi->transfer(data, length);
     digitalWrite(_csPin, HIGH);
     _spi->endTransaction();
-	// Serial.println(11);
   } else {
     _wire->beginTransmission(_slaveAddress);
     _wire->write(address);
-// Serial.println(12);
     if (_wire->endTransmission(false) != 0) {
       return -1;
     }

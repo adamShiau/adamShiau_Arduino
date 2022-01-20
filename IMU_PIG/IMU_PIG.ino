@@ -3,6 +3,7 @@
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
 
+// #define TESTMODE
 
 /*** global var***/
 int pin_scl_mux = 12;
@@ -42,7 +43,6 @@ void setup() {
 	select_fn = SEL_DEFAULT;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
-	// fn_lock = 1;
 }
 
 void loop() {
@@ -55,10 +55,9 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-	delay(10);
-	// output_fn(cmd, value, fn_lock);
-	// printAdd("temp_idle", (void*)temp_idle);
-	// printAdd("acq_fog", (void*)acq_fog);
+	#ifdef TESTMODE
+		delay(10);
+	#endif
 	
 }
 
@@ -159,8 +158,6 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 				uart_value |= Serial.read();
 				rx_cnt = 0;
 				uart_complete = 1;
-				// printVal_0("rx_cmd: ", uart_cmd);
-				// printVal_0("rx_val: ", uart_value);
 				break;
 			}
 		}
@@ -215,31 +212,22 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 		switch(mode) {
 			case MODE_RST: {
 				output_fn = fn_rst;
-				// fn = fn_rst;
 				select_fn = SEL_RST;
-				// printVal_0("output_mode_setting: MODE_RST ", MODE_RST);
-				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
-				// printVal_0("output_mode_setting: MODE_FOG ", MODE_FOG);
-				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu;
 				select_fn = SEL_IMU;
-				// printVal_0("output_mode_setting: MODE_IMU ", MODE_IMU);
-				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			case MODE_EQ: {
 				output_fn = temp_idle;
 				select_fn = SEL_EQ;
-				// printVal_0("output_mode_setting: MODE_EQ ", MODE_EQ);
-				// printVal_0("select_fn ", select_fn);
 				break;
 			}
 			default: break;
@@ -278,8 +266,11 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
 	if(run_fog_flag){
-		// pig_v2.readData(data);
-		pig_v2.readFakeData(data);
+		#ifdef TESTMODE
+			pig_v2.readFakeData(data);
+		#else 
+			pig_v2.readData(data);
+		#endif
 		Serial.write(CHECK_BYTE);
 		Serial.write(CHECK_BYTE3);
 		Serial.write(data, 16);
@@ -288,7 +279,7 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);	
 }
 
-void acq_imu(byte &select_fn, unsigned int CTRLREG)
+void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 {
 	byte acc[9], data[16]; 
 	int wx_nano33, wy_nano33, wz_nano33;
@@ -318,22 +309,31 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
-void acq_imu2(byte &select_fn, unsigned int CTRLREG)
+void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte acc[9];
-	int wx_nano33, wy_nano33, wz_nano33;
-	int ax_nano33, ay_nano33, az_nano33;
+	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6] ;
+	// int wx_nano33, wy_nano33, wz_nano33;
+	// int ax_nano33, ay_nano33, az_nano33;
 	
+	if(select_fn&SEL_IMU) {
+		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+		// printVal_0("run_fog_flag", run_fog_flag);
+	}
 	trig_status[0] = digitalRead(SYS_TRIG);
-	// if(trig_status[0] & ~trig_status[1]) {
-		adxl355.readFakeData(acc);
-		IMU.readFakeGyroscope(wx_nano33, wy_nano33, wz_nano33);
-		IMU.readFakeAcceleration(ax_nano33, ay_nano33, az_nano33);
-		acq_fog(select_fn, CTRLREG);
-		// print_adxl355Data(acc);
-		// print_nano33GyroData(wx_nano33, wy_nano33, wz_nano33);
-		// print_nano33XlmData(ax_nano33, ay_nano33, az_nano33);
-	// }
+	if((trig_status[0] & ~trig_status[1]) && run_fog_flag) {
+		adxl355.readData(adxl355_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+		pig_v2.readData(fog);
+		
+		Serial.write(CHECK_BYTE);
+		Serial.write(CHECK_BYTE3);
+		Serial.write(fog, 16);
+		Serial.write(adxl355_a, 9);
+		Serial.write(nano33_w, 6);
+		Serial.write(nano33_a, 6);
+		Serial.write(CHECK_BYTE2);
+	}
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
@@ -342,13 +342,3 @@ void clear_SEL_EN(byte &select_fn)
 {
 	select_fn = SEL_DEFAULT;
 }
-
-// void sendCmd(byte addr, unsigned int value)
-// {
-	// Serial1.write(addr);
-	// Serial1.write(value>>24 & 0xFF);
-	// Serial1.write(value>>16 & 0xFF);
-	// Serial1.write(value>>8 & 0xFF);
-	// Serial1.write(value & 0xFF);
-	// delay(1);
-// }
