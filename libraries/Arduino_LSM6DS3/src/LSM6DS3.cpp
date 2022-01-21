@@ -64,6 +64,9 @@
 #define FS_1000DPS	0b1000
 #define FS_2000DPS	0b1100
 
+#define SENS_AXLM_4G 0.000122
+#define SENS_GYRO_250 0.00875
+
 LSM6DS3Class::LSM6DS3Class(TwoWire& wire, uint8_t slaveAddress) :
   _wire(&wire),
   _spi(NULL),
@@ -128,6 +131,29 @@ void LSM6DS3Class::end()
   }
 }
 
+void LSM6DS3Class::print_AccelerationData(unsigned char *temp_a, int& x, int& y, int& z, unsigned int t_new, unsigned int& t_old)
+{
+	x = temp_a[1]<<8 | temp_a[0];
+	if((x>>15) == 1) x = x - (1<<16);
+	y = temp_a[3]<<8 | temp_a[2];
+	if((y>>15) == 1) y = y - (1<<16);
+	z = temp_a[5]<<8 | temp_a[4];
+	if((z>>15) == 1) z = z - (1<<16);
+	
+	t_new = micros();
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
+	// Serial.print(wx, HEX);
+	Serial.print((float)x*SENS_AXLM_4G);
+	Serial.print('\t');
+	// Serial.print(wy, HEX);
+	Serial.print((float)y*SENS_AXLM_4G);
+	Serial.print('\t');
+	// Serial.println(wz, HEX);
+	Serial.println((float)z*SENS_AXLM_4G);
+	t_old = t_new;
+}
+
 int LSM6DS3Class::readAcceleration(float& x, float& y, float& z)
 {
   int16_t data[3];
@@ -158,17 +184,25 @@ int LSM6DS3Class::readFakeAcceleration(int& x, int& y, int& z)
   return 1;
 }
 
+int LSM6DS3Class::readFakeAcceleration(unsigned char data[6])
+{
+
+	data[0] = 1;
+	data[0] = 2;
+	data[0] = 3;
+	data[0] = 4;
+	data[0] = 5;
+	data[0] = 6;
+
+  return 1;
+}
+
 int LSM6DS3Class::readAcceleration(unsigned char data[6])
 {
 	while(!accelerationAvailable());
 	if (!readRegisters(LSM6DS3_OUTX_L_XL, (uint8_t*)data, 6)) {
-		// x = NAN;
-		// y = NAN;
-		// z = NAN;
-
 		return 0;
 	}
-
 	return 1;
 }
 
@@ -206,6 +240,29 @@ float LSM6DS3Class::accelerationSampleRate()
   return 104.0F;
 }
 
+void LSM6DS3Class::print_GyroData(unsigned char *temp_a, int& x, int& y, int& z, unsigned int t_new, unsigned int& t_old)
+{
+	x = temp_a[1]<<8 | temp_a[0];
+	if((x>>15) == 1) x = x - (1<<16);
+	y = temp_a[3]<<8 | temp_a[2];
+	if((y>>15) == 1) y = y - (1<<16);
+	z = temp_a[5]<<8 | temp_a[4];
+	if((z>>15) == 1) z = z - (1<<16);
+	
+	t_new = micros();
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
+	// Serial.print(wx, HEX);
+	Serial.print((float)x*SENS_GYRO_250);
+	Serial.print('\t');
+	// Serial.print(wy, HEX);
+	Serial.print((float)y*SENS_GYRO_250);
+	Serial.print('\t');
+	// Serial.println(wz, HEX);
+	Serial.println((float)z*SENS_GYRO_250);
+	t_old = t_new;
+}
+
 int LSM6DS3Class::readGyroscope(float& x, float& y, float& z)
 {
   int16_t data[3];
@@ -234,6 +291,18 @@ int LSM6DS3Class::readFakeGyroscope(int& x, int& y, int& z)
 	x = 4;
 	y = 5;
 	z = 6;
+
+	return 1;
+}
+
+int LSM6DS3Class::readFakeGyroscope(unsigned char data[6])
+{
+	data[0] = 1;
+	data[0] = 2;
+	data[0] = 3;
+	data[0] = 4;
+	data[0] = 5;
+	data[0] = 6;
 
 	return 1;
 }

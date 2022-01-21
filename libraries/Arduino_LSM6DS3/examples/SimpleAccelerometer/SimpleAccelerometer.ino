@@ -17,7 +17,7 @@
 #include <Arduino_LSM6DS3.h>
 
 #define SENS_AXLM_4G 0.000122
-unsigned long t_new, t_old;
+unsigned int t_new, t_old=0;
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -37,11 +37,13 @@ void setup() {
 }
 
 void loop() {
-  byte data[6];
+	byte data[6];
+	int x, y, z;
 
 	if (IMU.accelerationAvailable()) {
 	IMU.readAcceleration(data);
-	print_axlmData(data);
+	IMU.print_AccelerationData(data, x, y, z, t_new, t_old);
+	// print_axlmData(data);
 	}
 }
 

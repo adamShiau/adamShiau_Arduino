@@ -35,8 +35,9 @@ class LSM6DS3Class {
     virtual int readAcceleration(float& x, float& y, float& z); // Results are in G (earth gravity).
 	virtual int readAcceleration(int& x, int& y, int& z); // Results are in G (earth gravity).
 	virtual int readAcceleration(unsigned char []);
-	virtual int readFakeAcceleration(int& x, int& y, int& z); // Results are in G (earth gravity).
-
+	virtual int readFakeAcceleration(unsigned char []);
+	virtual int readFakeAcceleration(int& x, int& y, int& z); 
+	virtual void print_AccelerationData(unsigned char *, int&, int&, int&, unsigned int, unsigned int&);
     virtual float accelerationSampleRate(); // Sampling rate of the sensor.
     virtual int accelerationAvailable(); // Check for available data from accerometer
 
@@ -44,9 +45,11 @@ class LSM6DS3Class {
     virtual int readGyroscope(float& x, float& y, float& z); // Results are in degrees/second.
 	virtual int readGyroscope(int& x, int& y, int& z); // Results are in degrees/second.
 	virtual int readGyroscope(unsigned char []);
-	virtual int readFakeGyroscope(int& x, int& y, int& z); // Results are in degrees/second.
+	virtual int readFakeGyroscope(unsigned char []);
+	virtual int readFakeGyroscope(int& x, int& y, int& z);
     virtual float gyroscopeSampleRate(); // Sampling rate of the sensor.
     virtual int gyroscopeAvailable(); // Check for available data from gyroscopeAvailable
+	virtual void print_GyroData(unsigned char *, int&, int&, int&, unsigned int, unsigned int&);
 
 
   private:

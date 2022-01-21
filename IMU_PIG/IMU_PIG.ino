@@ -2,6 +2,7 @@
 #include <Arduino_LSM6DS3.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
+#include "wiring_private.h"
 
 // #define TESTMODE
 
@@ -31,9 +32,20 @@ fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 
+Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+void SERCOM0_Handler()
+{
+    mySerial5.IrqHandler();
+}
 
 void setup() {
-	Serial1.begin(115200);
+	Serial.begin(230400);
+	Serial1.begin(115200); //to FPGA
+	mySerial5.begin(230400); //rx:p5, tx:p6
+	// Reassign pins 5 and 6 to SERCOM alt
+	pinPeripheral(5, PIO_SERCOM_ALT); //RX
+	pinPeripheral(6, PIO_SERCOM_ALT); //TX
+	
 	IMU.begin();
 	adxl355.init();
 	pinMode(SYS_TRIG, INPUT);
@@ -93,6 +105,8 @@ void print_nano33XlmData(int ax, int ay, int az)
 	Serial.println((float)az*NANO33_XLM);
 	t_old = t_new;
 }
+
+
 
 void print_adxl355Data(byte *temp_a)
 {
@@ -221,7 +235,12 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				break;
 			}
 			case MODE_IMU: {
-				output_fn = acq_imu;
+				output_fn = acq_imu; 
+				select_fn = SEL_IMU;
+				break;
+			}
+			case MODE_IMU_FAKE: {
+				output_fn = acq_imu_fake; 
 				select_fn = SEL_IMU;
 				break;
 			}
@@ -281,39 +300,33 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 
 void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 {
-	byte acc[9], data[16]; 
-	int wx_nano33, wy_nano33, wz_nano33;
-	int ax_nano33, ay_nano33, az_nano33;
+	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6];
 	
 	if(select_fn&SEL_IMU) 
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
-	adxl355.readFakeData(acc);
-	IMU.readFakeGyroscope(wx_nano33, wy_nano33, wz_nano33);
-	IMU.readFakeAcceleration(ax_nano33, ay_nano33, az_nano33);
+	adxl355.readFakeData(adxl355_a);
+	IMU.readFakeGyroscope(nano33_w);
+	IMU.readFakeAcceleration(nano33_a);
 	if(run_fog_flag){
-		pig_v2.readFakeData(data);
-		Serial1.write(CHECK_BYTE);
-		Serial1.write(CHECK_BYTE3);
-		Serial1.write(data, 16);
-		Serial1.write(acc, 9);
-		Serial1.write(wx_nano33);
-		Serial1.write(wy_nano33);
-		Serial1.write(ax_nano33);
-		Serial1.write(ay_nano33);
-		Serial1.write(az_nano33);
-		Serial1.write(CHECK_BYTE2);
+		pig_v2.readFakeData(fog);
+		Serial.write(CHECK_BYTE);
+		Serial.write(CHECK_BYTE3);
+		Serial.write(fog, 16);
+		Serial.write(adxl355_a, 9);
+		Serial.write(nano33_w, 6);
+		Serial.write(nano33_a, 6);
+		Serial.write(CHECK_BYTE2);
+		delay(10);
 	}
-	
 	clear_SEL_EN(select_fn);
 }
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6] ;
-	// int wx_nano33, wy_nano33, wz_nano33;
-	// int ax_nano33, ay_nano33, az_nano33;
+	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6];
+	// int x, y, z;
 	
 	if(select_fn&SEL_IMU) {
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
@@ -325,7 +338,6 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
 		pig_v2.readData(fog);
-		
 		Serial.write(CHECK_BYTE);
 		Serial.write(CHECK_BYTE3);
 		Serial.write(fog, 16);
@@ -333,9 +345,24 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		Serial.write(nano33_w, 6);
 		Serial.write(nano33_a, 6);
 		Serial.write(CHECK_BYTE2);
+		// IMU.print_GyroData(nano33_w, x, y, z, t_new, t_old);
 	}
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
+}
+
+void print_nano33XlmData(byte *data)
+{
+	int ax, ay, az;
+	t_new = micros();
+	Serial.print(t_new - t_old);
+	Serial.print('\t');
+	Serial.print((float)ax*NANO33_XLM);
+	Serial.print('\t');
+	Serial.print((float)ay*NANO33_XLM);
+	Serial.print('\t');
+	Serial.println((float)az*NANO33_XLM);
+	t_old = t_new;
 }
 
 void clear_SEL_EN(byte &select_fn)

@@ -22,6 +22,7 @@
 #define MODE_FOG	1
 #define MODE_IMU	2
 #define MODE_EQ		3
+#define MODE_IMU_FAKE		4
 
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9

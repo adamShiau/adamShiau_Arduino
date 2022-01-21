@@ -18,7 +18,7 @@
 
 #define SENS_GYRO_250 0.00875
 
-unsigned long t_new, t_old;
+unsigned int t_new, t_old;
 
 void setup() {
   Serial.begin(115200);
@@ -41,11 +41,12 @@ void setup() {
 
 void loop() {
 	byte data[6];
-	// int x, y, z;
+	int x, y, z;
 	
   if (IMU.gyroscopeAvailable()) {
     IMU.readGyroscope(data);
-    print_gyroData(data);
+	IMU.print_GyroData(data, x, y, z, t_new, t_old);
+    // print_gyroData(data);
 	
 	// IMU.readGyroscope(x, y, z);
 	// print_gyroData(x, y, z);
