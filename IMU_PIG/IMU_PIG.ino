@@ -301,6 +301,7 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 {
 	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6];
+	int x, y, z;
 	
 	if(select_fn&SEL_IMU) 
 	{
@@ -319,6 +320,7 @@ void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 		Serial.write(nano33_a, 6);
 		Serial.write(CHECK_BYTE2);
 		delay(10);
+		// IMU.print_GyroData(nano33_w, x, y, z, t_new, t_old);
 	}
 	clear_SEL_EN(select_fn);
 }

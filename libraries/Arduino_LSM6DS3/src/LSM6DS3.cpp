@@ -188,11 +188,11 @@ int LSM6DS3Class::readFakeAcceleration(unsigned char data[6])
 {
 
 	data[0] = 1;
-	data[0] = 2;
-	data[0] = 3;
-	data[0] = 4;
-	data[0] = 5;
-	data[0] = 6;
+	data[1] = 0;
+	data[2] = 2;
+	data[3] = 0;
+	data[4] = 3;
+	data[5] = 0;
 
   return 1;
 }
@@ -298,11 +298,11 @@ int LSM6DS3Class::readFakeGyroscope(int& x, int& y, int& z)
 int LSM6DS3Class::readFakeGyroscope(unsigned char data[6])
 {
 	data[0] = 1;
-	data[0] = 2;
-	data[0] = 3;
-	data[0] = 4;
-	data[0] = 5;
-	data[0] = 6;
+	data[1] = 0;
+	data[2] = 2;
+	data[3] = 0;
+	data[4] = 3;
+	data[5] = 0;
 
 	return 1;
 }
