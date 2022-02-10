@@ -1,4 +1,4 @@
-#include "adxl355.h"
+    #include "adxl355.h"
 #include <Arduino_LSM6DS3.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
@@ -172,6 +172,8 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 				uart_value |= Serial.read();
 				rx_cnt = 0;
 				uart_complete = 1;
+				// Serial1.println("rx");
+				// printVal_1("rx", uart_value);
 				break;
 			}
 		}
@@ -320,6 +322,7 @@ void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 		Serial.write(nano33_a, 6);
 		Serial.write(CHECK_BYTE2);
 		delay(10);
+    // Serial1.println("done");
 		// IMU.print_GyroData(nano33_w, x, y, z, t_new, t_old);
 	}
 	clear_SEL_EN(select_fn);
