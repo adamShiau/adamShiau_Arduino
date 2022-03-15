@@ -27,6 +27,7 @@
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
 
+
 PIG::PIG()
 {
 	
@@ -34,7 +35,7 @@ PIG::PIG()
 
 void PIG::init()
 {
-	Serial.begin(115200);
+	Serial.begin(230400);
 	Serial1.begin(115200);
 	p_time_cnt = 0;
 }
@@ -97,6 +98,60 @@ void PIG::readData(unsigned char data[16])
 	}
 	Serial1.readBytes(data, 16);
 	Serial1.readBytes(&val2, 1);
+}
+
+void PIG::readFakeDataCRC(unsigned char header[4], unsigned char data[17])
+{
+	unsigned int time;
+	
+	time = millis();
+	checkFakeHeader(header);
+	data[0] = time>>24;
+	data[1] = time>>16;
+	data[2] = time>>8;
+	data[3] = time;
+	for(int i=4; i<16; i++) 
+		data[i] = i;
+	data[16] = 255;
+}
+
+void PIG::readDataCRC(unsigned char header[4], unsigned char data[17])
+{
+	checkHeader(header);
+	Serial1.readBytes(data, 17);
+}
+
+unsigned char* PIG::checkFakeHeader(unsigned char headerArr[4])
+{
+	headerArr[0] = HEADER[0];
+	headerArr[1] = HEADER[1];
+	headerArr[2] = HEADER[2];
+	headerArr[3] = HEADER[3];
+}
+
+unsigned char* PIG::checkHeader(unsigned char headerArr[4])
+{
+	unsigned char header[4], hold;
+	
+	Serial1.readBytes(headerArr, 4);
+	hold = 1;
+	while(hold)
+	{
+		if(	(headerArr[0] == HEADER[0]) && 
+			(headerArr[1] == HEADER[1]) && 
+			(headerArr[2] == HEADER[2]) && 
+			(headerArr[3] == HEADER[3]) 
+			){
+				hold = 0;
+				return headerArr ;
+			}
+		else {
+			headerArr[0] = headerArr[1];
+			headerArr[1] = headerArr[2];
+			headerArr[2] = headerArr[3];
+			headerArr[3] = Serial1.read();
+		}
+	}
 }
 
 void PIG::resetFakeDataTime()

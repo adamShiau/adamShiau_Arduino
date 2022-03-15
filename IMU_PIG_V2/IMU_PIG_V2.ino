@@ -1,10 +1,10 @@
-    #include "adxl355.h"
+#include "adxl355.h"
 #include <Arduino_LSM6DS3.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
 
-// #define TESTMODE
+#define TESTMODE
 
 /*** global var***/
 int pin_scl_mux = 12;
@@ -32,19 +32,23 @@ fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 
+#ifdef UART_SERIAL_5
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-void SERCOM0_Handler()
+void SERCOM0_Handler() 
 {
-    mySerial5.IrqHandler();
+	mySerial5.IrqHandler();
 }
+#endif
 
 void setup() {
 	Serial.begin(230400);
 	Serial1.begin(115200); //to FPGA
+	#ifdef UART_SERIAL_5
 	mySerial5.begin(230400); //rx:p5, tx:p6
 	// Reassign pins 5 and 6 to SERCOM alt
 	pinPeripheral(5, PIO_SERCOM_ALT); //RX
 	pinPeripheral(6, PIO_SERCOM_ALT); //TX
+	#endif
 	
 	IMU.begin();
 	adxl355.init();
@@ -62,14 +66,14 @@ void loop() {
 	int wx_nano33, wy_nano33, wz_nano33;
 	int ax_nano33, ay_nano33, az_nano33;
 	
-	getCmdValue(cmd, value, cmd_complete);
+	getCmdValue_v2(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-	#ifdef TESTMODE
-		delay(10);
-	#endif
+	// #ifdef TESTMODE
+		// delay(10);
+	// #endif
 	
 }
 
@@ -146,38 +150,88 @@ void printVal_0(char name[], int val)
 
 void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 {
+	#ifdef UART_SERIAL_5
+	if (mySerial5.available()){
+		Serial.println(mySerial5.available());
+	#else
 	if (Serial.available()){
+	#endif
 		switch(rx_cnt) {
 			case 0: {
+				#ifdef UART_SERIAL_5
+				uart_cmd = mySerial5.read();
+				#else
 				uart_cmd = Serial.read();
+				#endif
+				
 				rx_cnt = 1;
 				break;
 			}
 			case 1: {
+				#ifdef UART_SERIAL_5
+				uart_value = mySerial5.read()<<24;
+				#else
 				uart_value = Serial.read()<<24;
+				#endif
+				
 				rx_cnt = 2;
 				break;
 			}
 			case 2: {
+				#ifdef UART_SERIAL_5
+				uart_value |= mySerial5.read()<<16;
+				#else
 				uart_value |= Serial.read()<<16;
+				#endif
+				
 				rx_cnt = 3;
 				break;
 			}
 			case 3: {
+				#ifdef UART_SERIAL_5
+				uart_value |= mySerial5.read()<<8;
+				#else
 				uart_value |= Serial.read()<<8;
+				#endif
+				
 				rx_cnt = 4;
 				break;
 			}
 			case 4: {
+				#ifdef UART_SERIAL_5
+				uart_value |= mySerial5.read();
+				#else
 				uart_value |= Serial.read();
+				#endif
+				
 				rx_cnt = 0;
 				uart_complete = 1;
-				// Serial.println("rx"); 
-				// printVal_0("cmd", uart_cmd);
-				// printVal_0("rx", uart_value);
+				printVal_0("cmd", uart_cmd);
+				printVal_0("rx", uart_value);
+				printVal_0("rx_cnt", rx_cnt);
 				break;
 			}
 		}
+	}
+}
+
+
+void getCmdValue_v2(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
+{
+	byte cmd[5];
+		
+	#ifdef UART_SERIAL_5
+	while (mySerial5.available()>0){
+		mySerial5.readBytes((char*)cmd, 5);
+	#else
+	while (Serial.available()>0){
+		Serial.readBytes((char*)cmd, 5);
+	#endif
+		uart_cmd = cmd[0];
+		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+		uart_complete = 1;
+		printVal_1("cmd", uart_cmd);
+		printVal_1("rx", uart_value);
 	}
 }
 
@@ -281,77 +335,80 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 
 void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
-	byte data[16]; 
+	byte header[4], data[17]; 
 	
 	if(select_fn&SEL_FOG_1)
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
 	if(run_fog_flag){
-		#ifdef TESTMODE
-			pig_v2.readFakeData(data);
-		#else 
-			pig_v2.readData(data);
+		pig_v2.readDataCRC(header, data);
+		#ifdef UART_SERIAL_5
+		mySerial5.write(header, 4);
+		mySerial5.write(data, 17);
+		#else
+		Serial.write(header, 4);
+		Serial.write(data, 17);
 		#endif
-		Serial.write(CHECK_BYTE);
-		Serial.write(CHECK_BYTE3);
-		Serial.write(data, 16);
-		Serial.write(CHECK_BYTE2);
 	}
 	clear_SEL_EN(select_fn);	
 }
 
 void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6];
-	int x, y, z;
+	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
 	
 	if(select_fn&SEL_IMU) 
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
-	adxl355.readFakeData(adxl355_a);
-	IMU.readFakeGyroscope(nano33_w);
-	IMU.readFakeAcceleration(nano33_a);
+	// adxl355.readFakeData(adxl355_a);
+	// IMU.readFakeGyroscope(nano33_w);
+	// IMU.readFakeAcceleration(nano33_a);
 	if(run_fog_flag){
-		pig_v2.readFakeData(fog);
-		Serial.write(CHECK_BYTE);
-		Serial.write(CHECK_BYTE3);
-		Serial.write(fog, 16);
+		adxl355.readFakeData(adxl355_a);
+		// IMU.readFakeGyroscope(nano33_w);
+		// IMU.readFakeAcceleration(nano33_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+		pig_v2.readFakeDataCRC(header, fog);
+		Serial.write(header, 4);
+		Serial.write(fog, 17);
 		Serial.write(adxl355_a, 9);
 		Serial.write(nano33_w, 6);
 		Serial.write(nano33_a, 6);
-		Serial.write(CHECK_BYTE2);
 		delay(10);
-    // Serial1.println("done");
-		// IMU.print_GyroData(nano33_w, x, y, z, t_new, t_old);
 	}
 	clear_SEL_EN(select_fn);
 }
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], fog[16], nano33_w[6], nano33_a[6];
-	// int x, y, z;
+	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
 	
 	if(select_fn&SEL_IMU) {
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-		// printVal_0("run_fog_flag", run_fog_flag);
 	}
 	trig_status[0] = digitalRead(SYS_TRIG);
 	if((trig_status[0] & ~trig_status[1]) && run_fog_flag) {
 		adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
-		pig_v2.readData(fog);
-		Serial.write(CHECK_BYTE);
-		Serial.write(CHECK_BYTE3);
-		Serial.write(fog, 16);
+		pig_v2.readDataCRC(header, fog);
+		#ifdef UART_SERIAL_5
+		mySerial5.write(header, 4);
+		mySerial5.write(fog, 17);
+		mySerial5.write(adxl355_a, 9);
+		mySerial5.write(nano33_w, 6);
+		mySerial5.write(nano33_a, 6);
+		#else
+		Serial.write(header, 4);
+		Serial.write(fog, 17);
 		Serial.write(adxl355_a, 9);
 		Serial.write(nano33_w, 6);
 		Serial.write(nano33_a, 6);
-		Serial.write(CHECK_BYTE2);
-		// IMU.print_GyroData(nano33_w, x, y, z, t_new, t_old);
+		#endif
+		
 	}
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
