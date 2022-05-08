@@ -65,7 +65,6 @@ void print_gyroData(int x, int y, int z)
 	Serial.print('\t');
 	Serial.println(z, HEX);
 	t_old = t_new;
-	
 }
 
 void print_gyroData(byte *temp_a)

@@ -237,7 +237,47 @@ int LSM6DS3Class::accelerationAvailable()
 
 float LSM6DS3Class::accelerationSampleRate()
 {
-  return 104.0F;
+  uint8_t data;
+  float odr = 0;
+  readRegisters(LSM6DS3_CTRL1_XL, &data, sizeof(data));
+  switch (data>>4)
+  {
+  case 1:
+    odr = 12.5;
+    break;
+  case 2:
+    odr = 26.0;
+    break;
+  case 3:
+    odr = 52.0;
+    break;
+  case 4:
+    odr = 104.0;
+    break;
+  case 5:
+    odr = 208.0;
+    break;
+  case 6:
+    odr = 416.0;
+    break;
+  case 7:
+    odr = 833.0;
+    break;
+  case 8:
+    odr = 1660.0;
+    break;
+  case 9:
+    odr = 3330.0;
+    break;
+  case 10:
+    odr = 6660.0;
+    break;
+  
+  default:
+    odr = 0.0;
+    break;
+  }
+  return odr;
 }
 
 void LSM6DS3Class::print_GyroData(unsigned char *temp_a, int& x, int& y, int& z, unsigned int t_new, unsigned int& t_old)
@@ -250,8 +290,8 @@ void LSM6DS3Class::print_GyroData(unsigned char *temp_a, int& x, int& y, int& z,
 	if((z>>15) == 1) z = z - (1<<16);
 	
 	t_new = micros();
-	// Serial.print(t_new - t_old);
-	// Serial.print('\t');
+	Serial.print(t_new - t_old);
+	Serial.print('\t');
 	// Serial.print(wx, HEX);
 	Serial.print((float)x*SENS_GYRO_250);
 	Serial.print('\t');
@@ -318,7 +358,6 @@ int LSM6DS3Class::readGyroscope(unsigned char data[6])
 
 	return 0;
 	}
-
 	return 1;
 }
 
@@ -354,7 +393,41 @@ int LSM6DS3Class::gyroscopeAvailable()
 
 float LSM6DS3Class::gyroscopeSampleRate()
 {
-  return 104.0F;
+  uint8_t data;
+  float odr = 0;
+  readRegisters(LSM6DS3_CTRL2_G, &data, sizeof(data));
+  switch (data>>4)
+  {
+  case 1:
+    odr = 12.5;
+    break;
+  case 2:
+    odr = 26.0;
+    break;
+  case 3:
+    odr = 52.0;
+    break;
+  case 4:
+    odr = 104.0;
+    break;
+  case 5:
+    odr = 208.0;
+    break;
+  case 6:
+    odr = 416.0;
+    break;
+  case 7:
+    odr = 833.0;
+    break;
+  case 8:
+    odr = 1660.0;
+    break;
+  
+  default:
+    odr = 0.0;
+    break;
+  }
+  return odr;
 }
 
 int LSM6DS3Class::readRegister(uint8_t address)
