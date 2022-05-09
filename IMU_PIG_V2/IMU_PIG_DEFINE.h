@@ -8,7 +8,7 @@
 #define NANO33_GYRO 0.00763 // +/- 250dps, 250/32768
 
 /*** trig pin***/
-fine SYS_TRIG 12
+#define SYS_TRIG 12
 
 /*** PWM AS SUNC***/
 #define PWM_SYNC
@@ -26,6 +26,7 @@ fine SYS_TRIG 12
 #define MODE_IMU	2
 #define MODE_EQ		3
 #define MODE_IMU_FAKE		4
+#define MODE_IMU_MEMS		5
 
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9
