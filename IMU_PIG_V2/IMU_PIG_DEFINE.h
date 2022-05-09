@@ -8,7 +8,10 @@
 #define NANO33_GYRO 0.00763 // +/- 250dps, 250/32768
 
 /*** trig pin***/
-#define SYS_TRIG 14
+fine SYS_TRIG 12
+
+/*** PWM AS SUNC***/
+#define PWM_SYNC
 
 /*** IMU_PIG Serial CMD map: *********
 0~7 for output mode setting,
@@ -63,8 +66,12 @@
 #define DATA_OUT_START_ADDR		99
 
 /*** UART port***/
+// #define UART_SERIAL_5 // mark this line to use USB
 // #define UART_USB
-// #define UART_SERIAL_5
+#define UART_RS422
+
+/*** ENABLE SRS200***/
+// #define ENABLE_SRS200
 
 /*** check byte***/
 #define CHECK_BYTE		170

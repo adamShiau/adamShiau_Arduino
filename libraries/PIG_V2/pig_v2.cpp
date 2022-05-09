@@ -48,7 +48,6 @@ void PIG::sendCmd(unsigned char addr, unsigned int value)
 	Serial1.write(value>>8 & 0xFF);
 	Serial1.write(value & 0xFF);
 	delay(1);
-	
 }
 
 char PIG::setSyncMode(unsigned int CTRLREG)

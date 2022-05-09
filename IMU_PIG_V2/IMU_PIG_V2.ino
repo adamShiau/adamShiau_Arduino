@@ -1,13 +1,18 @@
 #include "adxl355.h"
 #include <Arduino_LSM6DS3.h>
 #include "pig_v2.h"
+// #include "srs200.h"
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
+#include "crcCalculator.h"
 
-#define TESTMODE
+#ifdef PWM_SYNC
+	#include <SAMD21turboPWM.h>
+#endif
+// #define TESTMODE
 
 /*** global var***/
-int pin_scl_mux = 12;
+int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
 
@@ -31,6 +36,7 @@ typedef void (*fn_ptr) (byte &, unsigned int);
 fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
+crcCal myCRC;
 
 #ifdef UART_SERIAL_5
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
@@ -40,14 +46,31 @@ void SERCOM0_Handler()
 }
 #endif
 
+#ifdef ENABLE_SRS200
+#define SRS200_SIZE 15
+Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+void SERCOM0_Handler() 
+{
+	mySerial5.IrqHandler();
+}
+#endif
+
+TurboPWM  pwm;
+
 void setup() {
 	Serial.begin(230400);
-	Serial1.begin(115200); //to FPGA
+	Serial1.begin(230400); //to FPGA
 	#ifdef UART_SERIAL_5
-	mySerial5.begin(230400); //rx:p5, tx:p6
-	// Reassign pins 5 and 6 to SERCOM alt
-	pinPeripheral(5, PIO_SERCOM_ALT); //RX
-	pinPeripheral(6, PIO_SERCOM_ALT); //TX
+		mySerial5.begin(230400); //rx:p5, tx:p6
+		// Reassign pins 5 and 6 to SERCOM alt
+		pinPeripheral(5, PIO_SERCOM_ALT); //RX
+		pinPeripheral(6, PIO_SERCOM_ALT); //TX
+	#endif
+	#ifdef ENABLE_SRS200
+		mySerial5.begin(115200); //rx:p5, tx:p6
+		// Reassign pins 5 and 6 to SERCOM alt
+		pinPeripheral(5, PIO_SERCOM_ALT); //RX
+		pinPeripheral(6, PIO_SERCOM_ALT); //TX
 	#endif
 	
 	IMU.begin();
@@ -55,25 +78,57 @@ void setup() {
 	pinMode(SYS_TRIG, INPUT);
 	/*** var initialization***/
 	cmd_complete = 0;
-	mux_flag = MUX_ESCAPE;
-	select_fn = SEL_DEFAULT;
+	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
+	// select_fn = SEL_DEFAULT; 	//default set select_fn to 128
+	select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
+	
+	/*** pwm ***/
+
+	/*** Set input clock divider and Turbo Mode (which uses a 96MHz instead of a 48Mhz input clock): ***/
+	pwm.setClockDivider(200, false); // Main clock 48MHz divided by 200 => 240KHz
+	
+	/*** Initialise timer x, with prescaler, with steps (resolution), 
+	with fast aka single-slope PWM (or not -> double-slope PWM): 
+	For the Arduino Nano 33 IoT, you need to initialise timer 1 for pins 4 and 7, timer 0 for pins 5, 6, 8, and 12, 
+	and timer 2 for pins 11 and 13;
+	***/
+	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
+	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
+	
+	/*** test ***/
+	sendCmd(99, 1);
+	run_fog_flag = 1;
 }
 
 void loop() {
-	byte *a_adxl355, acc[9];
-	int wx_nano33, wy_nano33, wz_nano33;
-	int ax_nano33, ay_nano33, az_nano33;
+	// byte *a_adxl355, acc[9];
+	byte srs200[15], header_srs200[2];
+	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
+	// int wx_nano33, wy_nano33, wz_nano33;
+	// int ax_nano33, ay_nano33, az_nano33;
 	
 	getCmdValue_v2(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-	// #ifdef TESTMODE
-		// delay(10);
-	// #endif
+	
+	/*** 
+	trig_status[0] = digitalRead(SYS_TRIG);
+	if((trig_status[0] & ~trig_status[1])) 
+	{
+		adxl355.readData(adxl355_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+		#ifdef ENABLE_SRS200
+			readSRS200Data(header_srs200, srs200);
+		#endif
+		pig_v2.readDataCRC(header, fog);
+	}
+	trig_status[1] = trig_status[0];
+	***/
 	
 }
 
@@ -84,31 +139,31 @@ void printAdd(char name[], void* addr)
 	Serial.println((unsigned int)addr, HEX);
 }
 
-void print_nano33GyroData(int wx, int wy, int wz)
-{
-	t_new = micros();
-	Serial.print(t_new - t_old);
-	Serial.print('\t');
-	Serial.print((float)wx*NANO33_GYRO);
-	Serial.print('\t');
-	Serial.print((float)wy*NANO33_GYRO);
-	Serial.print('\t');
-	Serial.println((float)wz*NANO33_GYRO);
-	t_old = t_new;
-}
+// void print_nano33GyroData(int wx, int wy, int wz)
+// {
+	// t_new = micros();
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
+	// Serial.print((float)wx*NANO33_GYRO);
+	// Serial.print('\t');
+	// Serial.print((float)wy*NANO33_GYRO);
+	// Serial.print('\t');
+	// Serial.println((float)wz*NANO33_GYRO);
+	// t_old = t_new;
+// }
 
-void print_nano33XlmData(int ax, int ay, int az)
-{
-	t_new = micros();
-	Serial.print(t_new - t_old);
-	Serial.print('\t');
-	Serial.print((float)ax*NANO33_XLM);
-	Serial.print('\t');
-	Serial.print((float)ay*NANO33_XLM);
-	Serial.print('\t');
-	Serial.println((float)az*NANO33_XLM);
-	t_old = t_new;
-}
+// void print_nano33XlmData(int ax, int ay, int az)
+// {
+	// t_new = micros();
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
+	// Serial.print((float)ax*NANO33_XLM);
+	// Serial.print('\t');
+	// Serial.print((float)ay*NANO33_XLM);
+	// Serial.print('\t');
+	// Serial.println((float)az*NANO33_XLM);
+	// t_old = t_new;
+// }
 
 
 
@@ -147,6 +202,12 @@ void printVal_0(char name[], int val)
 	Serial.print(": ");
 	Serial.println(val);
 }
+
+void printVal_0(char name[])
+{
+	Serial.println(name);
+}
+
 
 void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 {
@@ -221,17 +282,25 @@ void getCmdValue_v2(byte &uart_cmd, unsigned int &uart_value, bool &uart_complet
 	byte cmd[5];
 		
 	#ifdef UART_SERIAL_5
-	while (mySerial5.available()>0){
-		mySerial5.readBytes((char*)cmd, 5);
-	#else
-	while (Serial.available()>0){
-		Serial.readBytes((char*)cmd, 5);
+    while (mySerial5.available()>0){
+      mySerial5.readBytes((char*)cmd, 5);
+  #endif
+
+  #ifdef UART_RS422
+    while (Serial1.available()>0){
+      Serial1.readBytes((char*)cmd, 5);
+  #endif
+
+	#ifdef UART_USB
+    while (Serial.available()>0){
+      Serial.readBytes((char*)cmd, 5);
 	#endif
+
 		uart_cmd = cmd[0];
 		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
 		uart_complete = 1;
-		printVal_1("cmd", uart_cmd);
-		printVal_1("rx", uart_value);
+		printVal_0("cmd", uart_cmd);
+		printVal_0("rx", uart_value);
 	}
 }
 
@@ -309,6 +378,10 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			default: break;
 		}
 		
+		// printVal_0("in output_mode_setting");
+		// printVal_0("mux_flag", mux_flag);
+		// printVal_0("mode", mode);
+		// printVal_0("select_fn", select_fn);
 	}
 }
 
@@ -366,17 +439,27 @@ void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 	// IMU.readFakeGyroscope(nano33_w);
 	// IMU.readFakeAcceleration(nano33_a);
 	if(run_fog_flag){
-		adxl355.readFakeData(adxl355_a);
+		// adxl355.readFakeData(adxl355_a);
+    adxl355.readData(adxl355_a);
 		// IMU.readFakeGyroscope(nano33_w);
 		// IMU.readFakeAcceleration(nano33_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
 		pig_v2.readFakeDataCRC(header, fog);
-		Serial.write(header, 4);
-		Serial.write(fog, 17);
-		Serial.write(adxl355_a, 9);
-		Serial.write(nano33_w, 6);
-		Serial.write(nano33_a, 6);
+    #ifdef UART_RS422
+      Serial1.write(header, 4);
+      Serial1.write(fog, 17);
+      Serial1.write(adxl355_a, 9);
+      Serial1.write(nano33_w, 6);
+      Serial1.write(nano33_a, 6);
+    #endif
+		#ifdef UART_USB
+      Serial.write(header, 4);
+      Serial.write(fog, 17);
+      Serial.write(adxl355_a, 9);
+      Serial.write(nano33_w, 6);
+      Serial.write(nano33_a, 6);
+    #endif
 		delay(10);
 	}
 	clear_SEL_EN(select_fn);
@@ -385,12 +468,18 @@ void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
 	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
-	
+	#ifdef ENABLE_SRS200
+		byte srs200[SRS200_SIZE], header_srs200[2];
+	#endif
 	if(select_fn&SEL_IMU) {
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
 	trig_status[0] = digitalRead(SYS_TRIG);
-	if((trig_status[0] & ~trig_status[1]) && run_fog_flag) {
+	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+
+		#ifdef ENABLE_SRS200
+			readSRS200Data(header_srs200, srs200);
+		#endif
 		adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
@@ -408,7 +497,40 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		Serial.write(nano33_w, 6);
 		Serial.write(nano33_a, 6);
 		#endif
+		#ifdef ENABLE_SRS200
+			Serial.write(srs200, SRS200_SIZE);
+		#endif
+	}
+	trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
+
+void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
+{
+	byte adxl355_a[9], header[4], nano33_w[6], nano33_a[6];
+
+
+	trig_status[0] = digitalRead(SYS_TRIG);
+	if((trig_status[0] & ~trig_status[1])) {
+
+		adxl355.readData(adxl355_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
 		
+		#ifdef UART_SERIAL_5
+		mySerial5.write(header, 4);
+		mySerial5.write(fog, 17);
+		mySerial5.write(adxl355_a, 9);
+		mySerial5.write(nano33_w, 6);
+		mySerial5.write(nano33_a, 6);
+		#else
+		Serial.write(header, 4);
+		Serial.write(fog, 17);
+		Serial.write(adxl355_a, 9);
+		Serial.write(nano33_w, 6);
+		Serial.write(nano33_a, 6);
+		#endif
+
 	}
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
@@ -418,6 +540,9 @@ void print_nano33XlmData(byte *data)
 {
 	int ax, ay, az;
 	t_new = micros();
+	ax = data[0]<<8 | data[1];
+	ay = data[2]<<8 | data[3];
+	az = data[4]<<8 | data[5];
 	Serial.print(t_new - t_old);
 	Serial.print('\t');
 	Serial.print((float)ax*NANO33_XLM);
@@ -431,4 +556,79 @@ void print_nano33XlmData(byte *data)
 void clear_SEL_EN(byte &select_fn)
 {
 	select_fn = SEL_DEFAULT;
+}
+
+#ifdef ENABLE_SRS200
+void readSRS200Data(unsigned char header[2], unsigned char data[SRS200_SIZE])
+{
+	// checkHeader(header);
+	mySerial5.readBytes(data, SRS200_SIZE);
+	// printSRSdata(data);
+}
+
+void printSRSdata(unsigned char data[10])
+{
+	long omega;
+
+	omega = (long)(data[3]<<24|data[2]<<16|data[1]<<8|data[0]);
+	t_new = micros();
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
+	// Serial.print(data[3]);
+	// Serial.print('\t');
+	// Serial.print(data[2]);
+	// Serial.print('\t');
+	// Serial.print(data[1]);
+	// Serial.print('\t');
+	// Serial.print(data[0]);
+	// Serial.print('\t');
+	if((data[3]>>7) == 1)
+		omega = omega - (long)(1<<32);
+	Serial.println(omega);
+	t_old = t_new;
+}
+#endif
+
+#ifdef ENABLE_SRS200
+unsigned char* checkHeader(unsigned char headerArr[2])
+{
+	unsigned char header[2], hold;
+	
+	mySerial5.readBytes(headerArr, 2);
+	hold = 1;
+	while(hold)
+	{
+		if(	(headerArr[0] == 0xC0) && 
+			(headerArr[1] == 0xC0)
+			){
+				// Serial.print("A");
+				// Serial.print(" ");
+				// Serial.print(headerArr[0], HEX);
+				// Serial.print(" ");
+				// Serial.println(headerArr[1], HEX);
+				hold = 0;
+				return headerArr ;
+			}
+		else {
+			// Serial.print("B");
+			// Serial.print(" ");
+			// Serial.print(headerArr[0], HEX);
+			// Serial.print(" ");
+			// Serial.println(headerArr[1], HEX);
+			headerArr[0] = headerArr[1];
+			headerArr[1] = mySerial5.read();
+			delayMicroseconds(100);
+		}
+	}
+}
+#endif
+
+void sendCmd(unsigned char addr, unsigned int value)
+{
+	Serial1.write(addr);
+	Serial1.write(value>>24 & 0xFF);
+	Serial1.write(value>>16 & 0xFF);
+	Serial1.write(value>>8 & 0xFF);
+	Serial1.write(value & 0xFF);
+	delay(1);
 }

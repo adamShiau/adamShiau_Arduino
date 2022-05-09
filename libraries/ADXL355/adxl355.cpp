@@ -1,4 +1,5 @@
 #include "adxl355.h"
+#include "adxl355.h"
 
 #define ADXL355_ADDR 		0x1D	//Adxl355 I2C address
 #define I2C_STANDARD_MODE 	100000
@@ -83,7 +84,6 @@ void Adxl355::init()
 void Adxl355::readData(unsigned char temp_a[9]) 
 {
 	int accX, accY, accZ;
-	
 	p_scl_mux_enable();
 	while(!(p_I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
 	temp_a[0] = p_I2CReadData(XDATA3_ADDR); 
@@ -98,7 +98,6 @@ void Adxl355::readData(unsigned char temp_a[9])
 	temp_a[7] = p_I2CReadData(ZDATA2_ADDR); 
 	temp_a[8] = p_I2CReadData(ZDATA1_ADDR); 
 	p_scl_mux_disable();
-	
 } 
 
 void Adxl355::readFakeData(unsigned char temp_a[9]) 
