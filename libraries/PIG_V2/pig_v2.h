@@ -7,6 +7,7 @@ class PIG
 {
 	public:
 		PIG(void);
+		~PIG(void);
 		void init(void);
 		void sendCmd(unsigned char, unsigned int);
 		void printVal(char [], int);

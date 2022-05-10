@@ -8,6 +8,7 @@ class Adxl355
 {
 	public:
 		Adxl355(int);
+		~Adxl355();
 		void init(void);
 		void setRegVal(unsigned char, unsigned char);
 		void printRegVal(char [], unsigned char, unsigned char);

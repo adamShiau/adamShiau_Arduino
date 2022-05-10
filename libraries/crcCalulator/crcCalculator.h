@@ -7,9 +7,10 @@
 class crcCal
 {
 	public:
-		crcCal();
-		uint8_t crc_8(uint8_t [], uint8_t );
-		uint32_t crc_32(uint8_t [], uint8_t );
+		crcCal(void);
+		~crcCal(void);
+		void crc_8(uint8_t [], uint8_t,  uint8_t*);
+		void crc_32(uint8_t [], uint8_t,  uint8_t*);
 	
 	private:
 	

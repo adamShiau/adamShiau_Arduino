@@ -15,6 +15,7 @@
 int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
+// uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
 
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd;
@@ -36,6 +37,7 @@ const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
 typedef void (*fn_ptr) (byte &, unsigned int);
 fn_ptr output_fn;
+
 Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 crcCal myCRC;
@@ -100,14 +102,14 @@ void setup() {
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
 	
 	/*** test ***/
-	sendCmd(99, 1);
-	run_fog_flag = 1;
+	// sendCmd(99, 1);
+	// run_fog_flag = 1;
 }
 
 void loop() {
 	// byte *a_adxl355, acc[9];
-	byte srs200[15], header_srs200[2];
-	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
+	// byte srs200[15], header_srs200[2];
+	// byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
 	// int wx_nano33, wy_nano33, wz_nano33;
 	// int ax_nano33, ay_nano33, az_nano33;
 	
@@ -376,10 +378,10 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				output_fn = temp_idle;
 				select_fn = SEL_EQ;
 				break;
-
+      }
       case MODE_IMU_MEMS: {
 				output_fn = acq_imu_mems;
-				select_fn = SEL_IMU;
+				select_fn = SEL_IMU_MEMS;
 				break;
 			}
 			default: break;
@@ -413,6 +415,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
+
 void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
 	byte header[4], data[17]; 
@@ -433,6 +436,8 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 	}
 	clear_SEL_EN(select_fn);	
 }
+
+
 
 void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 {
@@ -471,6 +476,7 @@ void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
 	}
 	clear_SEL_EN(select_fn);
 }
+
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
@@ -512,50 +518,64 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
+
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], nano33_w[6], nano33_a[6], CRC_8;
+	byte nano33_w[6], nano33_a[6];
+  byte adxl355_a[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  uint8_t CRC8, CRC32[4];
 
-  uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
-
+  
+  if(select_fn&SEL_IMU_MEMS) {
+    if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
+    else if(CTRLREG == STOP_SYNC) {
+      run_fog_flag = 0;
+    }
+	}
+  
 	trig_status[0] = digitalRead(SYS_TRIG);
-	if((trig_status[0] & ~trig_status[1])) {
-
-		adxl355.readData(adxl355_a);
+	if((trig_status[0] & ~trig_status[1] & run_fog_flag)) {
+ 
+    uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
+		// adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
+
 
     memcpy(imu_data, KVH_HEADER, 4);
     memcpy(imu_data+4, adxl355_a, 9);
     memcpy(imu_data+13, nano33_w, 6);
     memcpy(imu_data+19, nano33_a, 6);
-    CRC_8 = myCRC.crc_8(imu_data, 25);
-		
+    // myCRC.crc_8(imu_data, 25, &CRC8);
+    myCRC.crc_32(imu_data, 25, CRC32);
+
+		free(imu_data);
 		#ifdef UART_SERIAL_5
 		mySerial5.write(KVH_HEADER, 4);
 		mySerial5.write(adxl355_a, 9);
 		mySerial5.write(nano33_w, 6);
 		mySerial5.write(nano33_a, 6);
-    mySerial5.write(CRC_8);
+    mySerial5.write(CRC32, 4);
 		#endif
     #ifdef UART_USB 
 		Serial.write(KVH_HEADER, 4);
 		Serial.write(adxl355_a, 9);
 		Serial.write(nano33_w, 6);
 		Serial.write(nano33_a, 6);
-    Serial.write(CRC_8);
+    Serial.write(CRC32, 4);
 		#endif
     #ifdef UART_RS422 
 		Serial1.write(KVH_HEADER, 4);
 		Serial1.write(adxl355_a, 9);
 		Serial1.write(nano33_w, 6);
 		Serial1.write(nano33_a, 6);
-    Serial1.write(CRC_8);
+    Serial1.write(CRC32, 4);
 		#endif
-
 	}
+  //end of if-condition
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
+
 }
 
 void print_nano33XlmData(byte *data)

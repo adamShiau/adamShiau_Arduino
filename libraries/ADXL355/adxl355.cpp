@@ -66,6 +66,10 @@ Adxl355::Adxl355(int scl_en)
 	_scl_en = scl_en;
 }
 
+Adxl355::~Adxl355()
+{
+}
+
 void Adxl355::init() 
 {	
 	Wire.begin();

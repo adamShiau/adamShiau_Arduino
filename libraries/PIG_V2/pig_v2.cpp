@@ -33,6 +33,11 @@ PIG::PIG()
 	
 }
 
+PIG::~PIG()
+{
+	
+}
+
 void PIG::init()
 {
 	Serial.begin(230400);
