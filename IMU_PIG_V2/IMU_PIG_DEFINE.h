@@ -86,7 +86,7 @@
 #define SEL_FOG_3 		1<<3
 #define SEL_IMU 		1<<4
 #define SEL_EQ	 		1<<5
-#define SEL_RESERVED	1<<6
+#define SEL_IMU_MEMS	1<<6
 #define SEL_DEFAULT 	1<<7
 
 /*** MODE_RST CTRL REG***/
