@@ -38,5 +38,8 @@
 
 #define MOD_OFF_CMD  String("8F 0")
 
+#define DAC_RATIO  4000.0/32767.0 
+#define FREQ_RATIO 62500.0
+
 
 #endif
