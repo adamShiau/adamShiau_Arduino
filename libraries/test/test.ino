@@ -42,7 +42,6 @@ void setup() {
 		pinPeripheral(6, PIO_SERCOM_ALT); //TX
 	#endif
   Serial1.begin(115200);
-  xs.sayHello();
   xs.printTest();
 }
 
