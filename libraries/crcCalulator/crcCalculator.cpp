@@ -68,7 +68,8 @@ void crcCal::crc_32(uint8_t  message[], uint8_t nBytes, uint8_t *crc)
 		*(crc + i) = remainder >> (24 - (i<<3));
 		
 	}
-	// Serial.print(remainder, HEX);
+	
+	// Serial.println(remainder, HEX);
 	// Serial.print(", ");
 	// return (remainder);
 }

@@ -8,6 +8,7 @@ class Sparrow_read {
 	public :
 		Sparrow_read(Stream &);
 		~Sparrow_read(void);
+		void readData(unsigned char []);
 		void flushInputBuffer(void);
 		void gyroInitialize(int);
 		void sendComCmd(String);

@@ -17,16 +17,17 @@
 0~7 for output mode setting,
 8~255 for parameter setting
 ***************************/
-#define MUX_OUTPUT		0
-#define MUX_PARAMETER	1
-#define MUX_ESCAPE		2  
+#define MUX_OUTPUT		    0
+#define MUX_PARAMETER	    1
+#define MUX_ESCAPE		    2
 
-#define MODE_RST 	0
-#define MODE_FOG	1
-#define MODE_IMU	2
-#define MODE_EQ		3
+#define MODE_RST 	        0
+#define MODE_FOG	        1
+#define MODE_IMU	        2
+#define MODE_EQ		        3
 #define MODE_IMU_FAKE		4
 #define MODE_IMU_MEMS		5
+#define MODE_SPARROW_DEMO   6
 
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9
@@ -47,29 +48,29 @@
 #define CMD_FOG_INT_DELAY	24
 #define CMD_FOG_OUT_START	25
 
-#define MOD_FREQ_ADDR			0
-#define MOD_AMP_H_ADDR  		1
-#define MOD_AMP_L_ADDR  		2
-#define ERR_OFFSET_ADDR 		3
-#define POLARITY_ADDR  			4
-#define WAIT_CNT_ADDR  			5
-#define ERR_TH_ADDR  			6
-#define ERR_AVG_ADDR  			7
-#define TIMER_RST_ADDR  		8
-#define GAIN1_ADDR  			9
-#define GAIN2_ADDR  			10
-#define FB_ON_ADDR  			11
-#define CONST_STEP_ADDR  		12
-#define FPGA_Q_ADDR				13
-#define FPGA_R_ADDR  			14
-#define DAC_GAIN_ADDR  			50
-#define DATA_INT_DELAY_ADDR 	98
-#define DATA_OUT_START_ADDR		99
+#define MOD_FREQ_ADDR		0
+#define MOD_AMP_H_ADDR  	1
+#define MOD_AMP_L_ADDR  	2
+#define ERR_OFFSET_ADDR 	3
+#define POLARITY_ADDR  		4
+#define WAIT_CNT_ADDR  		5
+#define ERR_TH_ADDR  		6
+#define ERR_AVG_ADDR  		7
+#define TIMER_RST_ADDR  	8
+#define GAIN1_ADDR  		9
+#define GAIN2_ADDR  		10
+#define FB_ON_ADDR  		11
+#define CONST_STEP_ADDR  	12
+#define FPGA_Q_ADDR			13
+#define FPGA_R_ADDR  		14
+#define DAC_GAIN_ADDR  		50
+#define DATA_INT_DELAY_ADDR	98
+#define DATA_OUT_START_ADDR	99
 
 /*** UART port***/
-// #define UART_SERIAL_5 // mark this line to use USB
-// #define UART_USB
-#define UART_RS422
+// #define UART_SERIAL_5_CMD
+// #define UART_USB_CMD
+#define UART_RS422_CMD
 
 /*** ENABLE SRS200***/
 // #define ENABLE_SRS200
@@ -80,14 +81,15 @@
 #define CHECK_BYTE3		172
 
 /*** SEL EN table***/
-#define SEL_RST			1
-#define SEL_FOG_1 		1<<1
-#define SEL_FOG_2		1<<2
-#define SEL_FOG_3 		1<<3
-#define SEL_IMU 		1<<4
-#define SEL_EQ	 		1<<5
-#define SEL_IMU_MEMS	1<<6
-#define SEL_DEFAULT 	1<<7
+#define SEL_DEFAULT         0
+#define SEL_RST			    1
+#define SEL_FOG_1 		    1<<1
+#define SEL_FOG_2		    1<<2
+#define SEL_FOG_3 		    1<<3
+#define SEL_IMU 		    1<<4
+#define SEL_EQ	 		    1<<5
+#define SEL_IMU_MEMS	    1<<6
+#define SEL_SPARROW_DEMO 	1<<7
 
 /*** MODE_RST CTRL REG***/
 #define REFILL_SERIAL1 1
@@ -95,3 +97,4 @@
 #define INT_SYNC	1
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
+#define START_SPARROW 3

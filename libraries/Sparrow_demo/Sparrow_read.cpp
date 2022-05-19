@@ -1,13 +1,17 @@
 #include "Sparrow_read.h"
 
-Sparrow_read::Sparrow_read(Stream &p) 
+Sparrow_read::Sparrow_read(Stream &p) : port(p)
 {
-	port = p;
-	Serial.begin(115200);
+	Serial.begin(230400);
 }
 
 Sparrow_read::~Sparrow_read(void) {
 	
+}
+
+void Sparrow_read::readData(unsigned char data[6]) {
+    while(!port.available()) {};
+    port.readBytes(data, 6);
 }
 
 void Sparrow_read::flushInputBuffer()
@@ -176,27 +180,27 @@ void Sparrow_read::gyroInitialize(int dly)
 	delay(dly);
 	setModOff();
 	delay(dly);
-	setGain1(6);
+	setGain1(5);
 	delay(dly);
-	setGain2(6);	
+	setGain2(4);
 	delay(dly);
-	setModHigh(4096);
+	setModHigh(3697);
 	delay(dly);
 	setModLow(0);
 	delay(dly);
-	setModFreq(125);
+	setModFreq(170);
 	delay(dly);	
 	setPiVth(8191);
 	delay(dly);
 	setPolarity(1);
 	delay(dly);
-	setIgnor(32);
+	setIgnor(15);
 	delay(dly);
 	setOffset(0);
 	delay(dly);
 	setStepVth(0);
 	delay(dly);
-	setAVG(4);
+	setAVG(6);
 	delay(dly);
 	setFstIntegratorLimit();
 	delay(dly);

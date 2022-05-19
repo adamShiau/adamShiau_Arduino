@@ -5,6 +5,8 @@
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
+#include "SparrowParaDefine.h"
+#include "Sparrow_read.h"
 
 #ifdef PWM_SYNC
 	#include <SAMD21turboPWM.h>
@@ -42,40 +44,29 @@ Adxl355 adxl355(pin_scl_mux);
 PIG pig_v2;
 crcCal myCRC;
 
-#ifdef UART_SERIAL_5
+
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 void SERCOM0_Handler() 
 {
 	mySerial5.IrqHandler();
 }
-#endif
+
+Sparrow_read sparrow(mySerial5);
 
 #ifdef ENABLE_SRS200
-#define SRS200_SIZE 15
-Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-void SERCOM0_Handler() 
-{
-	mySerial5.IrqHandler();
-}
+    #define SRS200_SIZE 15
 #endif
 
 TurboPWM  pwm;
 
 void setup() {
 	Serial.begin(230400);
-	Serial1.begin(230400); //to FPGA
-	#ifdef UART_SERIAL_5
-		mySerial5.begin(230400); //rx:p5, tx:p6
-		// Reassign pins 5 and 6 to SERCOM alt
-		pinPeripheral(5, PIO_SERCOM_ALT); //RX
-		pinPeripheral(6, PIO_SERCOM_ALT); //TX
-	#endif
-	#ifdef ENABLE_SRS200
-		mySerial5.begin(115200); //rx:p5, tx:p6
-		// Reassign pins 5 and 6 to SERCOM alt
-		pinPeripheral(5, PIO_SERCOM_ALT); //RX
-		pinPeripheral(6, PIO_SERCOM_ALT); //TX
-	#endif
+	Serial1.begin(230400); //to PC
+
+    mySerial5.begin(115200); //rx:p5, tx:p6
+    // Reassign pins 5 and 6 to SERCOM alt
+    pinPeripheral(5, PIO_SERCOM_ALT); //RX
+    pinPeripheral(6, PIO_SERCOM_ALT); //TX
 	
 	IMU.begin();
 	adxl355.init();
@@ -100,40 +91,22 @@ void setup() {
 	***/
 	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
-	
-	/*** test ***/
-	// sendCmd(99, 1);
-	// run_fog_flag = 1;
+	                                // current setup: 120000/240/2 = 250Hz
+    /*--- for Sparrow demo ---*/
+    delay(1000);
+    sparrow.gyroInitialize(50);
+	sparrow.flushInputBuffer();
+	Serial.print("initial buffer: ");
+	Serial.println(mySerial5.available());
+// 	sparrow.startRead(1);
 }
 
 void loop() {
-	// byte *a_adxl355, acc[9];
-	// byte srs200[15], header_srs200[2];
-	// byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
-	// int wx_nano33, wy_nano33, wz_nano33;
-	// int ax_nano33, ay_nano33, az_nano33;
-	
-	getCmdValue_v2(cmd, value, cmd_complete);
+	getCmdValue(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-	
-	/*** 
-	trig_status[0] = digitalRead(SYS_TRIG);
-	if((trig_status[0] & ~trig_status[1])) 
-	{
-		adxl355.readData(adxl355_a);
-		IMU.readGyroscope(nano33_w);
-		IMU.readAcceleration(nano33_a);
-		#ifdef ENABLE_SRS200
-			readSRS200Data(header_srs200, srs200);
-		#endif
-		pig_v2.readDataCRC(header, fog);
-	}
-	trig_status[1] = trig_status[0];
-	***/
-	
 }
 
 void printAdd(char name[], void* addr)
@@ -212,90 +185,21 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-
 void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
-{
-	#ifdef UART_SERIAL_5
-	if (mySerial5.available()){
-		Serial.println(mySerial5.available());
-	#else
-	if (Serial.available()){
-	#endif
-		switch(rx_cnt) {
-			case 0: {
-				#ifdef UART_SERIAL_5
-				uart_cmd = mySerial5.read();
-				#else
-				uart_cmd = Serial.read();
-				#endif
-				
-				rx_cnt = 1;
-				break;
-			}
-			case 1: {
-				#ifdef UART_SERIAL_5
-				uart_value = mySerial5.read()<<24;
-				#else
-				uart_value = Serial.read()<<24;
-				#endif
-				
-				rx_cnt = 2;
-				break;
-			}
-			case 2: {
-				#ifdef UART_SERIAL_5
-				uart_value |= mySerial5.read()<<16;
-				#else
-				uart_value |= Serial.read()<<16;
-				#endif
-				
-				rx_cnt = 3;
-				break;
-			}
-			case 3: {
-				#ifdef UART_SERIAL_5
-				uart_value |= mySerial5.read()<<8;
-				#else
-				uart_value |= Serial.read()<<8;
-				#endif
-				
-				rx_cnt = 4;
-				break;
-			}
-			case 4: {
-				#ifdef UART_SERIAL_5
-				uart_value |= mySerial5.read();
-				#else
-				uart_value |= Serial.read();
-				#endif
-				
-				rx_cnt = 0;
-				uart_complete = 1;
-				printVal_0("cmd", uart_cmd);
-				printVal_0("rx", uart_value);
-				printVal_0("rx_cnt", rx_cnt);
-				break;
-			}
-		}
-	}
-}
-
-
-void getCmdValue_v2(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 {
 	byte cmd[5];
 		
-	#ifdef UART_SERIAL_5
+	#ifdef UART_SERIAL_5_CMD
     while (mySerial5.available()>0){
       mySerial5.readBytes((char*)cmd, 5);
-  #endif
+    #endif
 
-  #ifdef UART_RS422
+    #ifdef UART_RS422_CMD
     while (Serial1.available()>0){
       Serial1.readBytes((char*)cmd, 5);
-  #endif
+    #endif
 
-	#ifdef UART_USB
+	#ifdef UART_USB_CMD
     while (Serial.available()>0){
       Serial.readBytes((char*)cmd, 5);
 	#endif
@@ -378,14 +282,19 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				output_fn = temp_idle;
 				select_fn = SEL_EQ;
 				break;
-      }
+            }
       case MODE_IMU_MEMS: {
-				output_fn = acq_imu_mems;
-				select_fn = SEL_IMU_MEMS;
-				break;
-			}
-			default: break;
-		}
+          output_fn = acq_imu_mems;
+          select_fn = SEL_IMU_MEMS;
+          break;
+      }
+      case MODE_SPARROW_DEMO: {
+          output_fn = acq_imu_sparrow;
+          select_fn = SEL_SPARROW_DEMO ;
+          break;
+      }
+      default: break;
+      }
 		
 		// printVal_0("in output_mode_setting");
 		// printVal_0("mux_flag", mux_flag);
@@ -522,61 +431,162 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
 {
 	byte nano33_w[6], nano33_a[6];
-  byte adxl355_a[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  uint8_t CRC8, CRC32[4];
+    byte adxl355_a[9];
+    uint8_t CRC8, CRC32[4];
 
   
-  if(select_fn&SEL_IMU_MEMS) {
-    if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
-    else if(CTRLREG == STOP_SYNC) {
-      run_fog_flag = 0;
+    if(select_fn&SEL_IMU_MEMS)
+    {
+        if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
+        else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
     }
-	}
   
 	trig_status[0] = digitalRead(SYS_TRIG);
-	if((trig_status[0] & ~trig_status[1] & run_fog_flag)) {
- 
-    uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
-		// adxl355.readData(adxl355_a);
-		IMU.readGyroscope(nano33_w);
-		IMU.readAcceleration(nano33_a);
+	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
+	{
 
+        uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
+        adxl355.readData(adxl355_a);
+        IMU.readGyroscope(nano33_w);
+        IMU.readAcceleration(nano33_a);
 
-    memcpy(imu_data, KVH_HEADER, 4);
-    memcpy(imu_data+4, adxl355_a, 9);
-    memcpy(imu_data+13, nano33_w, 6);
-    memcpy(imu_data+19, nano33_a, 6);
-    // myCRC.crc_8(imu_data, 25, &CRC8);
-    myCRC.crc_32(imu_data, 25, CRC32);
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+        // myCRC.crc_8(imu_data, 25, &CRC8);
+        myCRC.crc_32(imu_data, 25, CRC32);
 
-		free(imu_data);
-		#ifdef UART_SERIAL_5
-		mySerial5.write(KVH_HEADER, 4);
-		mySerial5.write(adxl355_a, 9);
-		mySerial5.write(nano33_w, 6);
-		mySerial5.write(nano33_a, 6);
-    mySerial5.write(CRC32, 4);
-		#endif
-    #ifdef UART_USB 
-		Serial.write(KVH_HEADER, 4);
-		Serial.write(adxl355_a, 9);
-		Serial.write(nano33_w, 6);
-		Serial.write(nano33_a, 6);
-    Serial.write(CRC32, 4);
-		#endif
-    #ifdef UART_RS422 
-		Serial1.write(KVH_HEADER, 4);
-		Serial1.write(adxl355_a, 9);
-		Serial1.write(nano33_w, 6);
-		Serial1.write(nano33_a, 6);
-    Serial1.write(CRC32, 4);
-		#endif
+        free(imu_data);
+        #ifdef UART_SERIAL_5_CMD
+            mySerial5.write(KVH_HEADER, 4);
+            mySerial5.write(adxl355_a, 9);
+            mySerial5.write(nano33_w, 6);
+            mySerial5.write(nano33_a, 6);
+             mySerial5.write(CRC32, 4);
+        #endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4);
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(CRC32, 4);
+        #endif
+        #ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+            Serial1.write(CRC32, 4);
+        #endif
 	}
-  //end of if-condition
+    /*--end of if-condition--*/
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
-
 }
+
+void acq_imu_sparrow(byte &select_fn, unsigned int CTRLREG)
+{
+    byte nano33_w[6], nano33_a[6], sparrow_w[6];
+    byte adxl355_a[9];
+    uint8_t CRC32[4];
+
+    if(select_fn&SEL_SPARROW_DEMO)
+    {
+        switch(CTRLREG)
+        {
+            case INT_SYNC:
+                run_fog_flag = 1;
+                break;
+            case EXT_SYNC:
+                run_fog_flag = 1;
+                break;
+            case STOP_SYNC:
+                run_fog_flag = 0;
+                sparrow.setStop();
+                break;
+            case START_SPARROW:
+                sparrow.startRead(1);
+                break;
+            default:
+                break;
+        }
+//         if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
+//         else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
+//         sparrow.startRead(1);
+    }
+
+	trig_status[0] = digitalRead(SYS_TRIG);
+	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
+	{
+
+        uint8_t* imu_data = (uint8_t*)malloc(31); // 6+9+4+6+6
+		adxl355.readData(adxl355_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+		sparrow.readData(sparrow_w);
+        convertGyro(sparrow_w);
+
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+        memcpy(imu_data+25, sparrow_w, 6);
+        myCRC.crc_32(imu_data, 31, CRC32);
+		free(imu_data);
+
+        #ifdef UART_SERIAL_5_CMD
+            mySerial5.write(KVH_HEADER, 4);      
+            mySerial5.write(adxl355_a, 9);
+            mySerial5.write(nano33_w, 6);
+            mySerial5.write(nano33_a, 6);
+            mySerial5.write(sparrow_w, 6);
+            mySerial5.write(CRC32, 4);
+        #endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4); 
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(sparrow_w, 6);
+            Serial.write(CRC32, 4);
+        #endif
+        #ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+            Serial1.write(sparrow_w, 6);
+            Serial1.write(CRC32, 4);
+        #endif
+	}
+    /*--end of if-condition--*/
+	trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
+
+
+void convertGyro(byte data[6])
+{
+	int fog=0;
+
+	fog = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
+  // fog = fog
+    Serial.print(data[0], HEX);
+    Serial.print("\t");
+    Serial.print(data[1], HEX);
+    Serial.print("\t");
+    Serial.print(data[2], HEX);
+    Serial.print("\t");
+    Serial.print(data[3], HEX);
+    Serial.print("\t");
+    Serial.print(data[4], HEX);
+    Serial.print("\t");
+    Serial.print(data[5], HEX);
+    Serial.print("\t");
+	Serial.println(fog);
+};
+
 
 void print_nano33XlmData(byte *data)
 {
