@@ -28,7 +28,7 @@
 #define STOP_SYNC 	1<<2
 
 
-PIG::PIG()
+PIG::PIG(Stream &p ) : port(p)
 {
 	
 }
@@ -41,17 +41,16 @@ PIG::~PIG()
 void PIG::init()
 {
 	Serial.begin(230400);
-	Serial1.begin(115200);
 	p_time_cnt = 0;
 }
 
 void PIG::sendCmd(unsigned char addr, unsigned int value)
 {
-	Serial1.write(addr);
-	Serial1.write(value>>24 & 0xFF);
-	Serial1.write(value>>16 & 0xFF);
-	Serial1.write(value>>8 & 0xFF);
-	Serial1.write(value & 0xFF);
+	port.write(addr);
+	port.write(value>>24 & 0xFF);
+	port.write(value>>16 & 0xFF);
+	port.write(value>>8 & 0xFF);
+	port.write(value & 0xFF);
 	delay(1);
 }
 
@@ -88,21 +87,34 @@ void PIG::printVal(char name[], int val)
 	Serial.println(val);
 }
 
-void PIG::readData(unsigned char data[16])
+void PIG::readData(unsigned char header[2], unsigned char data[10])
 {
-	unsigned char val1, val2, val3;
-	unsigned int time, PD_T;
-	int err, step;
-	
-	Serial1.readBytes(&val1, 1);
-	Serial1.readBytes(&val3, 1);
-	while(val1 != CHECK_BYTE or val3 != CHECK_BYTE3){
-		val1 = val3;
-		Serial1.readBytes(&val3, 1);
-	}
-	Serial1.readBytes(data, 16);
-	Serial1.readBytes(&val2, 1);
+    alignHeader_2B(header);
+    port.readBytes(data, 10);
+    printData(data);
 }
+
+void PIG::printData(unsigned char data[10])
+{
+    int err, step, pd_T;
+
+    err = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
+    step = data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7];
+    pd_T = data[8] + data[9]>>7;
+
+    Serial.print(port.available());
+    Serial.print(", ");
+    Serial.print(err);
+    Serial.print(", ");
+    Serial.println(step);
+}
+
+//void PIG::convert2Sign_4B(unsigned char data[4]):
+//    shift_data = (datain[1] << 8 | datain[0])
+//    if (datain[1] >> 7) == 1:
+//        return shift_data - (1 << 16)
+//    else:
+//        return shift_data
 
 void PIG::readFakeDataCRC(unsigned char header[4], unsigned char data[17])
 {
@@ -121,42 +133,101 @@ void PIG::readFakeDataCRC(unsigned char header[4], unsigned char data[17])
 
 void PIG::readDataCRC(unsigned char header[4], unsigned char data[17])
 {
-	checkHeader(header);
-	Serial1.readBytes(data, 17);
+	alignHeader_4B(header);
+	port.readBytes(data, 17);
 }
 
 unsigned char* PIG::checkFakeHeader(unsigned char headerArr[4])
 {
-	headerArr[0] = HEADER[0];
-	headerArr[1] = HEADER[1];
-	headerArr[2] = HEADER[2];
-	headerArr[3] = HEADER[3];
+	headerArr[0] = KVH_HEADER[0];
+	headerArr[1] = KVH_HEADER[1];
+	headerArr[2] = KVH_HEADER[2];
+	headerArr[3] = KVH_HEADER[3];
 }
 
-unsigned char* PIG::checkHeader(unsigned char headerArr[4])
+unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 {
-	unsigned char header[4], hold;
-	
-	Serial1.readBytes(headerArr, 4);
-	hold = 1;
-	while(hold)
+	unsigned char header[2];
+
+	port.readBytes(headerArr, 2);
+	while(1)
 	{
-		if(	(headerArr[0] == HEADER[0]) && 
-			(headerArr[1] == HEADER[1]) && 
-			(headerArr[2] == HEADER[2]) && 
-			(headerArr[3] == HEADER[3]) 
-			){
-				hold = 0;
-				return headerArr ;
-			}
+
+		if( (headerArr[0] == PIG_HEADER[0]) &&
+		    headerArr[1] == PIG_HEADER[1]
+		    )
+		{
+//            Serial.print("PASS: ");
+//            Serial.print(headerArr[0], HEX);
+//            Serial.print("\t");
+//            Serial.print(headerArr[1], HEX);
+		    return headerArr ;
+		}
+
+
+		else {
+			headerArr[0] = headerArr[1];
+			headerArr[1] = port.read();
+//			delayMicroseconds(10);
+//            Serial.print("FAIL: ");
+//			Serial.print(headerArr[0], HEX);
+//            Serial.print("\t");
+//            Serial.println(headerArr[1], HEX);
+		}
+	}
+}
+
+unsigned char* PIG::alignHeader_4B(unsigned char headerArr[4])
+{
+	unsigned char header[4];
+
+	port.readBytes(headerArr, 4);
+	while(1)
+	{
+		if( (headerArr[0] == KVH_HEADER[0]) &&
+		    headerArr[1] == KVH_HEADER[1] &&
+		    headerArr[2] == KVH_HEADER[2] &&
+		    headerArr[3] == KVH_HEADER[3]
+		    )
+		   {
+		    return headerArr ;
+		   }
+
+
+
 		else {
 			headerArr[0] = headerArr[1];
 			headerArr[1] = headerArr[2];
 			headerArr[2] = headerArr[3];
-			headerArr[3] = Serial1.read();
+			headerArr[3] = port.read();
 		}
 	}
 }
+
+//unsigned char* PIG::alignHeader_4B(unsigned char headerArr[4])
+//{
+//	unsigned char header[4], hold;
+//
+//	port.readBytes(headerArr, 4);
+//	hold = 1;
+//	while(hold)
+//	{
+//		if(	(headerArr[0] == HEADER[0]) &&
+//			(headerArr[1] == HEADER[1]) &&
+//			(headerArr[2] == HEADER[2]) &&
+//			(headerArr[3] == HEADER[3])
+//			){
+//				hold = 0;
+//				return headerArr ;
+//			}
+//		else {
+//			headerArr[0] = headerArr[1];
+//			headerArr[1] = headerArr[2];
+//			headerArr[2] = headerArr[3];
+//			headerArr[3] = port.read();
+//		}
+//	}
+//}
 
 void PIG::resetFakeDataTime()
 {
@@ -190,14 +261,14 @@ void PIG::readData_debug(unsigned char data[16])
 	unsigned int time, PD_T;
 	int err, step;
 	
-	Serial1.readBytes(&val1, 1);
-	Serial1.readBytes(&val3, 1);
+	port.readBytes(&val1, 1);
+	port.readBytes(&val3, 1);
 	while(val1 != CHECK_BYTE or val3 != CHECK_BYTE3){
 		val1 = val3;
-		Serial1.readBytes(&val3, 1);
+		port.readBytes(&val3, 1);
 	}
-	Serial1.readBytes(data, 16);
-	Serial1.readBytes(&val2, 1);
+	port.readBytes(data, 16);
+	port.readBytes(&val2, 1);
 	time = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
 	err  = (int)(data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7]);
 	step = (int)(data[8]<<24 | data[9]<<16 | data[10]<<8 | data[11]);

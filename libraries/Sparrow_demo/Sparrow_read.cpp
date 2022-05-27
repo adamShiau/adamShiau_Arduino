@@ -184,7 +184,7 @@ void Sparrow_read::gyroInitialize(int dly)
 	delay(dly);
 	setGain2(4);
 	delay(dly);
-	setModHigh(3697);
+	setModHigh(3869);
 	delay(dly);
 	setModLow(0);
 	delay(dly);
@@ -194,7 +194,7 @@ void Sparrow_read::gyroInitialize(int dly)
 	delay(dly);
 	setPolarity(1);
 	delay(dly);
-	setIgnor(15);
+	setIgnor(25);
 	delay(dly);
 	setOffset(0);
 	delay(dly);

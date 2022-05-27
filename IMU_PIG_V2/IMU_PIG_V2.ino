@@ -36,12 +36,12 @@ byte select_fn;
 
 /*** KVH HEADER ***/
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
+const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
 
 typedef void (*fn_ptr) (byte &, unsigned int);
 fn_ptr output_fn;
 
 Adxl355 adxl355(pin_scl_mux);
-PIG pig_v2;
 crcCal myCRC;
 
 
@@ -52,6 +52,7 @@ void SERCOM0_Handler()
 }
 
 Sparrow_read sparrow(mySerial5);
+PIG pig_v2(mySerial5);
 
 #ifdef ENABLE_SRS200
     #define SRS200_SIZE 15
@@ -92,10 +93,11 @@ void setup() {
 	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
 	                                // current setup: 120000/240/2 = 250Hz
+	                                // step = 600 for 100Hz
     /*--- for Sparrow demo ---*/
     delay(1000);
-    sparrow.gyroInitialize(50);
-	sparrow.flushInputBuffer();
+//     sparrow.gyroInitialize(50);
+// 	sparrow.flushInputBuffer();
 	Serial.print("initial buffer: ");
 	Serial.println(mySerial5.available());
 // 	sparrow.startRead(1);
@@ -327,69 +329,47 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 
 void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
-	byte header[4], data[17]; 
+	byte header[2], fog[10];
+	uint8_t CRC32[4];
 	
 	if(select_fn&SEL_FOG_1)
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
-	if(run_fog_flag){
-		pig_v2.readDataCRC(header, data);
-		#ifdef UART_SERIAL_5
-		mySerial5.write(header, 4);
-		mySerial5.write(data, 17);
-		#else
-		Serial.write(header, 4);
-		Serial.write(data, 17);
-		#endif
+
+	trig_status[0] = digitalRead(SYS_TRIG);
+
+	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+	    t_new = micros();
+
+	    uint8_t* imu_data = (uint8_t*)malloc(12); // header:2 + data:10
+        pig_v2.readData(header, fog);
+        memcpy(imu_data, PIG_HEADER, 2);
+        memcpy(imu_data+2, fog, 10);
+        myCRC.crc_32(imu_data, 12, CRC32);
+        free(imu_data);
+
+		#ifdef UART_SERIAL_5_CMD
+        mySerial5.write(header, 2);
+        mySerial5.write(fog, 10);
+        mySerial5.write(CRC32, 4);
+        #endif
+        #ifdef UART_RS422_CMD
+        Serial1.write(header, 2);
+        Serial1.write(fog, 10);
+        Serial1.write(CRC32, 4);
+        #endif
+//         Serial.println(t_new - t_old);
+        t_old = t_new;
 	}
 	clear_SEL_EN(select_fn);	
 }
 
-
-
-void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
-{
-	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
-	
-	if(select_fn&SEL_IMU) 
-	{
-		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-	}
-	// adxl355.readFakeData(adxl355_a);
-	// IMU.readFakeGyroscope(nano33_w);
-	// IMU.readFakeAcceleration(nano33_a);
-	if(run_fog_flag){
-		// adxl355.readFakeData(adxl355_a);
-    adxl355.readData(adxl355_a);
-		// IMU.readFakeGyroscope(nano33_w);
-		// IMU.readFakeAcceleration(nano33_a);
-		IMU.readGyroscope(nano33_w);
-		IMU.readAcceleration(nano33_a);
-		pig_v2.readFakeDataCRC(header, fog);
-    #ifdef UART_RS422
-      Serial1.write(header, 4);
-      Serial1.write(fog, 17);
-      Serial1.write(adxl355_a, 9);
-      Serial1.write(nano33_w, 6);
-      Serial1.write(nano33_a, 6);
-    #endif
-		#ifdef UART_USB
-      Serial.write(header, 4);
-      Serial.write(fog, 17);
-      Serial.write(adxl355_a, 9);
-      Serial.write(nano33_w, 6);
-      Serial.write(nano33_a, 6);
-    #endif
-		delay(10);
-	}
-	clear_SEL_EN(select_fn);
-}
-
-
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
+	byte adxl355_a[9], header[2], fog[10], nano33_w[6], nano33_a[6];
+	uint8_t CRC32[4];
+
 	#ifdef ENABLE_SRS200
 		byte srs200[SRS200_SIZE], header_srs200[2];
 	#endif
@@ -397,35 +377,117 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
 	}
 	trig_status[0] = digitalRead(SYS_TRIG);
+
 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+        t_new = micros();
 
 		#ifdef ENABLE_SRS200
 			readSRS200Data(header_srs200, srs200);
 		#endif
+
+		uint8_t* imu_data = (uint8_t*)malloc(35); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:10
+
+        pig_v2.readData(header, fog);
 		adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
-		pig_v2.readDataCRC(header, fog);
-		#ifdef UART_SERIAL_5
-		mySerial5.write(header, 4);
-		mySerial5.write(fog, 17);
-		mySerial5.write(adxl355_a, 9);
-		mySerial5.write(nano33_w, 6);
-		mySerial5.write(nano33_a, 6);
-		#else
-		Serial.write(header, 4);
-		Serial.write(fog, 17);
-		Serial.write(adxl355_a, 9);
-		Serial.write(nano33_w, 6);
-		Serial.write(nano33_a, 6);
+
+
+		memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+        memcpy(imu_data+25, fog, 10);
+        myCRC.crc_32(imu_data, 35, CRC32);
+        free(imu_data);
+// 		print_adxl355Data(adxl355_a);
+
+		#ifdef UART_SERIAL_5_CMD
+            mySerial5.write(KVH_HEADER, 4);
+            mySerial5.write(adxl355_a, 9);
+            mySerial5.write(nano33_w, 6);
+            mySerial5.write(nano33_a, 6);
+            mySerial5.write(fog, 10);
+            mySerial5.write(CRC32, 4);
+		#endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4);
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(fog, 10);
+            Serial.write(CRC32, 4);
+		#endif
+		#ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+            Serial1.write(fog, 10);
+            Serial1.write(CRC32, 4);
 		#endif
 		#ifdef ENABLE_SRS200
 			Serial.write(srs200, SRS200_SIZE);
 		#endif
+// 		Serial.println(t_new - t_old);
+        t_old = t_new;
 	}
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
+
+// void acq_imu(byte &select_fn, unsigned int CTRLREG)
+// {
+// 	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
+// 	#ifdef ENABLE_SRS200
+// 		byte srs200[SRS200_SIZE], header_srs200[2];
+// 	#endif
+// 	if(select_fn&SEL_IMU) {
+// 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+// 	}
+// 	trig_status[0] = digitalRead(SYS_TRIG);
+//
+// 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+//         t_new = micros();
+//
+// 		#ifdef ENABLE_SRS200
+// 			readSRS200Data(header_srs200, srs200);
+// 		#endif
+// 		adxl355.readData(adxl355_a);
+// 		IMU.readGyroscope(nano33_w);
+// 		IMU.readAcceleration(nano33_a);
+// 		pig_v2.readDataCRC(header, fog);
+// 		print_adxl355Data(adxl355_a);
+// 		#ifdef UART_SERIAL_5_CMD
+//             mySerial5.write(header, 4);
+//             mySerial5.write(fog, 17);
+//             mySerial5.write(adxl355_a, 9);
+//             mySerial5.write(nano33_w, 6);
+//             mySerial5.write(nano33_a, 6);
+// 		#endif
+//         #ifdef UART_USB_CMD
+//             Serial.write(header, 4);
+//             Serial.write(fog, 17);
+//             Serial.write(adxl355_a, 9);
+//             Serial.write(nano33_w, 6);
+//             Serial.write(nano33_a, 6);
+// 		#endif
+// 		#ifdef UART_RS422_CMD
+//             Serial1.write(header, 4);
+//             Serial1.write(fog, 17);
+//             Serial1.write(adxl355_a, 9);
+//             Serial1.write(nano33_w, 6);
+//             Serial1.write(nano33_a, 6);
+// 		#endif
+// 		#ifdef ENABLE_SRS200
+// 			Serial.write(srs200, SRS200_SIZE);
+// 		#endif
+// 		Serial.println(t_new - t_old);
+//         t_old = t_new;
+// 	}
+// 	trig_status[1] = trig_status[0];
+// 	clear_SEL_EN(select_fn);
+// }
 
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
@@ -454,10 +516,9 @@ void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+4, adxl355_a, 9);
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
-        // myCRC.crc_8(imu_data, 25, &CRC8);
         myCRC.crc_32(imu_data, 25, CRC32);
-
         free(imu_data);
+
         #ifdef UART_SERIAL_5_CMD
             mySerial5.write(KVH_HEADER, 4);
             mySerial5.write(adxl355_a, 9);
@@ -525,7 +586,7 @@ void acq_imu_sparrow(byte &select_fn, unsigned int CTRLREG)
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
 		sparrow.readData(sparrow_w);
-        convertGyro(sparrow_w);
+        // convertGyro(sparrow_w);
 
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, adxl355_a, 9);
@@ -552,12 +613,15 @@ void acq_imu_sparrow(byte &select_fn, unsigned int CTRLREG)
             Serial.write(CRC32, 4);
         #endif
         #ifdef UART_RS422_CMD
+            t_new = micros();
             Serial1.write(KVH_HEADER, 4);
             Serial1.write(adxl355_a, 9);
             Serial1.write(nano33_w, 6);
             Serial1.write(nano33_a, 6);
             Serial1.write(sparrow_w, 6);
             Serial1.write(CRC32, 4);
+            Serial.println(t_new - t_old);
+            t_old = t_new;
         #endif
 	}
     /*--end of if-condition--*/
@@ -565,6 +629,44 @@ void acq_imu_sparrow(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
+
+void acq_imu_fake(byte &select_fn, unsigned int CTRLREG)
+{
+	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
+
+	if(select_fn&SEL_IMU)
+	{
+		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+	}
+	// adxl355.readFakeData(adxl355_a);
+	// IMU.readFakeGyroscope(nano33_w);
+	// IMU.readFakeAcceleration(nano33_a);
+	if(run_fog_flag){
+		// adxl355.readFakeData(adxl355_a);
+    adxl355.readData(adxl355_a);
+		// IMU.readFakeGyroscope(nano33_w);
+		// IMU.readFakeAcceleration(nano33_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+		pig_v2.readFakeDataCRC(header, fog);
+    #ifdef UART_RS422
+      Serial1.write(header, 4);
+      Serial1.write(fog, 17);
+      Serial1.write(adxl355_a, 9);
+      Serial1.write(nano33_w, 6);
+      Serial1.write(nano33_a, 6);
+    #endif
+		#ifdef UART_USB
+      Serial.write(header, 4);
+      Serial.write(fog, 17);
+      Serial.write(adxl355_a, 9);
+      Serial.write(nano33_w, 6);
+      Serial.write(nano33_a, 6);
+    #endif
+		delay(10);
+	}
+	clear_SEL_EN(select_fn);
+}
 
 void convertGyro(byte data[6])
 {
