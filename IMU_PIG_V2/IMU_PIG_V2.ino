@@ -367,7 +367,7 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], header[2], fog[10], nano33_w[6], nano33_a[6];
+	byte adxl355_a[9], header[2], fog[14], nano33_w[6], nano33_a[6];
 	uint8_t CRC32[4];
 
 	#ifdef ENABLE_SRS200
@@ -385,9 +385,9 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 			readSRS200Data(header_srs200, srs200);
 		#endif
 
-		uint8_t* imu_data = (uint8_t*)malloc(35); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:10
+		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
-        pig_v2.readData(header, fog);
+    pig_v2.readData(header, fog);
 		adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
@@ -397,8 +397,8 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+4, adxl355_a, 9);
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
-        memcpy(imu_data+25, fog, 10);
-        myCRC.crc_32(imu_data, 35, CRC32);
+        memcpy(imu_data+25, fog, 14);
+        myCRC.crc_32(imu_data, 39, CRC32);
         free(imu_data);
 // 		print_adxl355Data(adxl355_a);
 
@@ -407,7 +407,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
             mySerial5.write(adxl355_a, 9);
             mySerial5.write(nano33_w, 6);
             mySerial5.write(nano33_a, 6);
-            mySerial5.write(fog, 10);
+            mySerial5.write(fog, 14);
             mySerial5.write(CRC32, 4);
 		#endif
         #ifdef UART_USB_CMD
@@ -415,7 +415,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
             Serial.write(adxl355_a, 9);
             Serial.write(nano33_w, 6);
             Serial.write(nano33_a, 6);
-            Serial.write(fog, 10);
+            Serial.write(fog, 14);
             Serial.write(CRC32, 4);
 		#endif
 		#ifdef UART_RS422_CMD
@@ -423,7 +423,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
             Serial1.write(adxl355_a, 9);
             Serial1.write(nano33_w, 6);
             Serial1.write(nano33_a, 6);
-            Serial1.write(fog, 10);
+            Serial1.write(fog, 14);
             Serial1.write(CRC32, 4);
 		#endif
 		#ifdef ENABLE_SRS200

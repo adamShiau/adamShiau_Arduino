@@ -87,22 +87,26 @@ void PIG::printVal(char name[], int val)
 	Serial.println(val);
 }
 
-void PIG::readData(unsigned char header[2], unsigned char data[10])
+void PIG::readData(unsigned char header[2], unsigned char data[14])
 {
     alignHeader_2B(header);
-    port.readBytes(data, 10);
-    printData(data);
+    port.readBytes(data, 14);
+    // printData(data);
 }
 
-void PIG::printData(unsigned char data[10])
+void PIG::printData(unsigned char data[14])
 {
     int err, step, pd_T;
+	uint32_t time;
 
-    err = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
-    step = data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7];
-    pd_T = data[8] + data[9]>>7;
+    time = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
+    err = data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7];
+	step = data[8]<<24 | data[9]<<16 | data[10]<<8 | data[11];
+    pd_T = data[12] + data[13]>>7;
 
     Serial.print(port.available());
+    Serial.print(", ");
+	Serial.print(time);
     Serial.print(", ");
     Serial.print(err);
     Serial.print(", ");
@@ -157,10 +161,10 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		    headerArr[1] == PIG_HEADER[1]
 		    )
 		{
-//            Serial.print("PASS: ");
-//            Serial.print(headerArr[0], HEX);
-//            Serial.print("\t");
-//            Serial.print(headerArr[1], HEX);
+           Serial.print("PASS: ");
+           Serial.print(headerArr[0], HEX);
+           Serial.print("\t");
+           Serial.print(headerArr[1], HEX);
 		    return headerArr ;
 		}
 
@@ -168,11 +172,12 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		else {
 			headerArr[0] = headerArr[1];
 			headerArr[1] = port.read();
-//			delayMicroseconds(10);
-//            Serial.print("FAIL: ");
-//			Serial.print(headerArr[0], HEX);
-//            Serial.print("\t");
-//            Serial.println(headerArr[1], HEX);
+			
+           Serial.print("FAIL: ");
+			Serial.print(headerArr[0], HEX);
+           Serial.print("\t");
+           Serial.println(headerArr[1], HEX);
+		   delayMicroseconds(10);
 		}
 	}
 }
