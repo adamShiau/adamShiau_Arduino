@@ -28,6 +28,7 @@
 #define MODE_IMU_FAKE		4
 #define MODE_IMU_MEMS		5
 #define MODE_SPARROW_DEMO   6
+#define MODE_IMU_MEMS_GPS   7
 
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9

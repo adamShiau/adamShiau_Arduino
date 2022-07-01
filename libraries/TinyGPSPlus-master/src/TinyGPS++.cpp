@@ -412,6 +412,7 @@ uint8_t TinyGPSDate::day()
 uint8_t TinyGPSTime::hour()
 {
    updated = false;
+  //  Serial.println(time);
    return time / 1000000;
 }
 

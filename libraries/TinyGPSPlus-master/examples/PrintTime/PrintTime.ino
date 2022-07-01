@@ -1,4 +1,5 @@
 #include <TinyGPSPlus.h>
+#include "wiring_private.h"
 // #include <SoftwareSerial.h>
 /*
    This sample sketch demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
@@ -7,6 +8,12 @@
 */
 // static const int RXPin = 4, TXPin = 3;
 static const uint32_t GPSBaud = 9600;
+
+Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+    mySerial13.IrqHandler();
+}
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
@@ -19,6 +26,10 @@ void setup()
   Serial.begin(115200);
   Serial1.begin(9600);
   // ss.begin(GPSBaud);
+  mySerial13.begin(9600);//rx:p13, tx:p8
+	// Reassign pins 13 and 8 to SERCOM (not alt this time)
+	pinPeripheral(13, PIO_SERCOM);
+	pinPeripheral(8, PIO_SERCOM);
 
   Serial.println("DeviceExample.ino");
   Serial.println("A simple demonstration of TinyGPSPlus with an attached GPS module");
@@ -54,8 +65,9 @@ static void smartDelay(unsigned long ms)
   unsigned long start = millis();
   do 
   {
-    while (Serial1.available())
-      gps.encode(Serial1.read());
+    while (mySerial13.available())
+      gps.encode(mySerial13.read());
+
   } while (millis() - start < ms);
 }
 

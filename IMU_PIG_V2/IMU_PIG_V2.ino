@@ -7,6 +7,7 @@
 #include "crcCalculator.h"
 #include "SparrowParaDefine.h"
 #include "Sparrow_read.h"
+#include <TinyGPSPlus.h>
 
 #ifdef PWM_SYNC
 	#include <SAMD21turboPWM.h>
@@ -17,7 +18,11 @@
 int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
-// uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
+
+unsigned long gps_init_time = 0;
+unsigned int gps_date=0, gps_time=0;
+bool gps_valid = 0;
+
 
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd;
@@ -54,6 +59,15 @@ void SERCOM0_Handler()
 Sparrow_read sparrow(mySerial5);
 PIG pig_v2(mySerial5);
 
+// The TinyGPSPlus object
+TinyGPSPlus gps;
+
+Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+    mySerial13.IrqHandler();
+}
+
 #ifdef ENABLE_SRS200
     #define SRS200_SIZE 15
 #endif
@@ -68,6 +82,11 @@ void setup() {
     // Reassign pins 5 and 6 to SERCOM alt
     pinPeripheral(5, PIO_SERCOM_ALT); //RX
     pinPeripheral(6, PIO_SERCOM_ALT); //TX
+
+	mySerial13.begin(9600);//rx:p13, tx:p8
+	// Reassign pins 13 and 8 to SERCOM (not alt this time)
+	pinPeripheral(13, PIO_SERCOM);
+	pinPeripheral(8, PIO_SERCOM);
 	
 	IMU.begin();
 	adxl355.init();
@@ -90,7 +109,7 @@ void setup() {
 	For the Arduino Nano 33 IoT, you need to initialise timer 1 for pins 4 and 7, timer 0 for pins 5, 6, 8, and 12, 
 	and timer 2 for pins 11 and 13;
 	***/
-	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
+	pwm.timer(2, 2, 600, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
 	                                // current setup: 120000/240/2 = 250Hz
 	                                // step = 600 for 100Hz
@@ -109,6 +128,7 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
+  updateGPS(1000);
 }
 
 void printAdd(char name[], void* addr)
@@ -290,6 +310,11 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
           select_fn = SEL_IMU_MEMS;
           break;
       }
+      case MODE_IMU_MEMS_GPS: {
+          output_fn = acq_imu_mems_gps;
+          select_fn = SEL_IMU_MEMS;
+          break;
+      }
       case MODE_SPARROW_DEMO: {
           output_fn = acq_imu_sparrow;
           select_fn = SEL_SPARROW_DEMO ;
@@ -436,64 +461,11 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
-// void acq_imu(byte &select_fn, unsigned int CTRLREG)
-// {
-// 	byte adxl355_a[9], header[4], fog[17], nano33_w[6], nano33_a[6];
-// 	#ifdef ENABLE_SRS200
-// 		byte srs200[SRS200_SIZE], header_srs200[2];
-// 	#endif
-// 	if(select_fn&SEL_IMU) {
-// 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-// 	}
-// 	trig_status[0] = digitalRead(SYS_TRIG);
-//
-// 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
-//         t_new = micros();
-//
-// 		#ifdef ENABLE_SRS200
-// 			readSRS200Data(header_srs200, srs200);
-// 		#endif
-// 		adxl355.readData(adxl355_a);
-// 		IMU.readGyroscope(nano33_w);
-// 		IMU.readAcceleration(nano33_a);
-// 		pig_v2.readDataCRC(header, fog);
-// 		print_adxl355Data(adxl355_a);
-// 		#ifdef UART_SERIAL_5_CMD
-//             mySerial5.write(header, 4);
-//             mySerial5.write(fog, 17);
-//             mySerial5.write(adxl355_a, 9);
-//             mySerial5.write(nano33_w, 6);
-//             mySerial5.write(nano33_a, 6);
-// 		#endif
-//         #ifdef UART_USB_CMD
-//             Serial.write(header, 4);
-//             Serial.write(fog, 17);
-//             Serial.write(adxl355_a, 9);
-//             Serial.write(nano33_w, 6);
-//             Serial.write(nano33_a, 6);
-// 		#endif
-// 		#ifdef UART_RS422_CMD
-//             Serial1.write(header, 4);
-//             Serial1.write(fog, 17);
-//             Serial1.write(adxl355_a, 9);
-//             Serial1.write(nano33_w, 6);
-//             Serial1.write(nano33_a, 6);
-// 		#endif
-// 		#ifdef ENABLE_SRS200
-// 			Serial.write(srs200, SRS200_SIZE);
-// 		#endif
-// 		Serial.println(t_new - t_old);
-//         t_old = t_new;
-// 	}
-// 	trig_status[1] = trig_status[0];
-// 	clear_SEL_EN(select_fn);
-// }
-
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
 {
 	byte nano33_w[6], nano33_a[6];
-    byte adxl355_a[9];
+    byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
     uint8_t CRC8, CRC32[4];
 
   
@@ -508,7 +480,7 @@ void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
 	{
 
         uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
-        adxl355.readData(adxl355_a);
+        // adxl355.readData(adxl355_a);
         IMU.readGyroscope(nano33_w);
         IMU.readAcceleration(nano33_a);
 
@@ -542,6 +514,66 @@ void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
         #endif
 	}
     /*--end of if-condition--*/
+	trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
+
+void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
+{
+	byte nano33_w[6], nano33_a[6];
+    byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+	byte gps_data[7];
+    uint8_t CRC32[4];
+
+    if(select_fn&SEL_IMU_MEMS)
+    {
+        if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
+        else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
+    }
+  
+	trig_status[0] = digitalRead(SYS_TRIG);
+	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
+	{
+
+        uint8_t* imu_data = (uint8_t*)malloc(32); // 9+4+6+6+7
+        // adxl355.readData(adxl355_a);
+        IMU.readGyroscope(nano33_w);
+        IMU.readAcceleration(nano33_a);
+		getGPStimeData(gps_data);
+
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+		memcpy(imu_data+25, gps_data, 7);
+        myCRC.crc_32(imu_data, 32, CRC32);
+        free(imu_data);
+
+        #ifdef UART_SERIAL_5_CMD
+            mySerial5.write(KVH_HEADER, 4);
+            mySerial5.write(adxl355_a, 9);
+            mySerial5.write(nano33_w, 6);
+            mySerial5.write(nano33_a, 6);
+             mySerial5.write(CRC32, 4);
+        #endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4);
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(CRC32, 4);
+        #endif
+        #ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+			Serial1.write(gps_data, 7);
+            Serial1.write(CRC32, 4);
+        #endif
+	}
+    /*--end of if-condition--*/
+	if (gps_valid == 1) gps_valid = 0;
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
@@ -785,4 +817,83 @@ void sendCmd(unsigned char addr, unsigned int value)
 	Serial1.write(value>>8 & 0xFF);
 	Serial1.write(value & 0xFF);
 	delay(1);
+}
+
+void updateGPS(unsigned int ms)
+{
+  if(( millis()-gps_init_time ) >= ms)
+  {
+    gps_init_time = millis();
+    while (mySerial13.available())
+          gps.encode(mySerial13.read());
+	gps_date = gps.date.value();
+	gps_time = gps.time.value();
+	gps_valid = 1;
+	Serial.print(gps_date);
+	Serial.print(", ");
+	Serial.println(gps_time);
+  }
+}
+
+void getGPStimeData(byte data[7])
+{
+	// gps_valid = 1;
+	data[0] = gps_date>>8;
+	data[1] = gps_date;
+	data[2] = gps_time >> 24;
+	data[3] = gps_time >> 16;
+	data[4] = gps_time >> 8;
+	data[5] = gps_time;
+	data[6] = gps_valid;
+}
+
+void displayGPSInfo()
+{
+  Serial.print(F("Location: ")); 
+  if (gps.location.isValid())
+  {
+    Serial.print(gps.location.lat(), 6);
+    Serial.print(F(","));
+    Serial.print(gps.location.lng(), 6);
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.print(F("  Date/Time: "));
+  if (gps.date.isValid())
+  {
+    Serial.print(gps.date.month());
+    Serial.print(F("/"));
+    Serial.print(gps.date.day());
+    Serial.print(F("/"));
+    Serial.print(gps.date.year());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.print(F(" "));
+  if (gps.time.isValid())
+  {
+    if (gps.time.hour() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.hour());
+    Serial.print(F(":"));
+    if (gps.time.minute() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.minute());
+    Serial.print(F(":"));
+    if (gps.time.second() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.second());
+    Serial.print(F("."));
+    if (gps.time.centisecond() < 10) Serial.print(F("0"));
+    Serial.print(gps.time.centisecond());
+  }
+  else
+  {
+    Serial.print(F("INVALID"));
+  }
+
+  Serial.println();
 }
