@@ -571,9 +571,10 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
 			Serial1.write(gps_data, 7);
             Serial1.write(CRC32, 4);
         #endif
+        if (gps_valid == 1) gps_valid = 0;
 	}
     /*--end of if-condition--*/
-	if (gps_valid == 1) gps_valid = 0;
+	
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
@@ -828,10 +829,11 @@ void updateGPS(unsigned int ms)
           gps.encode(mySerial13.read());
 	gps_date = gps.date.value();
 	gps_time = gps.time.value();
-	gps_valid = 1;
-	Serial.print(gps_date);
-	Serial.print(", ");
-	Serial.println(gps_time);
+	gps_valid = gps.date.isValid() & gps.time.isValid();
+  displayGPSInfo();
+	// Serial.print(gps_date);
+	// Serial.print(", ");
+	// Serial.println(gps_time);
   }
 }
 
@@ -894,6 +896,7 @@ void displayGPSInfo()
   {
     Serial.print(F("INVALID"));
   }
-
+  Serial.print(" ");
+  Serial.print(gps_valid);
   Serial.println();
 }
