@@ -109,7 +109,7 @@ void setup() {
 	For the Arduino Nano 33 IoT, you need to initialise timer 1 for pins 4 and 7, timer 0 for pins 5, 6, 8, and 12, 
 	and timer 2 for pins 11 and 13;
 	***/
-	pwm.timer(2, 2, 600, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
+	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
 	                                // current setup: 120000/240/2 = 250Hz
 	                                // step = 600 for 100Hz
@@ -295,8 +295,8 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				select_fn = SEL_IMU;
 				break;
 			}
-			case MODE_IMU_FAKE: {
-				output_fn = acq_imu_fake; 
+			case MODE_IMU_GPS: {
+				output_fn = acq_imu_gps; 
 				select_fn = SEL_IMU;
 				break;
 			}
@@ -461,6 +461,68 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
+void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
+{
+  byte adxl355_a[9], header[2], fog[14], nano33_w[6], nano33_a[6], gps_data[7];
+	uint8_t CRC32[4];
+
+    if(select_fn&SEL_IMU)
+    {
+        if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
+        else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
+    }
+  
+	trig_status[0] = digitalRead(SYS_TRIG);
+	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
+	{
+      // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14 + gps:7
+        uint8_t* imu_data = (uint8_t*)malloc(46);
+
+        pig_v2.readData(header, fog);
+        adxl355.readData(adxl355_a);
+        IMU.readGyroscope(nano33_w);
+        IMU.readAcceleration(nano33_a);
+		    getGPStimeData(gps_data);
+
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+        memcpy(imu_data+25, fog, 14);
+		    memcpy(imu_data+39, gps_data, 7);
+        myCRC.crc_32(imu_data, 46, CRC32);
+        free(imu_data);
+
+        #ifdef UART_SERIAL_5_CMD
+            mySerial5.write(KVH_HEADER, 4);
+            mySerial5.write(adxl355_a, 9);
+            mySerial5.write(nano33_w, 6);
+            mySerial5.write(nano33_a, 6);
+             mySerial5.write(CRC32, 4);
+        #endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4);
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(CRC32, 4);
+        #endif
+        #ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+            Serial1.write(fog, 14);
+		      	Serial1.write(gps_data, 7);
+            Serial1.write(CRC32, 4);
+        #endif
+        if (gps_valid == 1) gps_valid = 0;
+	}
+    /*--end of if-condition--*/
+	
+	trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG)
 {

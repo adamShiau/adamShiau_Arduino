@@ -25,7 +25,7 @@
 #define MODE_FOG	        1
 #define MODE_IMU	        2
 #define MODE_EQ		        3
-#define MODE_IMU_FAKE		4
+#define MODE_IMU_GPS		4
 #define MODE_IMU_MEMS		5
 #define MODE_SPARROW_DEMO   6
 #define MODE_IMU_MEMS_GPS   7
