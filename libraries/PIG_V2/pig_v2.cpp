@@ -154,6 +154,10 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 	unsigned char header[2];
 
 	port.readBytes(headerArr, 2);
+	// Serial.print("In: ");
+	// Serial.print(headerArr[0], HEX);
+	// Serial.print(", ");
+	// Serial.println(headerArr[1], HEX);
 	while(1)
 	{
 
@@ -161,10 +165,10 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		    headerArr[1] == PIG_HEADER[1]
 		    )
 		{
-           Serial.print("PASS: ");
-           Serial.print(headerArr[0], HEX);
-           Serial.print("\t");
-           Serial.print(headerArr[1], HEX);
+        //    Serial.print("PASS: ");
+        //    Serial.print(headerArr[0], HEX);
+        //    Serial.print(",");
+        //    Serial.println(headerArr[1], HEX);
 		    return headerArr ;
 		}
 
@@ -175,7 +179,7 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 			
            Serial.print("FAIL: ");
 			Serial.print(headerArr[0], HEX);
-           Serial.print("\t");
+           Serial.print(", ");
            Serial.println(headerArr[1], HEX);
 		   delayMicroseconds(10);
 		}

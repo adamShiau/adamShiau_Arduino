@@ -354,12 +354,13 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 
 void acq_fog(byte &select_fn, unsigned int CTRLREG)
 {
-	byte header[2], fog[10];
+	byte header[2], fog[14];
 	uint8_t CRC32[4];
 	
 	if(select_fn&SEL_FOG_1)
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+    
 	}
 
 	trig_status[0] = digitalRead(SYS_TRIG);
@@ -367,23 +368,23 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
 	    t_new = micros();
 
-	    uint8_t* imu_data = (uint8_t*)malloc(12); // header:2 + data:10
+	    uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
         pig_v2.readData(header, fog);
-        memcpy(imu_data, PIG_HEADER, 2);
-        memcpy(imu_data+2, fog, 10);
-        myCRC.crc_32(imu_data, 12, CRC32);
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, fog, 14);
+        myCRC.crc_32(imu_data, 18, CRC32);
         free(imu_data);
 
-		#ifdef UART_SERIAL_5_CMD
+	  	#ifdef UART_SERIAL_5_CMD
         mySerial5.write(header, 2);
         mySerial5.write(fog, 10);
         mySerial5.write(CRC32, 4);
-        #endif
-        #ifdef UART_RS422_CMD
-        Serial1.write(header, 2);
-        Serial1.write(fog, 10);
+      #endif
+      #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(fog, 14);
         Serial1.write(CRC32, 4);
-        #endif
+      #endif
 //         Serial.println(t_new - t_old);
         t_old = t_new;
 	}
@@ -400,6 +401,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	#endif
 	if(select_fn&SEL_IMU) {
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+    Serial.println("acq_imu EN");
 	}
 	trig_status[0] = digitalRead(SYS_TRIG);
 
@@ -418,7 +420,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		IMU.readAcceleration(nano33_a);
 
 
-		memcpy(imu_data, KVH_HEADER, 4);
+		    memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, adxl355_a, 9);
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
@@ -468,8 +470,8 @@ void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
 
     if(select_fn&SEL_IMU)
     {
-        if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
-        else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
+       run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+        Serial.println("acq_imu_gps EN");
     }
   
 	trig_status[0] = digitalRead(SYS_TRIG);
@@ -601,13 +603,13 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
         // adxl355.readData(adxl355_a);
         IMU.readGyroscope(nano33_w);
         IMU.readAcceleration(nano33_a);
-		getGPStimeData(gps_data);
+		    getGPStimeData(gps_data);
 
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, adxl355_a, 9);
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
-		memcpy(imu_data+25, gps_data, 7);
+		    memcpy(imu_data+25, gps_data, 7);
         myCRC.crc_32(imu_data, 32, CRC32);
         free(imu_data);
 
