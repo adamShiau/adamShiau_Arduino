@@ -465,7 +465,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 
 void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
 {
-  byte adxl355_a[9], header[2], fog[14], nano33_w[6], nano33_a[6], gps_data[7];
+  byte adxl355_a[9], header[2], fog[14], nano33_w[6], nano33_a[6], gps_data[9];
 	uint8_t CRC32[4];
 
     if(select_fn&SEL_IMU)
@@ -477,8 +477,8 @@ void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
 	trig_status[0] = digitalRead(SYS_TRIG);
 	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
 	{
-      // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14 + gps:7
-        uint8_t* imu_data = (uint8_t*)malloc(46);
+      // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14 + gps:9
+        uint8_t* imu_data = (uint8_t*)malloc(48);
 
         pig_v2.readData(header, fog);
         adxl355.readData(adxl355_a);
@@ -491,8 +491,8 @@ void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
         memcpy(imu_data+25, fog, 14);
-		    memcpy(imu_data+39, gps_data, 7);
-        myCRC.crc_32(imu_data, 46, CRC32);
+		    memcpy(imu_data+39, gps_data, 9);
+        myCRC.crc_32(imu_data, 48, CRC32);
         free(imu_data);
 
         #ifdef UART_SERIAL_5_CMD
@@ -515,7 +515,7 @@ void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
             Serial1.write(nano33_w, 6);
             Serial1.write(nano33_a, 6);
             Serial1.write(fog, 14);
-		      	Serial1.write(gps_data, 7);
+		      	Serial1.write(gps_data, 9);
             Serial1.write(CRC32, 4);
         #endif
         if (gps_valid == 1) gps_valid = 0;
@@ -586,7 +586,7 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
 {
 	byte nano33_w[6], nano33_a[6];
     byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
-	byte gps_data[7];
+	byte gps_data[9];
     uint8_t CRC32[4];
 
     if(select_fn&SEL_IMU_MEMS)
@@ -599,7 +599,7 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
 	if((trig_status[0] & ~trig_status[1] & run_fog_flag))
 	{
 
-        uint8_t* imu_data = (uint8_t*)malloc(32); // 9+4+6+6+7
+        uint8_t* imu_data = (uint8_t*)malloc(32); // 9+4+6+6+9
         // adxl355.readData(adxl355_a);
         IMU.readGyroscope(nano33_w);
         IMU.readAcceleration(nano33_a);
@@ -609,8 +609,8 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+4, adxl355_a, 9);
         memcpy(imu_data+13, nano33_w, 6);
         memcpy(imu_data+19, nano33_a, 6);
-		    memcpy(imu_data+25, gps_data, 7);
-        myCRC.crc_32(imu_data, 32, CRC32);
+		    memcpy(imu_data+25, gps_data, 9);
+        myCRC.crc_32(imu_data, 34, CRC32);
         free(imu_data);
 
         #ifdef UART_SERIAL_5_CMD
@@ -632,7 +632,7 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG)
             Serial1.write(adxl355_a, 9);
             Serial1.write(nano33_w, 6);
             Serial1.write(nano33_a, 6);
-			Serial1.write(gps_data, 7);
+			Serial1.write(gps_data, 9);
             Serial1.write(CRC32, 4);
         #endif
         if (gps_valid == 1) gps_valid = 0;
@@ -891,26 +891,33 @@ void updateGPS(unsigned int ms)
     gps_init_time = millis();
     while (mySerial13.available())
           gps.encode(mySerial13.read());
-	gps_date = gps.date.value();
-	gps_time = gps.time.value();
-	gps_valid = gps.date.isValid() & gps.time.isValid();
-  displayGPSInfo();
+    // Serial.print("---");
+    // Serial.print(gps.date.value());
+    // Serial.print("---");
+    gps_date = gps.date.value();
+    // Serial.print(gps_date);
+    // Serial.print("---");
+    gps_time = gps.time.value();
+    gps_valid = gps.date.isValid() & gps.time.isValid();
+    displayGPSInfo();
 	// Serial.print(gps_date);
 	// Serial.print(", ");
 	// Serial.println(gps_time);
   }
 }
 
-void getGPStimeData(byte data[7])
+void getGPStimeData(byte data[9])
 {
 	// gps_valid = 1;
-	data[0] = gps_date>>8;
-	data[1] = gps_date;
-	data[2] = gps_time >> 24;
-	data[3] = gps_time >> 16;
-	data[4] = gps_time >> 8;
-	data[5] = gps_time;
-	data[6] = gps_valid;
+	data[0] = gps_date>>24;
+  data[1] = gps_date>>16;
+  data[2] = gps_date>>8;
+	data[3] = gps_date;
+	data[4] = gps_time >> 24;
+	data[5] = gps_time >> 16;
+	data[6] = gps_time >> 8;
+	data[7] = gps_time;
+	data[8] = gps_valid;
 }
 
 void displayGPSInfo()

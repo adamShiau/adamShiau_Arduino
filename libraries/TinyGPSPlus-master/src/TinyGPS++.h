@@ -106,7 +106,7 @@ public:
    bool isUpdated() const     { return updated; }
    uint32_t age() const       { return valid ? millis() - lastCommitTime : (uint32_t)ULONG_MAX; }
 
-   uint32_t value()           { updated = false; return time; }
+   uint32_t value()           { updated = false; return time;}
    uint8_t hour();
    uint8_t minute();
    uint8_t second();
