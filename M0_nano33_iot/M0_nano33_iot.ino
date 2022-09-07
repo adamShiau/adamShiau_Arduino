@@ -6,29 +6,34 @@
 #define ADXL355_ADDR     0x1D  //Adxl355 I2C address
 #define I2C_STANDARD_MODE   100000
 #define I2C_FAST_MODE     400000
+#define I2C_FAST_MODE_PLUS     1000000
+//#define I2C_HIGH_SPEED_MODE    3400000 //can not work
 #define TEST_ADDR      0xAB
 //SCL: PB9, A2
 //SDA: PB8, A1
 
 // SPI
 #include <SPI.h>
+#define SPI_CLOCK_8M 8000000
+/*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
+SPIClass mySPI(&sercom3, 9, 13, 11, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_2);
 #define CHIP_SELECT_PIN 10
 // Operations
 const int READ_BYTE = 0x01;
 const int WRITE_BYTE = 0x00;
 //SS: PA21, D7
 //MOSI: PA16, D11 
-//MISO: PA19, D12
+//MISO: PA20, D6
 //SCK: PA17, D13
 
 
 /***
-SERCOM0: serial2 (PA05, PA04)
-SERCOM1: serial3 (PA19, PA18)
-SERCOM2: serial4 (PA51, PA14)
-SERCOM3: SPI     (PA16, PA17, PA20)
-SERCOM4: I2C     (PB08, PB09)
-SERCOM5: serial1 (PB23, PB22)
+SERCOM0: serial2 (PA05, PA04) [rx:A4, tx:A3]
+SERCOM1: serial3 (PA19, PA18) [rx:D12, tx:D10]
+SERCOM2: serial4 (PA15, PA14) [rx:D5, tx:D4]
+SERCOM3: SPI     (PA20, PA17, PA16, PA21) [miso:D6, sck:D13, mosi:D11, ss:D7]
+SERCOM4: I2C     (PB08, PB09) [sda:A1, scl:A2]
+SERCOM5: serial1 (PB23, PB22) 
   
 ***/
 
@@ -40,7 +45,6 @@ void SERCOM0_Handler()
     Serial2.IrqHandler();
 }
 
-//Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2); // rx: PA17, D13; tx: PA18, D10
 Uart Serial3 (&sercom1, 12, 8, SERCOM_RX_PAD_3, UART_TX_PAD_2); // rx: PA19, D12; tx: PA18, D10
 
 // Attach the interrupt handler to the SERCOM
@@ -77,24 +81,30 @@ Serial4.begin(921600);
 
 //I2C
 Wire.begin();
-Wire.setClock(I2C_FAST_MODE);
+Wire.setClock(I2C_FAST_MODE_PLUS);
 //SPI
 pinMode(CHIP_SELECT_PIN, OUTPUT);
 digitalWrite(CHIP_SELECT_PIN, HIGH);
-//SPI.begin();
-//SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+mySPI.begin();
+mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
+pinPeripheral(11, PIO_SERCOM_ALT);
+pinPeripheral(13, PIO_SERCOM_ALT);
+pinPeripheral(9, PIO_SERCOM_ALT);
+
 }
 
 void loop() {
   
 Serial.println(cnt);
 
+
 serialPrint(Serial1, cnt);
 serialPrint(Serial2, cnt);
 serialPrint(Serial3, cnt);
 serialPrint(Serial4, cnt);
-//I2CWriteData(TEST_ADDR, 0x45);
-//SPIWriteData(TEST_ADDR, 0x45);
+SPIWriteData(TEST_ADDR, cnt);
+I2CWriteData(TEST_ADDR, 0x45);
+
 
 cnt++;
 delay(4);
@@ -110,20 +120,20 @@ void serialPrint(Stream &ser, int cnt)
 
 void I2CWriteData(unsigned char addr, unsigned char val)
 {
-  Serial.println(1);
   Wire.beginTransmission(ADXL355_ADDR);
-  Serial.println(2);
   Wire.write(addr);
-  Serial.println(3);
   Wire.write(val);
-  Serial.println(4);
   Wire.endTransmission();
 }
 
-//void SPIWriteData(byte thisRegister, byte thisValue) {
-//  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
-//  digitalWrite(CHIP_SELECT_PIN, LOW);
-//  SPI.transfer(dataToSend);
-//  SPI.transfer(thisValue);
-//  digitalWrite(CHIP_SELECT_PIN, HIGH);
-//}
+void SPIWriteData(byte thisRegister, int thisValue) {
+  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
+  digitalWrite(CHIP_SELECT_PIN, LOW);
+  mySPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
+  mySPI.transfer(thisValue >> 24);
+  mySPI.transfer(thisValue >> 16);
+  mySPI.transfer(thisValue >> 8);
+  mySPI.transfer(thisValue);
+  digitalWrite(CHIP_SELECT_PIN, HIGH);
+//  mySPI.endTransaction();
+}
