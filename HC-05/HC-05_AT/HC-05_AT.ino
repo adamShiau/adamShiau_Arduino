@@ -14,6 +14,9 @@ AT+NAME="BT_NAME"
 AT+UART?
 AT+UART=115200,0,0
 
+3. 恢復出場設定
+AT+ORGL
+
 /***/
 char val;
 
@@ -30,6 +33,7 @@ void loop() {
   }
 	// receive respons from HC-05
   if(Serial1.available()) {
+//    Serial.println(Serial1.available());
     val = Serial1.read();
     Serial.print(val);
   }

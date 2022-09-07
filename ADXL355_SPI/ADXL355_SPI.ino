@@ -1,4 +1,6 @@
-#include <SPI.h>
+#include <Arduino.h>
+#include "wiring_private.h"
+
 
 #define SENS_8G 0.0000156
 #define SENS_4G 0.0000078
@@ -39,21 +41,31 @@ const int RANGE_4G = 0x02;
 const int RANGE_8G = 0x03;
 const int MEASURE_MODE = 0x06; // Only accelerometer
 
+// SPI
+#include <SPI.h>
+#define SPI_CLOCK_8M 8000000
+#define CHIP_SELECT_PIN 10
+/*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
+SPIClass mySPI(&sercom3, 9, 13, 11, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_2);
+
 // Operations
 const int READ_BYTE = 0x01;
 const int WRITE_BYTE = 0x00;
 
 // Pins used for the connection with the sensor
-const int CHIP_SELECT_PIN = 10;
+//const int CHIP_SELECT_PIN = 10;
 
 void setup() {
   Serial.begin(115200);
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   
-
-  // Initalize the  data ready and chip select pins:
+  //SPI
   pinMode(CHIP_SELECT_PIN, OUTPUT);
+  digitalWrite(CHIP_SELECT_PIN, HIGH);
+  mySPI.begin();
+  mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
+  pinPeripheral(11, PIO_SERCOM_ALT);
+  pinPeripheral(13, PIO_SERCOM_ALT);
+  pinPeripheral(9, PIO_SERCOM_ALT);
 
   //Configure ADXL355:
   writeRegister(RST, 0x52);
@@ -62,11 +74,11 @@ void setup() {
 //  delay(100);
   writeRegister(RANGE, RANGE_8G); // 2G
   delay(100);
-  writeRegister(FILTER, 0b101); //ODR b101@125Hz, b100@250Hz
+  writeRegister(FILTER, 0b0011); //ODR b101@125Hz, b100@250Hz
   // delay(100);
-  writeRegister(SYNC, 0b010); //b000@internal, b010@sync
+  writeRegister(SYNC, 0x00); //b000@internal, b010@sync
   delay(100);
-  writeRegister(POWER_CTL, MEASURE_MODE); // Enable measure mode
+  writeRegister(POWER_CTL, 0x02); // Enable measure mode
 
   // Give the sensor time to set up:
 //  delay(100);
@@ -90,11 +102,11 @@ void loop() {
 
 
 	status = readRegistry(STATUS);
-	isReady = status&0b00000001;
-	// Serial.print("status: ");
-	// Serial.println(status, BIN);
-	// Serial.print("isReady: ");
-	// Serial.println(isReady);
+	isReady = status&0x01;
+//	 Serial.print("status: ");
+//	 Serial.println(status, BIN);
+//	 Serial.print("isReady: ");
+//	 Serial.println(isReady);
 	
   if(isReady == 1)
   {
@@ -140,8 +152,8 @@ void loop() {
 void writeRegister(byte thisRegister, byte thisValue) {
   byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
   digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  SPI.transfer(thisValue);
+  mySPI.transfer(dataToSend);
+  mySPI.transfer(thisValue);
   digitalWrite(CHIP_SELECT_PIN, HIGH);
 }
 
@@ -153,8 +165,8 @@ unsigned int readRegistry(byte thisRegister) {
   byte dataToSend = (thisRegister << 1) | READ_BYTE;
 
   digitalWrite(CHIP_SELECT_PIN, LOW);
-  SPI.transfer(dataToSend);
-  result = SPI.transfer(0x00);
+  mySPI.transfer(dataToSend);
+  result = mySPI.transfer(0x00);
   digitalWrite(CHIP_SELECT_PIN, HIGH);
   return result;
 }
@@ -166,8 +178,8 @@ void readMultipleData(int *addresses, int dataSize, int *readedData) {
   digitalWrite(CHIP_SELECT_PIN, LOW);
   for(int i = 0; i < dataSize; i = i + 1) {
     byte dataToSend = (addresses[i] << 1) | READ_BYTE;
-    SPI.transfer(dataToSend);
-    readedData[i] = SPI.transfer(0x00);
+    mySPI.transfer(dataToSend);
+    readedData[i] = mySPI.transfer(0x00);
   }
   digitalWrite(CHIP_SELECT_PIN, HIGH);
 }

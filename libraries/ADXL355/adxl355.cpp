@@ -90,6 +90,7 @@ void Adxl355::readData(unsigned char temp_a[9])
 	int accX, accY, accZ;
 	p_scl_mux_enable();
 	while(!(p_I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
+	//Serial.println("pass");
 	temp_a[0] = p_I2CReadData(XDATA3_ADDR); 
 	temp_a[1] = p_I2CReadData(XDATA2_ADDR); 
 	temp_a[2] = p_I2CReadData(XDATA1_ADDR); 
