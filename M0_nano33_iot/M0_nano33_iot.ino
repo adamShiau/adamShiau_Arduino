@@ -64,6 +64,19 @@ int cnt = 0;
 void setup() {
   // put your setup code here, to run once:
 
+GCLK->GENCTRL.reg = //GCLK_GENCTRL_OE |            // Test: enable GCLK output (on a selected pin)
+                      GCLK_GENCTRL_IDC |           // Set the duty cycle to 50/50 HIGH/LOW
+                      GCLK_GENCTRL_GENEN |         // Enable GCLK0
+                      GCLK_GENCTRL_SRC_XOSC32K |   // Set the external 32.768kHz clock source (XOSC32K)
+                      GCLK_GENCTRL_ID(0);          // Select GCLK0
+  while (GCLK->STATUS.bit.SYNCBUSY);               // Wait for synchronization  
+//  GCLK->GENDIV.reg = GCLK_GENDIV_DIV(2) |         // Divide the 48MHz clock source by divisor 24: 48MHz/24=2MHz
+//                   GCLK_GENDIV_ID(0);            // Select Generic Clock (GCLK) 0
+  
+  // Test: enable the GCLK0 output on D2 (PA14)
+//  PORT->Group[g_APinDescription[24].ulPort].PINCFG[g_APinDescription[24].ulPin].bit.PMUXEN = 1;
+//  PORT->Group[g_APinDescription[24].ulPort].PMUX[g_APinDescription[24].ulPin >> 1].reg |= PORT_PMUX_PMUXE_H;
+
 pinPeripheral(24, PIO_SERCOM);
 pinPeripheral(25, PIO_SERCOM);
 
