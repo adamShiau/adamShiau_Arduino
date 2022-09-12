@@ -11,9 +11,7 @@
 SERCOM0: I2C     (PA08, PA09) [sda: D2, scl: D3]
 SERCOM1: serial3 (PA16, PA17) [tx : D11, rx: D13]
 SERCOM2: serial2 (PA14, PA15) [tx : D4,  rx: D5]
-SERCOM3: serial4 (PA18, PA19) [tx : D10, rx: D12]
-// temp. test//
-SERCOM3: serial4 (PA18, PA21) [tx : D10, rx: D7]
+SERCOM3: serial4 (PA20, PA21) [tx : D6, rx: D7]
 SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:]
 // temp. test//
 SERCOM4: SPI     (PB10, PB11, PA12, PB9) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:A2]
@@ -35,8 +33,7 @@ void SERCOM1_Handler()
 }
 PIG pig_ser3(Serial3);
 
-//Uart Serial4 (&sercom3, 12, 8, SERCOM_RX_PAD_3, UART_TX_PAD_2);
-Uart Serial4 (&sercom3, 10, 8, SERCOM_RX_PAD_3, UART_TX_PAD_2);
+Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
@@ -72,12 +69,15 @@ Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
 const int READ_BYTE = 0x01;
 const int WRITE_BYTE = 0x00;
 
+
+
 unsigned int t_old=0, t_new;
 int cnt = 0;
 
 void setup() {
   // put your setup code here, to run once:
-
+analogWriteResolution(10);
+analogReadResolution(12);
 
 pinPeripheral(24, PIO_SERCOM);
 pinPeripheral(25, PIO_SERCOM);
@@ -85,15 +85,16 @@ pinPeripheral(25, PIO_SERCOM);
 pinPeripheral(11, PIO_SERCOM);
 pinPeripheral(13, PIO_SERCOM);
 
-//pinPeripheral(12, PIO_SERCOM_ALT);
 pinPeripheral(10, PIO_SERCOM_ALT);
-pinPeripheral(8, PIO_SERCOM_ALT);
+pinPeripheral(9, PIO_SERCOM_ALT);
+
 
 Serial.begin(921600);
 Serial1.begin(921600);
 Serial2.begin(921600); 
 Serial3.begin(921600);
 Serial4.begin(921600);
+
 
 //I2C
 myWire.begin();
@@ -113,11 +114,30 @@ pinPeripheral(22, PIO_SERCOM_ALT);
 pinPeripheral(19, PIO_SERCOM_ALT);
 //pinPeripheral(23, PIO_SERCOM_ALT);
 adxl355_spi.init();
+
+
 }
 
 void loop() {
+  int adc_A1, adc_A2, adc_A3, adc_A4, adc_A5;
   byte acc_i2c[9], acc_spi[9], header_ser2[2], header_ser3[2], header_ser4[2];
   byte fog_ser2[14], fog_ser3[14], fog_ser4[14];
+
+  //adc_A1 = analogRead(A1);
+  //adc_A2 = analogRead(A2);
+  //adc_A3 = analogRead(A3);
+  //adc_A4 = analogRead(A4);
+  //adc_A5 = analogRead(A5);
+//  Serial.print(adc_A1);
+//  Serial.print(", ");
+//  Serial.print(adc_A2);
+//  Serial.print(", ");
+//  Serial.print(adc_A3);
+//  Serial.print(", ");
+//  Serial.print(adc_A4);
+//  Serial.print(", ");
+//  Serial.println(adc_A5);
+//  analogWrite(A0, cnt);
   
 //Serial.println(cnt);
 //serialPrint(Serial1, cnt);
@@ -125,16 +145,16 @@ void loop() {
 //serialPrint(Serial3, cnt);
 //serialPrint(Serial4, cnt);
 
-pig_ser2.readData(header_ser2, fog_ser2);
-pig_ser3.readData(header_ser3, fog_ser3);
-pig_ser4.readData(header_ser4, fog_ser4);
+//pig_ser2.readData(header_ser2, fog_ser2);
+//pig_ser3.readData(header_ser3, fog_ser3);
+//pig_ser4.readData(header_ser4, fog_ser4);
 //print_ser_ava(Serial2, "Ser2");
 //print_ser_ava(Serial3, "Ser3");
-//print_ser_ava(Serial4, "Ser4");
-adxl355_spi.readData(acc_spi);
-adxl355_i2c.readData(acc_i2c);
-print_adxl355Data_spi(acc_spi);
-print_adxl355Data_i2c(acc_i2c);
+print_ser_ava(Serial4, "Ser4");
+//adxl355_spi.readData(acc_spi);
+//adxl355_i2c.readData(acc_i2c);
+//print_adxl355Data_spi(acc_spi);
+//print_adxl355Data_i2c(acc_i2c);
 //SPIWriteData(TEST_ADDR, cnt);
 //I2CWriteData(TEST_ADDR, 0x45);
 
