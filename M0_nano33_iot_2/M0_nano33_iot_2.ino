@@ -7,7 +7,9 @@ SERCOM0: I2C     (PA08, PA09) [sda: D2, scl: D3]
 SERCOM1: serial3 (PA16, PA17) [tx : D11, rx: D13]
 SERCOM2: serial2 (PA14, PA15) [tx : D4,  rx: D5]
 SERCOM3: serial4 (PA18, PA19) [tx : D10, rx: D12]
-SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss: ICSP4, miso: ICSP3, mosi:, sck:]
+SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:]
+// temp. test//
+SERCOM4: SPI     (PB10, PB11, PA12, PB9) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:A2]
 SERCOM5: serial1 (PB22, PB23) [tx:, rx:]
   
 ***/
@@ -49,7 +51,9 @@ void SERCOM0_Handler()
 #include <SPI.h>
 #define SPI_CLOCK_8M 8000000
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+//SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+// temp. test//
+SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 #define CHIP_SELECT_PIN 2
 // Operations
 const int READ_BYTE = 0x01;
@@ -78,8 +82,6 @@ Serial3.begin(921600);
 Serial4.begin(921600);
 
 //I2C
-//Wire.begin();
-//Wire.setClock(I2C_FAST_MODE_PLUS);
 myWire.begin();
 myWire.setClock(I2C_FAST_MODE_PLUS);
 pinPeripheral(27, PIO_SERCOM);
@@ -92,7 +94,9 @@ mySPI.begin();
 mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
 pinPeripheral(3, PIO_SERCOM_ALT);
 pinPeripheral(22, PIO_SERCOM_ALT);
-pinPeripheral(23, PIO_SERCOM_ALT);
+// temp. test//
+pinPeripheral(19, PIO_SERCOM_ALT);
+//pinPeripheral(23, PIO_SERCOM_ALT);
 
 }
 

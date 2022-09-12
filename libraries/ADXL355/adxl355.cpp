@@ -1,9 +1,9 @@
 #include "adxl355.h"
-#include "adxl355.h"
 
 #define ADXL355_ADDR 		0x1D	//Adxl355 I2C address
 #define I2C_STANDARD_MODE 	100000
 #define I2C_FAST_MODE 		400000
+#define I2C_FAST_MODE_PLUS     1000000
 
 /*** register address***/
 #define DEVID_AD_ADDR	0x00
@@ -60,10 +60,21 @@
 #define MEASURE_MODE	0x00 
 #define TEMP_OFF_MSK	0x02
 
-Adxl355::Adxl355(int scl_en)
+#define True 1
+#define False 0
+
+// Adxl355::Adxl355(int scl_en)
+// {
+	// Serial.begin(115200);
+	// _scl_en = scl_en;
+	// _sercom_mode = False;
+// }
+
+Adxl355::Adxl355(TwoWire &p ) : myWire(p)
 {
+	_sercom_mode = True;
 	Serial.begin(115200);
-	_scl_en = scl_en;
+	_scl_en = 12;
 }
 
 Adxl355::~Adxl355()
@@ -72,17 +83,36 @@ Adxl355::~Adxl355()
 
 void Adxl355::init() 
 {	
-	Wire.begin();
-	Wire.setClock(I2C_FAST_MODE);
+	if(_sercom_mode){
+		// myWire.begin();
+		// myWire.setClock(I2C_FAST_MODE_PLUS);
+	}
+	
+	else {
+		Wire.begin();
+		Wire.setClock(I2C_FAST_MODE);
+	}
+	
 	pinMode(_scl_en, OUTPUT);
 	/*** set adxl355 parameters ***/
 	p_scl_mux_enable();
 	setRegVal(RST_ADDR, POR);
 	setRegVal(RANGE_ADDR, F_MODE | RANGE_8G);
 	setRegVal(FILTER_ADDR, ODR_500);
-	setRegVal(SYNC_ADDR, EXT_SYNC); 
+	// setRegVal(SYNC_ADDR, EXT_SYNC); 
+	setRegVal(SYNC_ADDR, INT_SYNC); 
 	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
 	p_scl_mux_disable();
+}
+
+void Adxl355::testI2C()
+{
+	// Serial.println("hi");
+	myWire.beginTransmission(ADXL355_ADDR);
+	myWire.write(0x1D);
+	myWire.write(0x01);
+	myWire.endTransmission();
+	delay(4);
 }
 
 void Adxl355::readData(unsigned char temp_a[9]) 
@@ -125,6 +155,7 @@ void Adxl355::readFakeData(unsigned char temp_a[9])
 void Adxl355::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
+	// Serial.print(123);
 	// delay(1);
 }
 
@@ -144,25 +175,45 @@ void Adxl355::printRegAll()
 	printRegVal("POWER_CTL", POWER_CTL_ADDR, HEX);
 	printRegVal("ODR", FILTER_ADDR, HEX);
 	printRegVal("INT MAP", INTERRUPT_ADDR, HEX);
+	Serial.println();
 }
 
 void Adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
 {
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.write(val);
-	Wire.endTransmission();
+	if(_sercom_mode){
+		myWire.beginTransmission(ADXL355_ADDR);
+		myWire.write(addr);
+		myWire.write(val);
+		myWire.endTransmission();
+	}
+	else{
+		Wire.beginTransmission(ADXL355_ADDR);
+		Wire.write(addr);
+		Wire.write(val);
+		Wire.endTransmission();
+	}
+	
 }
 
 unsigned char Adxl355::p_I2CReadData(unsigned char addr)
 {
 	unsigned char data;
 	
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.endTransmission();
-	Wire.requestFrom(ADXL355_ADDR,1);
-	while (Wire.available()) data=Wire.read();
+	if(_sercom_mode){
+		myWire.beginTransmission(ADXL355_ADDR);
+		myWire.write(addr);
+		myWire.endTransmission();
+		myWire.requestFrom(ADXL355_ADDR,1);
+		while (myWire.available()) data=myWire.read();
+	}
+	else{
+		Wire.beginTransmission(ADXL355_ADDR);
+		Wire.write(addr);
+		Wire.endTransmission();
+		Wire.requestFrom(ADXL355_ADDR,1);
+		while (Wire.available()) data=Wire.read();
+	}
+
 	return data;
 }
 

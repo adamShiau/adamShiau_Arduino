@@ -7,7 +7,8 @@
 class Adxl355
 {
 	public:
-		Adxl355(int);
+		// Adxl355(int);
+		Adxl355(TwoWire &);
 		~Adxl355();
 		void init(void);
 		void setRegVal(unsigned char, unsigned char);
@@ -15,15 +16,17 @@ class Adxl355
 		void printRegAll(void);
 		void readData(unsigned char []);
 		void readFakeData(unsigned char []);
+		void testI2C(void);
 		
 	private:
 		int _scl_en;
 		int _ext_sync;
-		
+		bool _sercom_mode;
 		void p_I2CWriteData(unsigned char, unsigned char);
 		unsigned char p_I2CReadData(unsigned char);
 		void p_scl_mux_enable(void);
 		void p_scl_mux_disable(void);
+		TwoWire &myWire;
 		
 
 	

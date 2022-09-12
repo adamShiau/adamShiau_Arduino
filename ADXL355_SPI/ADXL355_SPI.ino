@@ -44,9 +44,9 @@ const int MEASURE_MODE = 0x06; // Only accelerometer
 // SPI
 #include <SPI.h>
 #define SPI_CLOCK_8M 8000000
-#define CHIP_SELECT_PIN 10
+#define CHIP_SELECT_PIN 2
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-SPIClass mySPI(&sercom3, 9, 13, 11, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_2);
+SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 // Operations
 const int READ_BYTE = 0x01;
@@ -63,9 +63,9 @@ void setup() {
   digitalWrite(CHIP_SELECT_PIN, HIGH);
   mySPI.begin();
   mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
-  pinPeripheral(11, PIO_SERCOM_ALT);
-  pinPeripheral(13, PIO_SERCOM_ALT);
-  pinPeripheral(9, PIO_SERCOM_ALT);
+  pinPeripheral(3, PIO_SERCOM_ALT);
+  pinPeripheral(22, PIO_SERCOM_ALT);
+  pinPeripheral(19, PIO_SERCOM_ALT);
 
   //Configure ADXL355:
   writeRegister(RST, 0x52);
