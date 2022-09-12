@@ -1,9 +1,8 @@
-#include "adxl355.h"
+#include "adxl355_SPI.h"
 
-#define ADXL355_ADDR 		0x1D	//Adxl355 I2C address
-#define I2C_STANDARD_MODE 	100000
-#define I2C_FAST_MODE 		400000
-#define I2C_FAST_MODE_PLUS     1000000
+
+#define SPI_CLOCK_8M 8000000
+#define CHIP_SELECT_PIN 2
 
 /*** register address***/
 #define DEVID_AD_ADDR	0x00
@@ -63,64 +62,58 @@
 #define True 1
 #define False 0
 
-Adxl355::Adxl355(int scl_en)
+#define READ_BYTE  0x01
+#define WRITE_BYTE 0x00
+
+
+Adxl355_SPI::Adxl355_SPI(SPIClass &p , char ss) : mySPI(p)
 {
+	_sercom_mode = True;
 	Serial.begin(115200);
-	_scl_en = scl_en;
+	_ss = ss;
 }
 
-Adxl355::~Adxl355()
+Adxl355_SPI::~Adxl355_SPI()
 {
 }
 
-void Adxl355::init() 
+void Adxl355_SPI::init() 
 {	
-	Wire.begin();
-	Wire.setClock(I2C_FAST_MODE);
-	
-	pinMode(_scl_en, OUTPUT);
+	pinMode(_ss, OUTPUT);
+	digitalWrite(_ss, HIGH);
 	/*** set adxl355 parameters ***/
-	p_scl_mux_enable();
+	// p_scl_mux_enable();
 	setRegVal(RST_ADDR, POR);
 	setRegVal(RANGE_ADDR, F_MODE | RANGE_8G);
 	setRegVal(FILTER_ADDR, ODR_500);
 	// setRegVal(SYNC_ADDR, EXT_SYNC); 
 	setRegVal(SYNC_ADDR, INT_SYNC); 
 	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
-	p_scl_mux_disable();
+	// p_scl_mux_disable();
 }
 
-void Adxl355::testI2C()
-{
-	// Serial.println("hi");
-	myWire.beginTransmission(ADXL355_ADDR);
-	myWire.write(0x1D);
-	myWire.write(0x01);
-	myWire.endTransmission();
-	delay(4);
-}
 
-void Adxl355::readData(unsigned char temp_a[9]) 
+void Adxl355_SPI::readData(unsigned char temp_a[9]) 
 {
 	int accX, accY, accZ;
-	p_scl_mux_enable();
-	while(!(p_I2CReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
+	// p_scl_mux_enable();
+	while(!(p_SPIReadData(STATUS_ADDR) & DATA_RDY_MSK)) {}; //wait ADXL322 data available
 	//Serial.println("pass");
-	temp_a[0] = p_I2CReadData(XDATA3_ADDR); 
-	temp_a[1] = p_I2CReadData(XDATA2_ADDR); 
-	temp_a[2] = p_I2CReadData(XDATA1_ADDR); 
+	temp_a[0] = p_SPIReadData(XDATA3_ADDR); 
+	temp_a[1] = p_SPIReadData(XDATA2_ADDR); 
+	temp_a[2] = p_SPIReadData(XDATA1_ADDR); 
 
-	temp_a[3] = p_I2CReadData(YDATA3_ADDR); 
-	temp_a[4] = p_I2CReadData(YDATA2_ADDR); 
-	temp_a[5] = p_I2CReadData(YDATA1_ADDR); 
+	temp_a[3] = p_SPIReadData(YDATA3_ADDR); 
+	temp_a[4] = p_SPIReadData(YDATA2_ADDR); 
+	temp_a[5] = p_SPIReadData(YDATA1_ADDR); 
 
-	temp_a[6] = p_I2CReadData(ZDATA3_ADDR); 
-	temp_a[7] = p_I2CReadData(ZDATA2_ADDR); 
-	temp_a[8] = p_I2CReadData(ZDATA1_ADDR); 
-	p_scl_mux_disable();
+	temp_a[6] = p_SPIReadData(ZDATA3_ADDR); 
+	temp_a[7] = p_SPIReadData(ZDATA2_ADDR); 
+	temp_a[8] = p_SPIReadData(ZDATA1_ADDR); 
+	// p_scl_mux_disable();
 } 
 
-void Adxl355::readFakeData(unsigned char temp_a[9]) 
+void Adxl355_SPI::readFakeData(unsigned char temp_a[9]) 
 {
 	temp_a[0] = 0; 
 	temp_a[1] = 0; 
@@ -137,23 +130,23 @@ void Adxl355::readFakeData(unsigned char temp_a[9])
 } 
 
 
-void Adxl355::setRegVal(unsigned char addr, unsigned char val)
+void Adxl355_SPI::setRegVal(unsigned char addr, unsigned char val)
 {
-	p_I2CWriteData(addr, val);
+	p_SPIWriteData(addr, val);
 	// Serial.print(123);
 	// delay(1);
 }
 
-void Adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
+void Adxl355_SPI::printRegVal(char name[], unsigned char addr, unsigned char rep)
 {
-	p_scl_mux_enable();
+	// p_scl_mux_enable();
 	Serial.print(name);
 	Serial.print(": ");
-	Serial.println(p_I2CReadData(addr), rep);
-	p_scl_mux_disable();
+	Serial.println(p_SPIReadData(addr), rep);
+	// p_scl_mux_disable();
 }
 
-void Adxl355::printRegAll()
+void Adxl355_SPI::printRegAll()
 {
 	printRegVal("DEV_ID", DEVID_AD_ADDR, HEX);
 	printRegVal("SYNC", SYNC_ADDR, HEX);
@@ -163,35 +156,37 @@ void Adxl355::printRegAll()
 	Serial.println();
 }
 
-void Adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
+void Adxl355_SPI::p_SPIWriteData(unsigned char addr, unsigned char val)
 {
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.write(val);
-	Wire.endTransmission();
+	unsigned char dataToSend = (addr << 1) | WRITE_BYTE;
+	
+	digitalWrite(_ss, LOW);
+	mySPI.transfer(dataToSend);
+	mySPI.transfer(val);
+	digitalWrite(_ss, HIGH);
 	
 }
 
-unsigned char Adxl355::p_I2CReadData(unsigned char addr)
+unsigned char Adxl355_SPI::p_SPIReadData(unsigned char addr)
 {
 	unsigned char data;
+	unsigned char dataToSend = (addr << 1) | READ_BYTE;
 	
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.endTransmission();
-	Wire.requestFrom(ADXL355_ADDR,1);
-	while (Wire.available()) data=Wire.read();
-
+	digitalWrite(_ss, LOW);
+	mySPI.transfer(dataToSend);
+	data = mySPI.transfer(0x00);
+	digitalWrite(_ss, HIGH);
+	
 	return data;
 }
 
-void Adxl355::p_scl_mux_enable()
-{
-	digitalWrite(_scl_en, 0);
-}
+// void Adxl355_SPI::p_scl_mux_enable()
+// {
+	// digitalWrite(_scl_en, 0);
+// }
 
-void Adxl355::p_scl_mux_disable()
-{
-	digitalWrite(_scl_en, 1);
-	delayMicroseconds(20);
-}
+// void Adxl355_SPI::p_scl_mux_disable()
+// {
+	// digitalWrite(_scl_en, 1);
+	// delayMicroseconds(20);
+// }

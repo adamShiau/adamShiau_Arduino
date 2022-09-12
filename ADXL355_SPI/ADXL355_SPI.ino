@@ -1,3 +1,4 @@
+#include "adxl355_SPI.h"
 #include <Arduino.h>
 #include "wiring_private.h"
 
@@ -48,138 +49,65 @@ const int MEASURE_MODE = 0x06; // Only accelerometer
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
 SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
+Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
 // Operations
-const int READ_BYTE = 0x01;
-const int WRITE_BYTE = 0x00;
+//const int READ_BYTE = 0x01;
+//const int WRITE_BYTE = 0x00;
 
 // Pins used for the connection with the sensor
 //const int CHIP_SELECT_PIN = 10;
 
 void setup() {
-  Serial.begin(115200);
+//  Serial.begin(115200);
   
-  //SPI
-  pinMode(CHIP_SELECT_PIN, OUTPUT);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
+
   mySPI.begin();
   mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(19, PIO_SERCOM_ALT);
-
-  //Configure ADXL355:
-  writeRegister(RST, 0x52);
-  delay(100);
-//  writeRegister(INTERRUPT, 0);
-//  delay(100);
-  writeRegister(RANGE, RANGE_8G); // 2G
-  delay(100);
-  writeRegister(FILTER, 0b0011); //ODR b101@125Hz, b100@250Hz
-  // delay(100);
-  writeRegister(SYNC, 0x00); //b000@internal, b010@sync
-  delay(100);
-  writeRegister(POWER_CTL, 0x02); // Enable measure mode
-
-  // Give the sensor time to set up:
-//  delay(100);
-//  Serial.print("RANGE: ");
-//    Serial.println(readRegistry(RANGE),BIN);
-//    delay(100);
-//    Serial.print("SYNC: ");
-//    Serial.println(readRegistry(SYNC),BIN);
-//    delay(100);
-//    Serial.print("FILTER: ");
-//    Serial.println(readRegistry(FILTER),BIN);
-//    delay(1000);
+  adxl355_spi.init();
 }
 unsigned int t_old=0, t_new;
 void loop() {
-  byte temp1, temp2, temp3;
-  int accX, accY, accZ; 
-  byte status;
-  bool isReady;
-
-
-
-	status = readRegistry(STATUS);
-	isReady = status&0x01;
-//	 Serial.print("status: ");
-//	 Serial.println(status, BIN);
-//	 Serial.print("isReady: ");
-//	 Serial.println(isReady);
-	
-  if(isReady == 1)
-  {
-  	temp1 = readRegistry(XDATA3);
-  	temp2 = readRegistry(XDATA2);
-  	temp3 = readRegistry(XDATA1);
-  	accX = temp1<<12 | temp2<<4 | temp3>>4;
-  	if((accX>>19) == 1) accX = accX - 1048576;
+  byte acc[9];
   
-  	temp1 = readRegistry(YDATA3);
-  	temp2 = readRegistry(YDATA2);
-  	temp3 = readRegistry(YDATA1);
-  	accY = temp1<<12 | temp2<<4 | temp3>>4;
-  	if((accY>>19) == 1) accY = accY - 1048576;
-  
-  	temp1 = readRegistry(ZDATA3);
-  	temp2 = readRegistry(ZDATA2);
-  	temp3 = readRegistry(ZDATA1);
-  	accZ = temp1<<12 | temp2<<4 | temp3>>4;
-  	if((accZ>>19) == 1) accZ = accZ - 1048576;
-    t_new = micros();
-        Serial.print(t_new - t_old);
-        Serial.print(", ");
-        Serial.print(accX);
-        Serial.print(", ");
-        Serial.print((float)accX*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accY);
-        Serial.print(", ");
-        Serial.print((float)accY*SENS_8G);
-        Serial.print(", ");
-        Serial.print(accZ);
-		Serial.print(", ");
-        Serial.println((float)accZ*SENS_8G);
-        t_old = t_new;
-  }
-  
+//  adxl355.printRegAll();
+  adxl355_spi.readData(acc);
+  print_adxl355Data_spi(acc);
 }
 
-/* 
- * Write registry in specific device address
- */
-void writeRegister(byte thisRegister, byte thisValue) {
-  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  mySPI.transfer(dataToSend);
-  mySPI.transfer(thisValue);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-}
-
-/* 
- * Read registry in specific device address
- */
-unsigned int readRegistry(byte thisRegister) {
-  unsigned int result = 0;
-  byte dataToSend = (thisRegister << 1) | READ_BYTE;
-
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  mySPI.transfer(dataToSend);
-  result = mySPI.transfer(0x00);
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-  return result;
+void print_adxl355Data_spi(byte *temp_a)
+{
+  int accX, accY, accZ;
+  
+  accX = temp_a[0]<<12 | temp_a[1]<<4 | temp_a[2]>>4;
+  if((accX>>19) == 1) accX = accX - (1<<20);
+  accY = temp_a[3]<<12 | temp_a[4]<<4 | temp_a[5]>>4;
+  if((accY>>19) == 1) accY = accY - (1<<20);
+  accZ = temp_a[6]<<12 | temp_a[7]<<4 | temp_a[8]>>4;
+  if((accZ>>19) == 1) accZ = accZ - (1<<20);
+  
+  t_new = micros();
+  Serial.print(t_new - t_old);
+  Serial.print('\t');
+  Serial.print((float)accX*SENS_8G);
+  Serial.print('\t');
+  Serial.print((float)accY*SENS_8G);
+  Serial.print('\t');
+  Serial.println((float)accZ*SENS_8G);
+  t_old = t_new;
 }
 
 /* 
  * Read multiple registries
  */
-void readMultipleData(int *addresses, int dataSize, int *readedData) {
-  digitalWrite(CHIP_SELECT_PIN, LOW);
-  for(int i = 0; i < dataSize; i = i + 1) {
-    byte dataToSend = (addresses[i] << 1) | READ_BYTE;
-    mySPI.transfer(dataToSend);
-    readedData[i] = mySPI.transfer(0x00);
-  }
-  digitalWrite(CHIP_SELECT_PIN, HIGH);
-}
+//void readMultipleData(int *addresses, int dataSize, int *readedData) {
+//  digitalWrite(CHIP_SELECT_PIN, LOW);
+//  for(int i = 0; i < dataSize; i = i + 1) {
+//    byte dataToSend = (addresses[i] << 1) | READ_BYTE;
+//    mySPI.transfer(dataToSend);
+//    readedData[i] = mySPI.transfer(0x00);
+//  }
+//  digitalWrite(CHIP_SELECT_PIN, HIGH);
+//}

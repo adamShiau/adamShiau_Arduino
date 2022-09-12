@@ -1,4 +1,4 @@
-#include "adxl355.h"
+#include "adxl355_I2C.h"
 
 #define ADXL355_ADDR 		0x1D	//Adxl355 I2C address
 #define I2C_STANDARD_MODE 	100000
@@ -63,20 +63,29 @@
 #define True 1
 #define False 0
 
-Adxl355::Adxl355(int scl_en)
+
+Adxl355_I2C::Adxl355_I2C(TwoWire &p ) : myWire(p)
 {
+	_sercom_mode = True;
 	Serial.begin(115200);
-	_scl_en = scl_en;
+	_scl_en = 12;
 }
 
-Adxl355::~Adxl355()
+Adxl355_I2C::~Adxl355_I2C()
 {
 }
 
-void Adxl355::init() 
+void Adxl355_I2C::init() 
 {	
-	Wire.begin();
-	Wire.setClock(I2C_FAST_MODE);
+	if(_sercom_mode){
+		// myWire.begin();
+		// myWire.setClock(I2C_FAST_MODE_PLUS);
+	}
+	
+	else {
+		Wire.begin();
+		Wire.setClock(I2C_FAST_MODE);
+	}
 	
 	pinMode(_scl_en, OUTPUT);
 	/*** set adxl355 parameters ***/
@@ -90,7 +99,7 @@ void Adxl355::init()
 	p_scl_mux_disable();
 }
 
-void Adxl355::testI2C()
+void Adxl355_I2C::testI2C()
 {
 	// Serial.println("hi");
 	myWire.beginTransmission(ADXL355_ADDR);
@@ -100,7 +109,7 @@ void Adxl355::testI2C()
 	delay(4);
 }
 
-void Adxl355::readData(unsigned char temp_a[9]) 
+void Adxl355_I2C::readData(unsigned char temp_a[9]) 
 {
 	int accX, accY, accZ;
 	p_scl_mux_enable();
@@ -120,7 +129,7 @@ void Adxl355::readData(unsigned char temp_a[9])
 	p_scl_mux_disable();
 } 
 
-void Adxl355::readFakeData(unsigned char temp_a[9]) 
+void Adxl355_I2C::readFakeData(unsigned char temp_a[9]) 
 {
 	temp_a[0] = 0; 
 	temp_a[1] = 0; 
@@ -137,14 +146,14 @@ void Adxl355::readFakeData(unsigned char temp_a[9])
 } 
 
 
-void Adxl355::setRegVal(unsigned char addr, unsigned char val)
+void Adxl355_I2C::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
 	// Serial.print(123);
 	// delay(1);
 }
 
-void Adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
+void Adxl355_I2C::printRegVal(char name[], unsigned char addr, unsigned char rep)
 {
 	p_scl_mux_enable();
 	Serial.print(name);
@@ -153,7 +162,7 @@ void Adxl355::printRegVal(char name[], unsigned char addr, unsigned char rep)
 	p_scl_mux_disable();
 }
 
-void Adxl355::printRegAll()
+void Adxl355_I2C::printRegAll()
 {
 	printRegVal("DEV_ID", DEVID_AD_ADDR, HEX);
 	printRegVal("SYNC", SYNC_ADDR, HEX);
@@ -163,34 +172,51 @@ void Adxl355::printRegAll()
 	Serial.println();
 }
 
-void Adxl355::p_I2CWriteData(unsigned char addr, unsigned char val)
+void Adxl355_I2C::p_I2CWriteData(unsigned char addr, unsigned char val)
 {
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.write(val);
-	Wire.endTransmission();
+	if(_sercom_mode){
+		myWire.beginTransmission(ADXL355_ADDR);
+		myWire.write(addr);
+		myWire.write(val);
+		myWire.endTransmission();
+	}
+	else{
+		Wire.beginTransmission(ADXL355_ADDR);
+		Wire.write(addr);
+		Wire.write(val);
+		Wire.endTransmission();
+	}
 	
 }
 
-unsigned char Adxl355::p_I2CReadData(unsigned char addr)
+unsigned char Adxl355_I2C::p_I2CReadData(unsigned char addr)
 {
 	unsigned char data;
 	
-	Wire.beginTransmission(ADXL355_ADDR);
-	Wire.write(addr);
-	Wire.endTransmission();
-	Wire.requestFrom(ADXL355_ADDR,1);
-	while (Wire.available()) data=Wire.read();
+	if(_sercom_mode){
+		myWire.beginTransmission(ADXL355_ADDR);
+		myWire.write(addr);
+		myWire.endTransmission();
+		myWire.requestFrom(ADXL355_ADDR,1);
+		while (myWire.available()) data=myWire.read();
+	}
+	else{
+		Wire.beginTransmission(ADXL355_ADDR);
+		Wire.write(addr);
+		Wire.endTransmission();
+		Wire.requestFrom(ADXL355_ADDR,1);
+		while (Wire.available()) data=Wire.read();
+	}
 
 	return data;
 }
 
-void Adxl355::p_scl_mux_enable()
+void Adxl355_I2C::p_scl_mux_enable()
 {
 	digitalWrite(_scl_en, 0);
 }
 
-void Adxl355::p_scl_mux_disable()
+void Adxl355_I2C::p_scl_mux_disable()
 {
 	digitalWrite(_scl_en, 1);
 	delayMicroseconds(20);

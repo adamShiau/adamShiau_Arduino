@@ -1,4 +1,4 @@
-#include "adxl355.h"
+#include "adxl355_I2C.h"
 #include <Arduino.h>
 #include "wiring_private.h"
 
@@ -85,34 +85,27 @@ void SERCOM0_Handler()
   myWire.onService();
 }
 
-Adxl355 adxl355(myWire);
+Adxl355_I2C adxl355_i2c(myWire);
 
 void setup() {
   myWire.begin();
   myWire.setClock(I2C_FAST_MODE_PLUS);
   pinPeripheral(27, PIO_SERCOM);
   pinPeripheral(20, PIO_SERCOM);
-	adxl355.init();
-//	adxl355.setRegVal(0x2B, 0); 
+	adxl355_i2c.init();
 	pinMode(SYS_TRIG, INPUT);
 }
 
 void loop() {
 	byte acc[9];
 	
-	// trig_status[0] = digitalRead(SYS_TRIG);
-	// if(trig_status[0] & ~trig_status[1]) {
 //		 adxl355.printRegAll();
-		// adxl355.printRegVal("", STATUS_ADDR, HEX);
-//   adxl355.testI2C();
-		adxl355.readData(acc);
-		print_adxl355Data(acc);
-	// }
-	// trig_status[1] = trig_status[0];
-//	 delay(500);
+		adxl355_i2c.readData(acc);
+		print_adxl355Data_i2c(acc);
+
 }
 
-void print_adxl355Data(byte *temp_a)
+void print_adxl355Data_i2c(byte *temp_a)
 {
 	int accX, accY, accZ;
 	
