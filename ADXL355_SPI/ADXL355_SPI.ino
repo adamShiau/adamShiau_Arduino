@@ -47,7 +47,7 @@ const int MEASURE_MODE = 0x06; // Only accelerometer
 #define SPI_CLOCK_8M 8000000
 #define CHIP_SELECT_PIN 2
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
 // Operations
@@ -65,7 +65,7 @@ void setup() {
   mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
-  pinPeripheral(19, PIO_SERCOM_ALT);
+  pinPeripheral(23, PIO_SERCOM_ALT);
   adxl355_spi.init();
 }
 unsigned int t_old=0, t_new;
@@ -75,6 +75,8 @@ void loop() {
 //  adxl355.printRegAll();
   adxl355_spi.readData(acc);
   print_adxl355Data_spi(acc);
+  adxl355_spi.printRegAll();
+  delay(4);
 }
 
 void print_adxl355Data_spi(byte *temp_a)
