@@ -9,9 +9,9 @@
 #define SENS_2G 0.0000039
 /***
 SERCOM0: I2C     (PA08, PA09) [sda: D2, scl: D3]
-SERCOM1: serial3 (PA16, PA18) [tx : D11, rx: D13]
+SERCOM1: serial3 (PA16, PA17) [tx : D11, rx: D13]
 SERCOM2: serial2 (PA14, PA15) [tx : D4,  rx: D5]
-SERCOM3: serial4 (PA18, PA20) [tx : D10, rx: D6]
+SERCOM3: serial4 (PA20, PA21) [tx : D6,  rx: D7]
 SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:]
 // temp. test//
 SERCOM4: SPI     (PB10, PB11, PA12, PB9) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:A2]
@@ -37,10 +37,11 @@ Adxl355_I2C adxl355_i2c(myWire);
 // SPI
 #include <SPI.h>
 #define SPI_CLOCK_8M 8000000
+#define SPI_CLOCK_1M 1000000
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+//SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 // temp. test//
-//SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 #define CHIP_SELECT_PIN 2
 Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
 // Operations
@@ -65,8 +66,8 @@ void SERCOM1_Handler()
 }
 PIG pig_ser3(Serial3);
 
-//SERCOM3: serial4 (PA22, PA19) [tx : D20, rx: D6]
-Uart Serial4 (&sercom3, 12, 29, SERCOM_RX_PAD_3, UART_TX_PAD_0);
+//SERCOM3: serial4 (PA20, PA21) [tx : D6, rx: D7]
+Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
@@ -77,17 +78,20 @@ unsigned int t_old=0, t_new;
 int cnt = 0;
 
 void setup() {
+//  int br = 230400;
+  int br = 460800;
+//int br = 921600;
   // put your setup code here, to run once:
 analogWriteResolution(10);
 analogReadResolution(12);
 
 
 
-Serial.begin(921600);
-Serial1.begin(921600);
-Serial2.begin(921600); 
-Serial3.begin(921600);
-Serial4.begin(921600);
+Serial.begin(br);
+Serial1.begin(br);
+Serial2.begin(br); 
+Serial3.begin(br);
+Serial4.begin(br);
 
 pinPeripheral(24, PIO_SERCOM);
 pinPeripheral(25, PIO_SERCOM);
@@ -95,8 +99,8 @@ pinPeripheral(25, PIO_SERCOM);
 pinPeripheral(11, PIO_SERCOM);
 pinPeripheral(13, PIO_SERCOM);
 //
-pinPeripheral(12, PIO_SERCOM_ALT);
-pinPeripheral(29, PIO_SERCOM);
+pinPeripheral(10, PIO_SERCOM_ALT);
+pinPeripheral(9, PIO_SERCOM_ALT);
 
 
 //I2C
@@ -107,15 +111,13 @@ pinPeripheral(20, PIO_SERCOM);
 adxl355_i2c.init();
 
 //SPI
-//pinMode(CHIP_SELECT_PIN, OUTPUT);
-//digitalWrite(CHIP_SELECT_PIN, HIGH);
 mySPI.begin();
 mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
 pinPeripheral(3, PIO_SERCOM_ALT);
 pinPeripheral(22, PIO_SERCOM_ALT);
 // temp. test//
-//pinPeripheral(19, PIO_SERCOM_ALT);
-pinPeripheral(23, PIO_SERCOM_ALT);
+pinPeripheral(19, PIO_SERCOM_ALT);
+//pinPeripheral(23, PIO_SERCOM_ALT);
 adxl355_spi.init();
 
 
@@ -153,19 +155,17 @@ void loop() {
 //Serial2.write(fog_ser2, 14);
 //pig_ser3.readData(header_ser3, fog_ser3);
 //Serial3.write(fog_ser3, 14);
-pig_ser4.readData(header_ser4, fog_ser4);
-Serial4.write(fog_ser4, 14);
-//writeBack(Serial2);
-//writeBack(Serial3);
-//writeBack(Serial4);
-//print_ser_ava(Serial2, "Ser2");
-//print_ser_ava(Serial3, "Ser3");
-//print_ser_ava(Serial4, "Ser4");
+//pig_ser4.readData(header_ser4, fog_ser4);
+//Serial4.write(fog_ser4, 14);
+//Serial1.write(fog_ser2, 14);
+//Serial1.write(fog_ser3, 14);
+//Serial1.write(fog_ser4, 14);
+
 //adxl355_i2c.readData(acc_i2c);
-//adxl355_spi.readData(acc_spi);
+adxl355_spi.readData(acc_spi);
 //adxl355_spi.printRegAll();
 
-//print_adxl355Data_spi(acc_spi);
+print_adxl355Data_spi(acc_spi);
 //print_adxl355Data_i2c(acc_i2c);
 //SPIWriteData(TEST_ADDR, cnt);
 //I2CWriteData(TEST_ADDR, 0x45);
@@ -174,17 +174,18 @@ Serial4.write(fog_ser4, 14);
 
 
 cnt++;
-//delay(4);
+delay(4);
 }
 
 void writeBack(Stream &ser)
 {
-  byte data[14];
-  if (ser.available() > 50)
+   byte data[16];
+  if (ser.available()>=16)
   {
     Serial.println(ser.available());
-    ser.readBytes(data, 14);
-    ser.write(data, 14);
+    ser.readBytes(data, 16);
+    ser.write(data, 16);
+//    Serial1.write(data, 16);
   }
   
 }

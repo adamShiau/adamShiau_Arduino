@@ -23,13 +23,13 @@ void SERCOM3_Handler()
 }
 
 int cnt=0;
-
+int br = 230400;
 void setup() {
   // put your setup code here, to run once:
-Serial1.begin(921600);
-Serial2.begin(921600); 
-Serial3.begin(921600);
-Serial4.begin(921600);
+Serial1.begin(br);
+Serial2.begin(br); 
+Serial3.begin(br);
+Serial4.begin(br);
 
 pinPeripheral(24, PIO_SERCOM);
 pinPeripheral(25, PIO_SERCOM);
@@ -75,8 +75,8 @@ void loopBack(Stream &ser)
   {
     Serial.println(ser.available());
     ser.readBytes(data, 12);
-//    ser.write(data, 12);
-    Serial1.write(data, 12);
+    ser.write(data, 12);
+//    Serial1.write(data, 12);
   }
   
 }
