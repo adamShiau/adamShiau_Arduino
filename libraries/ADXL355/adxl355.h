@@ -7,6 +7,7 @@
 class Adxl355
 {
 	public:
+		Adxl355(int);
 		~Adxl355();
 		void init(void);
 		void setRegVal(unsigned char, unsigned char);
@@ -14,7 +15,6 @@ class Adxl355
 		void printRegAll(void);
 		void readData(unsigned char []);
 		void readFakeData(unsigned char []);
-		void testI2C(void);
 		
 	private:
 		int _scl_en;

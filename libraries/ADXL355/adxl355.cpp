@@ -90,16 +90,6 @@ void Adxl355::init()
 	p_scl_mux_disable();
 }
 
-void Adxl355::testI2C()
-{
-	// Serial.println("hi");
-	myWire.beginTransmission(ADXL355_ADDR);
-	myWire.write(0x1D);
-	myWire.write(0x01);
-	myWire.endTransmission();
-	delay(4);
-}
-
 void Adxl355::readData(unsigned char temp_a[9]) 
 {
 	int accX, accY, accZ;
