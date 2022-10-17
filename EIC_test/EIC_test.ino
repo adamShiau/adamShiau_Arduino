@@ -23,7 +23,7 @@ pig_ser1.readData(header_ser1, fog_ser1);
 Serial1.write(fog_ser1, 14);
 
 //digitalWrite(TRIG_OUT, LOW);
-EIC->CONFIG[1].reg = 0x100;
+EIC->CONFIG[1].reg = 0x100; //interrupt condition = RISE
 
 
 }
@@ -31,9 +31,9 @@ EIC->CONFIG[1].reg = 0x100;
 
 void ISR_test()
 {
-  EIC->CONFIG[1].reg = 0;
+  EIC->CONFIG[1].reg = 0; //interrupt condition = NONE
   digitalWrite(TRIG_OUT, HIGH);
-  loopdelay(10);
+  loopdelay(10); // cannot use delay in ISR
   digitalWrite(TRIG_OUT, LOW);
 //  EIC->CONFIG[1].reg = 0x100;
 }

@@ -8,16 +8,25 @@
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
 /***
-SERCOM0: I2C     (PA08, PA09) [sda: D2, scl: D3]
-SERCOM1: serial3 (PA16, PA17) [tx : D11, rx: D13]
-SERCOM2: serial2 (PA14, PA15) [tx : D4,  rx: D5]
-SERCOM3: serial4 (PA20, PA21) [tx : D6,  rx: D7]
-SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:]
-// temp. test//
-SERCOM4: SPI     (PB10, PB11, PA12, PB9) [ss: ICSP4, miso: ICSP3, mosi: ICSP1, sck:A2]
-SERCOM5: serial1 (PB22, PB23) [tx:, rx:]
+SERCOM0: I2C     (PA08, PA09) [sda, scl]
+SERCOM1: serial3 (PA17, PA18) [rx, tx]
+SERCOM2: serial2 (PA15, PA14) [rx, tx]
+SERCOM3: serial4 (PA21, PA20) [rx, tx]
+SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss, miso, mosi, sck]
+SERCOM5: serial1 (PB23, PB22) [rx, tx]
   
 ***/
+// interrupt for EXT_SYNC, EXTT
+#define PIG_SYNC 29 //PA22
+
+//
+// PWM
+#include <SAMD21turboPWM.h>
+#define PWM100 5
+#define PWM200 7
+#define PWM250 11
+TurboPWM  pwm;
+//
 // I2C
 #include <Wire.h>
 #define ADXL355_ADDR     0x1D  //Adxl355 I2C address
@@ -39,9 +48,8 @@ Adxl355_I2C adxl355_i2c(myWire);
 #define SPI_CLOCK_8M 8000000
 #define SPI_CLOCK_1M 1000000
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-//SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
-// temp. test//
-SPIClass mySPI(&sercom4, 3, 19, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+
 #define CHIP_SELECT_PIN 2
 Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
 // Operations
@@ -59,7 +67,8 @@ void SERCOM2_Handler()
 PIG pig_ser2(Serial2);
 
 //SERCOM1: serial3 (PA16, PA17) [tx : D11, rx: D13]
-Uart Serial3 (&sercom1, 13, 11, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+//Uart Serial3 (&sercom1, 13, 11, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 void SERCOM1_Handler()
 {
     Serial3.IrqHandler();
@@ -85,7 +94,12 @@ void setup() {
 analogWriteResolution(10);
 analogReadResolution(12);
 
-
+// EXTT
+//attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
+attachInterrupt(30, ISR_EXTT, RISING); // EXTT = PA23, EXTINT[7]
+pinMode(PIG_SYNC, OUTPUT); 
+digitalWrite(PIG_SYNC, LOW);
+//
 
 Serial.begin(br);
 Serial1.begin(br);
@@ -96,7 +110,7 @@ Serial4.begin(br);
 pinPeripheral(24, PIO_SERCOM);
 pinPeripheral(25, PIO_SERCOM);
 
-pinPeripheral(11, PIO_SERCOM);
+pinPeripheral(8, PIO_SERCOM);
 pinPeripheral(13, PIO_SERCOM);
 //
 pinPeripheral(10, PIO_SERCOM_ALT);
@@ -115,66 +129,87 @@ mySPI.begin();
 mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
 pinPeripheral(3, PIO_SERCOM_ALT);
 pinPeripheral(22, PIO_SERCOM_ALT);
-// temp. test//
-pinPeripheral(19, PIO_SERCOM_ALT);
-//pinPeripheral(23, PIO_SERCOM_ALT);
+pinPeripheral(23, PIO_SERCOM_ALT);
 adxl355_spi.init();
 
+/*** pwm ***/
 
+  pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
+  pwm.timer(2, 2, 24000, false); //12M/2/24000 = 250Hz
+  pwm.timer(1, 2, 30000, false); //12M/2/60000 = 100Hz
+  pwm.timer(0, 2, 30000, false); //12M/2/30000 = 200Hz
+  
+  pwm.analogWrite(PWM100, 500);  
+  pwm.analogWrite(PWM200, 500);  
+  pwm.analogWrite(PWM250, 500);
 }
 
 void loop() {
-  int adc_A1, adc_A2, adc_A3, adc_A4, adc_A5;
+  int adc1, adc2, adc3;
   byte acc_i2c[9], acc_spi[9], header_ser2[2], header_ser3[2], header_ser4[2];
   byte fog_ser2[14], fog_ser3[14], fog_ser4[14];
 
-  //adc_A1 = analogRead(A1);
-  //adc_A2 = analogRead(A2);
-  //adc_A3 = analogRead(A3);
-  //adc_A4 = analogRead(A4);
-  //adc_A5 = analogRead(A5);
-//  Serial.print(adc_A1);
-//  Serial.print(", ");
-//  Serial.print(adc_A2);
-//  Serial.print(", ");
-//  Serial.print(adc_A3);
-//  Serial.print(", ");
-//  Serial.print(adc_A4);
-//  Serial.print(", ");
-//  Serial.println(adc_A5);
-//  analogWrite(A0, cnt);
-//send_serial_data(Serial1, cnt);
-  
-//Serial.println(cnt);
-//serialPrint(Serial1, cnt);
-//serialPrint(Serial2, cnt);
-//serialPrint(Serial3, cnt);
-//serialPrint(Serial4, cnt);
 
-//pig_ser2.readData(header_ser2, fog_ser2);
-//Serial2.write(fog_ser2, 14);
-//pig_ser3.readData(header_ser3, fog_ser3);
-//Serial3.write(fog_ser3, 14);
-//pig_ser4.readData(header_ser4, fog_ser4);
-//Serial4.write(fog_ser4, 14);
-//Serial1.write(fog_ser2, 14);
-//Serial1.write(fog_ser3, 14);
-//Serial1.write(fog_ser4, 14);
+  adc1 = analogRead(A4);
+  adc2 = analogRead(A5);
+  adc3 = analogRead(A3);
 
-//adxl355_i2c.readData(acc_i2c);
+  Serial.print(adc1);
+  Serial.print(", ");
+  Serial.print(adc2);
+  Serial.print(", ");
+  Serial.println(adc3);
+  analogWrite(A0, cnt);
+
+
+pig_ser2.readData(header_ser2, fog_ser2);
+Serial2.write(fog_ser2, 14);
+pig_ser3.readData(header_ser3, fog_ser3);
+Serial3.write(fog_ser3, 14);
+pig_ser4.readData(header_ser4, fog_ser4);
+Serial4.write(fog_ser4, 14);
+Serial1.write(fog_ser2, 14);
+Serial1.write(fog_ser3, 14);
+Serial1.write(fog_ser4, 14);
+
+adxl355_i2c.readData(acc_i2c);
 adxl355_spi.readData(acc_spi);
 //adxl355_spi.printRegAll();
 
-print_adxl355Data_spi(acc_spi);
+//print_adxl355Data_spi(acc_spi);
 //print_adxl355Data_i2c(acc_i2c);
+
+//serialPrint(Serial2, cnt);
+//serialPrint(Serial3, cnt);
+//serialPrint(Serial4, cnt);
 //SPIWriteData(TEST_ADDR, cnt);
 //I2CWriteData(TEST_ADDR, 0x45);
-
-
-
+//Serial.println(cnt);
 
 cnt++;
-delay(4);
+//delay(4);
+//EIC->CONFIG[1].reg = 0x10000000; //interrupt condition = RISE
+digitalWrite(PIG_SYNC, LOW);
+EIC->CONFIG[0].reg = 0x10000000; //interrupt condition = RISE
+}
+
+void ISR_EXTT()
+{
+//  EIC->CONFIG[1].reg = 0; //interrupt condition = NONE
+//Serial.println("HI");
+//  EIC->CONFIG[0].reg = 0; //interrupt condition = NONE
+  digitalWrite(PIG_SYNC, HIGH);
+//  loopdelay(50); // cannot use delay in ISR
+//  digitalWrite(PIG_SYNC, LOW);
+  EIC->CONFIG[0].reg = 0; //interrupt condition = NONE
+//  EIC->CONFIG[1].reg = 0x100;
+}
+
+void loopdelay(int dly)
+{
+  for(int i=0; i<dly; i++) {
+    Serial.println(i);
+  }
 }
 
 void writeBack(Stream &ser)
@@ -285,13 +320,13 @@ void I2CWriteData(unsigned char addr, unsigned char val)
   myWire.endTransmission();
 }
 
-//void SPIWriteData(byte thisRegister, int thisValue) {
+void SPIWriteData(byte thisRegister, int thisValue) {
 //  byte dataToSend = (thisRegister << 1) | WRITE_BYTE;
-//  digitalWrite(CHIP_SELECT_PIN, LOW);
-//  mySPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
-//  mySPI.transfer(thisValue >> 24);
-//  mySPI.transfer(thisValue >> 16);
-//  mySPI.transfer(thisValue >> 8);
-//  mySPI.transfer(thisValue);
-//  digitalWrite(CHIP_SELECT_PIN, HIGH);
-//}
+  digitalWrite(CHIP_SELECT_PIN, LOW);
+  mySPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
+  mySPI.transfer(thisValue >> 24);
+  mySPI.transfer(thisValue >> 16);
+  mySPI.transfer(thisValue >> 8);
+  mySPI.transfer(thisValue);
+  digitalWrite(CHIP_SELECT_PIN, HIGH);
+}
