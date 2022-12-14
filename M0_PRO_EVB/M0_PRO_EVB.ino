@@ -99,7 +99,6 @@ attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
 //attachInterrupt(30, ISR_EXTT, RISING); // EXTT = PA23, EXTINT[7]
 pinMode(PIG_SYNC, OUTPUT); 
 digitalWrite(PIG_SYNC, LOW);
-EIC->CONFIG[1].reg = 0x10000000; //EXTINT[15] interrupt condition = RISE
 //
 
 Serial.begin(br);
