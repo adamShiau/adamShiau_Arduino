@@ -95,10 +95,11 @@ analogWriteResolution(10);
 analogReadResolution(12);
 
 // EXTT
-//attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
-attachInterrupt(30, ISR_EXTT, RISING); // EXTT = PA23, EXTINT[7]
+attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
+//attachInterrupt(30, ISR_EXTT, RISING); // EXTT = PA23, EXTINT[7]
 pinMode(PIG_SYNC, OUTPUT); 
 digitalWrite(PIG_SYNC, LOW);
+EIC->CONFIG[1].reg = 0x10000000; //EXTINT[15] interrupt condition = RISE
 //
 
 Serial.begin(br);
@@ -136,7 +137,7 @@ adxl355_spi.init();
 
   pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
   pwm.timer(2, 2, 24000, false); //12M/2/24000 = 250Hz
-  pwm.timer(1, 2, 30000, false); //12M/2/60000 = 100Hz
+  pwm.timer(1, 2, 60000, false); //12M/2/60000 = 100Hz
   pwm.timer(0, 2, 30000, false); //12M/2/30000 = 200Hz
   
   pwm.analogWrite(PWM100, 500);  
@@ -159,7 +160,7 @@ void loop() {
   Serial.print(adc2);
   Serial.print(", ");
   Serial.println(adc3);
-  analogWrite(A0, cnt);
+//  analogWrite(A0, cnt);
 
 
 pig_ser2.readData(header_ser2, fog_ser2);
@@ -172,8 +173,8 @@ Serial1.write(fog_ser2, 14);
 Serial1.write(fog_ser3, 14);
 Serial1.write(fog_ser4, 14);
 
-adxl355_i2c.readData(acc_i2c);
-adxl355_spi.readData(acc_spi);
+//adxl355_i2c.readData(acc_i2c);
+//adxl355_spi.readData(acc_spi);
 //adxl355_spi.printRegAll();
 
 //print_adxl355Data_spi(acc_spi);
@@ -188,9 +189,9 @@ adxl355_spi.readData(acc_spi);
 
 cnt++;
 //delay(4);
-//EIC->CONFIG[1].reg = 0x10000000; //interrupt condition = RISE
+EIC->CONFIG[1].reg = 0x10000000; //EXTINT[15] interrupt condition = RISE
 digitalWrite(PIG_SYNC, LOW);
-EIC->CONFIG[0].reg = 0x10000000; //interrupt condition = RISE
+//EIC->CONFIG[0].reg = 0x10000000; //EXTINT[7] interrupt condition = RISE
 }
 
 void ISR_EXTT()
