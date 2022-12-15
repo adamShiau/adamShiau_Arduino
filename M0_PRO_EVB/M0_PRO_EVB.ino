@@ -22,9 +22,10 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //
 // PWM
 #include <SAMD21turboPWM.h>
-#define PWM100 5
-#define PWM200 7
+#define PWM100 7
+#define PWM200 5
 #define PWM250 11
+#define PWM_FIX 0.9755
 TurboPWM  pwm;
 //
 // I2C
@@ -48,7 +49,8 @@ Adxl355_I2C adxl355_i2c(myWire);
 #define SPI_CLOCK_8M 8000000
 #define SPI_CLOCK_1M 1000000
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
-SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+// SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 #define CHIP_SELECT_PIN 2
 Adxl355_SPI adxl355_spi(mySPI, CHIP_SELECT_PIN);
@@ -87,8 +89,8 @@ unsigned int t_old=0, t_new;
 int cnt = 0;
 
 void setup() {
-//  int br = 230400;
-  int br = 460800;
+ int br = 230400;
+  // int br = 460800;
 //int br = 921600;
   // put your setup code here, to run once:
 analogWriteResolution(10);
@@ -135,9 +137,9 @@ adxl355_spi.init();
 /*** pwm ***/
 
   pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
-  pwm.timer(2, 2, 24000, false); //12M/2/24000 = 250Hz
-  pwm.timer(1, 2, 60000, false); //12M/2/60000 = 100Hz
-  pwm.timer(0, 2, 30000, false); //12M/2/30000 = 200Hz
+  pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
+  pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+  pwm.timer(0, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
   
   pwm.analogWrite(PWM100, 500);  
   pwm.analogWrite(PWM200, 500);  
@@ -162,10 +164,10 @@ void loop() {
 //  analogWrite(A0, cnt);
 
 
-pig_ser2.readData(header_ser2, fog_ser2);
-Serial2.write(fog_ser2, 14);
-pig_ser3.readData(header_ser3, fog_ser3);
-Serial3.write(fog_ser3, 14);
+// pig_ser2.readData(header_ser2, fog_ser2);
+// Serial2.write(fog_ser2, 14);
+// pig_ser3.readData(header_ser3, fog_ser3);
+// Serial3.write(fog_ser3, 14);
 pig_ser4.readData(header_ser4, fog_ser4);
 Serial4.write(fog_ser4, 14);
 Serial1.write(fog_ser2, 14);
@@ -196,7 +198,7 @@ digitalWrite(PIG_SYNC, LOW);
 void ISR_EXTT()
 {
 //  EIC->CONFIG[1].reg = 0; //interrupt condition = NONE
-//Serial.println("HI");
+// Serial.println("HI");
 //  EIC->CONFIG[0].reg = 0; //interrupt condition = NONE
   digitalWrite(PIG_SYNC, HIGH);
 //  loopdelay(50); // cannot use delay in ISR
