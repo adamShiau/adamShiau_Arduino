@@ -16,9 +16,7 @@ begin	KEYWORD2
 end	KEYWORD2
 
 readAcceleration	KEYWORD2
-readFakeAcceleration	KEYWORD2
-readGyroscope		KEYWORD2
-readFakeGyroscope		KEYWORD2
+readGyroscope	KEYWORD2
 gyroscopeAvailable	KEYWORD2
 accelerationAvailable	KEYWORD2
 accelerationSampleRate	KEYWORD2
