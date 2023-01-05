@@ -33,41 +33,40 @@ public:
   GATTClass();
   virtual ~GATTClass();
 
-  virtual void begin();
-  virtual void end();
+  void begin();
+  void end();
 
-  virtual void setDeviceName(const char* deviceName);
-  virtual void setAppearance(uint16_t appearance);
+  void setDeviceName(const char* deviceName);
+  void setAppearance(uint16_t appearance);
 
-  virtual void addService(BLEService& service);
+  void addService(BLEService& service);
 
 protected:
   friend class ATTClass;
 
-  virtual unsigned int attributeCount() const;
-  virtual BLELocalAttribute* attribute(unsigned int index) const;
+  unsigned int attributeCount() const;
+  BLELocalAttribute* attribute(unsigned int index) const;
 
 protected:
   friend class BLELocalCharacteristic;
 
-  virtual uint16_t serviceUuidForCharacteristic(BLELocalCharacteristic* characteristic) const;
+  uint16_t serviceUuidForCharacteristic(BLELocalCharacteristic* characteristic) const;
 
 private:
-  virtual void addService(BLELocalService* service);
+  void addService(BLELocalService* service);
 
-  virtual void clearAttributes();
+  void clearAttributes();
 
 private:
   BLELinkedList<BLELocalAttribute*> _attributes;
-  BLELinkedList<BLELocalService*>   _services;
 
-  BLELocalService*              _genericAccessService;
-  BLELocalCharacteristic*       _deviceNameCharacteristic;
-  BLELocalCharacteristic*       _appearanceCharacteristic;
-  BLELocalService*              _genericAttributeService;
-  BLELocalCharacteristic*       _servicesChangedCharacteristic;
+  BLELocalService              _genericAccessService;
+  BLELocalCharacteristic       _deviceNameCharacteristic;
+  BLELocalCharacteristic       _appearanceCharacteristic;
+  BLELocalService              _genericAttributeService;
+  BLELocalCharacteristic       _servicesChangedCharacteristic;
 };
 
-extern GATTClass& GATT;
+extern GATTClass GATT;
 
 #endif

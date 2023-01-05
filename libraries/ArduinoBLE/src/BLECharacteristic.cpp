@@ -47,13 +47,13 @@ BLECharacteristic::BLECharacteristic(BLERemoteCharacteristic* remote) :
   }
 }
 
-BLECharacteristic::BLECharacteristic(const char* uuid, uint16_t permissions, int valueSize, bool fixedLength) :
-  BLECharacteristic(new BLELocalCharacteristic(uuid, permissions, valueSize, fixedLength))
+BLECharacteristic::BLECharacteristic(const char* uuid, uint8_t properties, int valueSize, bool fixedLength) :
+  BLECharacteristic(new BLELocalCharacteristic(uuid, properties, valueSize, fixedLength))
 {
 }
 
-BLECharacteristic::BLECharacteristic(const char* uuid, uint16_t permissions, const char* value) :
-  BLECharacteristic(new BLELocalCharacteristic(uuid, permissions, value))
+BLECharacteristic::BLECharacteristic(const char* uuid, uint8_t properties, const char* value) :
+  BLECharacteristic(new BLELocalCharacteristic(uuid, properties, value))
 {
 }
 
@@ -72,11 +72,11 @@ BLECharacteristic::BLECharacteristic(const BLECharacteristic& other)
 
 BLECharacteristic::~BLECharacteristic()
 {
-  if (_local && _local->release() == 0) {
+  if (_local && _local->release() <= 0) {
     delete _local;
   }
 
-  if (_remote && _remote->release() == 0) {
+  if (_remote && _remote->release() <= 0) {
     delete _remote;
   }
 }
@@ -234,65 +234,65 @@ int BLECharacteristic::readValue(int32_t& value)
   return readValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(const uint8_t value[], int length, bool withResponse)
+int BLECharacteristic::writeValue(const uint8_t value[], int length)
 {
   if (_local) {
     return _local->writeValue(value, length);
   }
 
   if (_remote) {
-    return _remote->writeValue(value, length, withResponse);
+    return _remote->writeValue(value, length);
   }
 
   return 0;
 }
 
-int BLECharacteristic::writeValue(const void* value, int length, bool withResponse)
+int BLECharacteristic::writeValue(const void* value, int length)
 {
-  return writeValue((const uint8_t*)value, length, withResponse);
+  return writeValue((const uint8_t*)value, length);
 }
 
-int BLECharacteristic::writeValue(const char* value, bool withResponse)
+int BLECharacteristic::writeValue(const char* value)
 {
   if (_local) {
     return _local->writeValue(value);
   }
 
   if (_remote) {
-    return _remote->writeValue(value, withResponse);
+    return _remote->writeValue(value);
   }
 
   return 0;
 }
 
-int BLECharacteristic::writeValue(uint8_t value, bool withResponse)
+int BLECharacteristic::writeValue(uint8_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(int8_t value, bool withResponse)
+int BLECharacteristic::writeValue(int8_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(uint16_t value, bool withResponse)
+int BLECharacteristic::writeValue(uint16_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(int16_t value, bool withResponse)
+int BLECharacteristic::writeValue(int16_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(uint32_t value, bool withResponse)
+int BLECharacteristic::writeValue(uint32_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
-int BLECharacteristic::writeValue(int32_t value, bool withResponse)
+int BLECharacteristic::writeValue(int32_t value)
 {
-  return writeValue((uint8_t*)&value, sizeof(value), withResponse);
+  return writeValue((uint8_t*)&value, sizeof(value));
 }
 
 int BLECharacteristic::broadcast()

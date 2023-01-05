@@ -1,28 +1,24 @@
 /****************************************************************************************************************************
   FS_Nano33BLE.h - Filesystem wrapper for FS (LittleFS and FATFS) on the Mbed Nano-33-BLE
-
+  
   For MBED nRF52840-based boards such as Nano_33_BLE, Nano_33_BLE_Sense.
   Written by Khoi Hoang
 
   Built by Khoi Hoang https://github.com/khoih-prog/FS_Nano33BLE
   Licensed under MIT license
 
-  Version: 1.2.1
+  Version: 1.0.0
 
   Version Modified By   Date      Comments
   ------- -----------  ---------- -----------
   1.0.0   K Hoang      29/08/2021 Initial coding to support MBED nRF52840-based boards such as Nano_33_BLE, etc.
-  1.1.0   K Hoang      31/12/2021 Fix `multiple-definitions` linker error
-  1.2.0   K Hoang      15/01/2022 Use correct NANO33BLE_FS_START address without wasting flash space
-  1.2.1   K Hoang      25/10/2022 Add support to SEEED_XIAO_NRF52840 and SEEED_XIAO_NRF52840_SENSE using mbed
 *****************************************************************************************************************************/
 
 #ifndef _FS_NANO33BLE_H
 #define _FS_NANO33BLE_H
 
-#if !( defined(ARDUINO_ARCH_NRF52840) && defined(ARDUINO_ARCH_MBED) && \
-     ( defined(ARDUINO_ARDUINO_NANO33BLE) || defined(ARDUINO_SEEED_XIAO_NRF52840) || defined(ARDUINO_SEEED_XIAO_NRF52840_SENSE) ) )
-#error This code is intended to run on the MBED nRF52840 platform! Please check your Tools->Board setting.
+#if !( defined(ARDUINO_ARCH_NRF52840) && defined(ARDUINO_ARCH_MBED) && defined(ARDUINO_ARDUINO_NANO33BLE) )
+  #error This code is intended to run on the MBED nRF52840 platform! Please check your Tools->Board setting. 
 #endif
 
 #ifndef _FS_LOGLEVEL_
@@ -39,34 +35,30 @@
 
   #define USING_FATFS                 false
   #define FS_NAME                     "LittleFS"
-
+  
   #define MBED_FS_FILE_NAME           "littlefs"
-
-  #if (_FS_LOGLEVEL_ > 3)
-    #warning Use MBED nRF52840 (such as Nano_33_BLE, Nano_33_BLE_Sense) and LittleFS
-  #endif
-
+  
+  #warning Use MBED nRF52840 (such as Nano_33_BLE, Nano_33_BLE_Sense) and LittleFS
+  
 #else
 
   #define USING_FATFS                 true
   #define FS_NAME                     "FATFS"
   #define MBED_FS_FILE_NAME           "fs"
-
-  #if (_FS_LOGLEVEL_ > 3)
-    #warning Use MBED nRF52840 (such as Nano_33_BLE, Nano_33_BLE_Sense) and FATFS
-  #endif
-
+  
+  #warning Use MBED nRF52840 (such as Nano_33_BLE, Nano_33_BLE_Sense) and FATFS
+  
 #endif
 
 ////////////////////////////////////////////////
 
-#define FS_NANO33BLE_VERSION              FS_NAME "_Nano33BLE v1.2.1"
+#define FS_NANO33BLE_VERSION              FS_NAME "_Nano33BLE v1.1.0"
 
 #define FS_NANO33BLE_VERSION_MAJOR        1
-#define FS_NANO33BLE_VERSION_MINOR        2
-#define FS_NANO33BLE_VERSION_PATCH        1
+#define FS_NANO33BLE_VERSION_MINOR        1
+#define FS_NANO33BLE_VERSION_PATCH        0
 
-#define FS_NANO33BLE_VERSION_INT          1002001
+#define FS_NANO33BLE_VERSION_INT          1001000
 
 ////////////////////////////////////////////////
 
@@ -80,37 +72,32 @@
 // To check and determine if we need to init FS here
 #if NANO33BLE_INITIALIZED
   #define MBED_FS_NEED_INIT               false
-
-  #if (_FS_LOGLEVEL_ > 3)
-    #warning NANO33BLE_INITIALIZED in another place
-  #endif
+  #warning NANO33BLE_INITIALIZED in another place
 #else
   // Better to delay until init done
   #if defined(NANO33BLE_INITIALIZED)
     #undef NANO33BLE_INITIALIZED
   #endif
   #define NANO33BLE_INITIALIZED           true
-
+  
   #define MBED_FS_NEED_INIT               true
-
-  #if (_FS_LOGLEVEL_ > 3)
-    #warning NANO33BLE_INITIALIZED in FS_NANO33BLE
-  #endif
+  
+  #warning NANO33BLE_INITIALIZED in FS_NANO33BLE
 #endif
 
 #if MBED_FS_NEED_INIT
 
   //Use FS for MBED Nano_33_BLE
   #include "FlashIAPBlockDevice.h"
-
+  
   #if USING_LITTLEFS
     #include "LittleFileSystem.h"
   #elif USING_FATFS
     #include "FATFileSystem.h"
   #else
-    #error No FS selected
+    #error No FS selected  
   #endif
-
+  
   #include "mbed.h"
 
   #include <stdio.h>
@@ -131,36 +118,13 @@
   #if !defined(NANO33BLE_FS_SIZE_KB)
     // Using default 64KB for FS
     #define NANO33BLE_FS_SIZE_KB       (64)
-
-    #if (_FS_LOGLEVEL_ > 3)
-      #warning Using default NANO33BLE_FS_SIZE_KB == 64KB
-    #endif
-
+    #warning Using default NANO33BLE_FS_SIZE_KB == 64KB
   #else
-    #if (_FS_LOGLEVEL_ > 3)
-      #warning Using NANO33BLE_FS_SIZE_KB defined in external code
-    #endif
-
-    // KH, New from v1.2.0
+    #warning Using NANO33BLE_FS_SIZE_KB defined in external code 
+    
     #if (NANO33BLE_FS_SIZE_KB > (NANO33BLE_FLASH_SIZE / (2 * 1024)))
-
-      #if (_FS_LOGLEVEL_ > 3)
-        #warning FlashSize too large. Adjust to 512KB
-      #endif
-
-      #undef NANO33BLE_FS_SIZE_KB
-      #define NANO33BLE_FS_SIZE_KB        (512)
-
-    #elif (NANO33BLE_FS_SIZE_KB < 64)
-
-      #if (_FS_LOGLEVEL_ > 3)
-        #warning FlashSize too small. Adjust to 64KB
-      #endif
-
-      #undef NANO33BLE_FS_SIZE_KB
-      #define NANO33BLE_FS_SIZE_KB        (64)
+      #error FlashSize too large. Max is (NANO33BLE_FLASH_SIZE / 2) = 512KB
     #endif
-    //
   #endif
 
   #if !defined(NANO33BLE_FS_START)
@@ -170,12 +134,9 @@
   #if !defined(FORCE_REFORMAT)
     #define FORCE_REFORMAT            false
   #elif FORCE_REFORMAT
-
-    #if (_FS_LOGLEVEL_ > 3)
-      #warning FORCE_REFORMAT enable. Are you sure ?
-    #endif
+    #warning FORCE_REFORMAT enable. Are you sure ?
   #endif
-
+ 
   #define MBED_FS_FILE_PREFIX         "/" MBED_FS_FILE_NAME
 
 #endif    // MBED_FS_NEED_INIT
@@ -187,168 +148,149 @@
 
 #if USING_LITTLEFS
   static mbed::LittleFileSystem fs(MBED_FS_FILE_NAME);
-
-  // KH, New from v1.2.0
-  static FlashIAPBlockDevice bd(NANO33BLE_FS_START, (NANO33BLE_FS_SIZE_KB * 1024));
-  //////
+  static FlashIAPBlockDevice wholeBD(FLASH_BASE, 0x80000);
+  static FlashIAPBlockDevice bd(FLASH_BASE, (NANO33BLE_FS_SIZE_KB * 1024));
 #elif USING_FATFS
   static mbed::FATFileSystem fs(MBED_FS_FILE_NAME);
-
-  #if (NANO33BLE_FS_SIZE_KB != 512)
-
-    #if (_FS_LOGLEVEL_ > 3)
-      #warning Auto-adjust FATFS size to 512KB or crash
-    #endif
-
-    #undef NANO33BLE_FS_SIZE_KB
-    #define NANO33BLE_FS_SIZE_KB        (512)
-  #endif
-
-  // KH, Note for v1.2.0
-  // Don't use FATFS now or to use only with 512KB
-  //static FlashIAPBlockDevice bd(NANO33BLE_FS_START, (NANO33BLE_FS_SIZE_KB * 1024));   // Still Crash, issue with the core ??
-  //static FlashIAPBlockDevice bd(FLASH_BASE, (NANO33BLE_FS_SIZE_KB * 1024));           // Still Crash, issue with the core ??
-
-  static FlashIAPBlockDevice bd(FLASH_BASE, (NANO33BLE_FS_SIZE_KB * 1024));
-  //static FlashIAPBlockDevice bd(FLASH_BASE, NANO33BLE_FLASH_SIZE / 2);
-  //////
-#endif
+  static FlashIAPBlockDevice bd(FLASH_BASE, NANO33BLE_FLASH_SIZE / 2);
+  //static FlashIAPBlockDevice bd(FLASH_BASE, (NANO33BLE_FS_SIZE_KB * 1024));   // Crash ??
+#endif  
 
 class FileSystem_MBED
 {
-  public:
-    FileSystem_MBED()
+public:
+  FileSystem_MBED()
+  {
+    _size     = NANO33BLE_FS_SIZE_KB * 1024;
+    _mounted  = false;
+  }
+
+  ~FileSystem_MBED() 
+  {
+    if (_mounted) 
     {
-      _size     = NANO33BLE_FS_SIZE_KB * 1024;
-      _mounted  = false;
+      unmount();      
+    }
+  }
+  
+  ////////////////////////////////////////////////
+
+  bool init()
+  {
+    FS_LOGERROR1(FS_NAME " size (KB) = ", NANO33BLE_FS_SIZE_KB);
+    
+  #if FORCE_REFORMAT
+    int error;
+    
+  #if USING_LITTLEFS
+    error = mbed::LittleFileSystem::format(&bd);
+  #else  
+    error = mbed::FATFileSystem::format(&bd);
+  #endif
+
+    if (error)
+    {
+      FS_LOGERROR1("FS Format error, errno = ", errno);
+     
+      return false;
     }
 
-    ~FileSystem_MBED()
-    {
-      if (_mounted)
-      {
-        unmount();
-      }
-    }
+  #endif
 
-    ////////////////////////////////////////////////
+    return mount();
+  }
+  
+  ////////////////////////////////////////////////
 
-    bool init()
-    {
-      FS_LOGERROR1(FS_NAME " size (KB) = ", NANO33BLE_FS_SIZE_KB);
-
-#if FORCE_REFORMAT
+  bool mount()
+  {
+    if (!_mounted)
+    {   
       int error;
+      
+      // 0 => OK
+      _mounted = (fs.mount(&bd) == 0);
 
-#if USING_LITTLEFS
-      error = mbed::LittleFileSystem::format(&bd);
-#else
-      error = mbed::FATFileSystem::format(&bd);
-#endif
+      FS_LOGERROR(_mounted ? FS_NAME " Mount OK" : FS_NAME " Mount Fail");
 
-      if (error)
-      {
-        FS_LOGERROR1("FS Format error, errno = ", errno);
-
-        return false;
-      }
-
-#endif
-
-      return mount();
-    }
-
-    ////////////////////////////////////////////////
-
-    bool mount()
-    {
       if (!_mounted)
       {
-        int error;
+        // Reformat if we can't mount the filesystem
+        FS_LOGERROR("Formatting... ");
 
-        // 0 => OK
-        _mounted = (fs.mount(&bd) == 0);
+  #if USING_LITTLEFS
+        error = mbed::LittleFileSystem::format(&bd);
+  #else  
+        error = mbed::FATFileSystem::format(&bd);
+  #endif
 
-        FS_LOGERROR(_mounted ? FS_NAME " Mount OK" : FS_NAME " Mount Fail");
-
-        if (!_mounted)
+        if (!error)
         {
-          // Reformat if we can't mount the filesystem
-          FS_LOGERROR("Formatting... ");
+          FS_LOGERROR("FS Format OK. Mounting");
 
-#if USING_LITTLEFS
-          error = mbed::LittleFileSystem::format(&bd);
-#else
-          error = mbed::FATFileSystem::format(&bd);
-#endif
-
-          if (!error)
+          _mounted = (fs.mount(&bd) == 0);
+                 
+          if (_mounted)
           {
-            FS_LOGERROR("FS Format OK. Mounting");
-
-            _mounted = (fs.mount(&bd) == 0);
-
-            if (_mounted)
-            {
-              FS_LOGERROR("FS OK");
-
-              return true;
-            }
-            else
-            {
-              FS_LOGERROR("FS error. Reset. It'll be OK now after reset.");
-
-              // Restart for nRF52
-              NVIC_SystemReset();
-
-              return false;
-            }
+            FS_LOGERROR("FS OK");
+            
+            return true;
           }
           else
           {
-            FS_LOGERROR("FS Format error");
-
+            FS_LOGERROR("FS error. Reset. It'll be OK now after reset.");
+            
+            // Restart for nRF52
+            NVIC_SystemReset();
+            
             return false;
           }
         }
-
-        if (!_mounted)
+        else
         {
-          FS_LOGERROR("FS error");
-        }
-      }
-
-      return true;
-    }
-
-    ////////////////////////////////////////////////
-
-    bool unmount()
-    {
-      if (_mounted)
-      {
-        int err = fs.unmount();
-
-        FS_LOGERROR1("Unmount FS ", err < 0 ? "Fail" : "OK");
-
-        if (err < 0)
-        {
+          FS_LOGERROR("FS Format error");
+          
           return false;
         }
       }
 
-      _mounted = false;
-
-      return true;
+      if (!_mounted)
+      {
+        FS_LOGERROR("FS error");
+      } 
     }
+    
+    return true;
+  }
+  
+  ////////////////////////////////////////////////
 
-    ////////////////////////////////////////////////
+  bool unmount()
+  {
+    if (_mounted)
+    {
+      int err = fs.unmount();
+    
+      FS_LOGERROR1("Unmount FS ", err < 0 ? "Fail" : "OK");
+   
+      if (err < 0)
+      {   
+        return false;
+      }
+    }
+    
+    _mounted = false;
+    
+    return true;
+  }
+  
+  ////////////////////////////////////////////////
+  
+private:
 
-  private:
+  uint32_t _size;
 
-    uint32_t _size;
-
-    bool     _mounted;
+  bool     _mounted;  
 };
 
 

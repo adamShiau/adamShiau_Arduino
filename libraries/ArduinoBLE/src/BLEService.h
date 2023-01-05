@@ -33,7 +33,6 @@ public:
   virtual ~BLEService();
 
   const char* uuid() const;
-  void clear();
 
   void addCharacteristic(BLECharacteristic& characteristic);
 

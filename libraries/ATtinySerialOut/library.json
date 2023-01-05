@@ -6,12 +6,11 @@
     "type": "git",
     "url": "https://github.com/ArminJo/ATtinySerialOut"
   },
-  "version": "2.1.1",
+  "version": "1.2.1",
   "exclude": "pictures",
   "authors": {
     "name": "Armin Joachimsmeyer",
-    "email": "armin.arduino@gmail.com",
-    "maintainer": true
+    "email": "armin.joachimsmeyer@gmail.com"
   },
   "license": "GPL-3.0-or-later",
   "frameworks": "arduino",

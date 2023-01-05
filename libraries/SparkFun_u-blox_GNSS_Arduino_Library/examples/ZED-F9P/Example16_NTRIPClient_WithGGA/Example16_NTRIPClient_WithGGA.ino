@@ -78,8 +78,9 @@ void setup()
 
   while (myGNSS.begin() == false) //Connect to the Ublox module using Wire port
   {
-    Serial.println(F("u-blox GPS not detected at default I2C address. Please check wiring."));
+    Serial.println(F("u-blox GPS not detected at default I2C address. Please check wiring. Freezing."));
     delay(2000);
+    //while (1);
   }
   Serial.println(F("u-blox module connected"));
 

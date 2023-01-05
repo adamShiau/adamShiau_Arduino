@@ -1,6 +1,5 @@
 /*
  * OpenWindowAlarm.cpp
- * This program must run at 1MHz, select Digispark (1mhz – No USB) or equivalent as your board!
  *
  * Overview:
  * Every 24 seconds a sample is taken of the ATtiny internal temperature sensor which has a resolution of 1 degree.
@@ -21,7 +20,7 @@
  * At **power-on** the VCC voltage is measured used to **determine the type of battery**  using `VCC_VOLTAGE_LIPO_DETECTION` (3.6 volt).
  * Every `VCC_MONITORING_DELAY_MIN` (60) minutes the battery voltage is measured. Depending on the detected battery type, **low battery voltage** is indicated by **beeping and flashing the LED every 24 seconds**.
  Only the beep (not the flash) is significantly longer than the beep for an open window detection.<br/>
- Low battery voltage is defined by `VCC_VOLTAGE_LOWER_LIMIT_MILLIVOLT_LIPO` (3550 millivolt) or `VCC_VOLTAGE_LOWER_LIMIT_MILLIVOLT_STANDARD` (2350 Millivolt).
+ Low battery voltage is defined by `VCC_VOLTAGE_LOWER_LIMIT_MILLIVOLT_LIPO` (3550 Millivolt) or `VCC_VOLTAGE_LOWER_LIMIT_MILLIVOLT_STANDARD` (2350 Millivolt).
  * After power-on, the **inactive settling time** is 5 minutes. If the board is getting colder during the settling time, 4:15 (or 8:30) minutes are added to avoid false alarms after power-on.
 
  * If you enable `DEBUG` by commenting out line 60, you can monitor the serial output with 115200 baud at P2 to see what is happening.
@@ -30,11 +29,11 @@
  * Power consumption is 26 uA at sleep and 2.8 mA at at 1 MHz active.
  * The software loop needs 2.1 ms and with DEBUG 6.5 ms (plus 3 times 1 ms startup time) => active time is around 1/5000 or 1/2500 of total time.
  * During the loop the power consumption is 100 times more than sleep => Loop adds only 2% to 4% to total power consumption.
- * If you reprogram the fuses, you can get 6 uA power consumption.
+ * If you reprogram the fuses, you can get 6 µA power consumption.
  * For the 6 uA scenario, loop current is 500 times and startup time is negligible => loop adds 5% to 12% to total (lower) power consumption.
  *
  *
- *  Copyright (C) 2018-2019  Armin Joachimsmeyer
+ *  Copyright (C) 2018-19  Armin Joachimsmeyer
  *  armin.joachimsmeyer@gmail.com
  *
  *  This file is part of Arduino-OpenWindowAlarm https://github.com/ArminJo/Arduino-OpenWindowAlarm.
@@ -50,7 +49,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses/gpl.html>.
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/gpl.html>.
  *
  */
 
@@ -64,17 +63,17 @@
 //#define TRACE // To see more serial output at startup with 115200 baud at P2
 #define ALARM_TEST // start alarm immediately if PB0 / P0 is connected to ground
 
-#if defined(TRACE)
+#ifdef TRACE
 #define DEBUG
 #endif
-#if defined(DEBUG)
-#include "ATtinySerialOut.hpp" // Available as Arduino library "ATtinySerialOut"
+#ifdef DEBUG
+#include "ATtinySerialOut.h"
 #endif
 
-#include <avr/boot.h>  // required for boot_signature_byte_get()
-#include <avr/power.h> // required for clock_prescale_set()
-#include <avr/sleep.h> // required for sleep_enable()
-#include <avr/wdt.h>   // required for WDTO_8S
+#include <avr/boot.h>  // needed for boot_signature_byte_get()
+#include <avr/power.h> // needed for clock_prescale_set()
+#include <avr/sleep.h> // needed for sleep_enable()
+#include <avr/wdt.h>   // needed for WDTO_8S
 
 #define VERSION "1.3.1"
 /*
@@ -94,11 +93,11 @@
  * - Fixed analog reference bug.
  */
 
-#if defined(ALARM_TEST)
+#ifdef ALARM_TEST
 #define ALARM_TEST_PIN PB0
 #endif
 
-#define OPEN_WINDOW_ALARM_DELAY_MINUTES  5 // Wait time between window open detection and activation of alarm
+const uint8_t OPEN_WINDOW_ALARM_DELAY_MINUTES = 5; // Wait time between window open detection and activation of alarm
 const int OPEN_WINDOW_ALARM_FREQUENCY_HIGH = 2200; // Should be the resonance frequency of speaker/buzzer
 const int OPEN_WINDOW_ALARM_FREQUENCY_LOW = 1100;
 const int OPEN_WINDOW_ALARM_FREQUENCY_VCC_TOO_LOW = 1600; // Use a different frequency to distinguish the this alert from others
@@ -198,8 +197,9 @@ void sleepDelay(uint16_t aSecondsToSleep);
 void delayMilliseconds(unsigned int aMillis);
 uint16_t readADCChannelWithReferenceOversample(uint8_t aChannelNumber, uint8_t aReference, uint8_t aOversampleExponent);
 uint16_t getVCCVoltageMillivolt(void);
+void changeDigisparkClock();
 
-#if defined(DEBUG)
+#ifdef DEBUG
 void printFuses(void);
 void printBODSFlagExistence();
 #endif
@@ -212,6 +212,7 @@ void printBODSFlagExistence();
  ***********************************************************************************/
 
 void setup() {
+
     /*
      * store MCUSR early for later use
      */
@@ -219,11 +220,11 @@ void setup() {
         sMCUSRStored = MCUSR; // content of MCUSR register at startup
         MCUSR = 0; // to prepare for next boot.
     } else {
-        sMCUSRStored = GPIOR0; // Micronucleus puts a copy here
+        sMCUSRStored = GPIOR0; // Micronucleus puts a copy here if bootloader is in ENTRY_EXT_RESET mode
         GPIOR0 = 0; // Clear it to detect a jmp 0
     }
 
-#if defined(DEBUG)
+#ifdef DEBUG
     /*
      * Initialize the serial pin as an output for Serial.print like debugging
      */
@@ -236,14 +237,16 @@ void setup() {
     pinMode(LED_PIN, OUTPUT);
     pinMode(TONE_PIN_INVERTED, OUTPUT);
     pinMode(TONE_PIN, OUTPUT);
-#if defined(ALARM_TEST)
+#ifdef ALARM_TEST
     pinMode(ALARM_TEST_PIN, INPUT_PULLUP);
 #endif
 
+//    changeDigisparkClock();
+
     sBODLevelIsBelow2_7 = (getBODLevelFuses() >= 6);
 
-#if defined(DEBUG)
-    Serial.println(F("START " __FILE__ "\nVersion " VERSION " from " __DATE__ "\nAlarm delay = " STR(OPEN_WINDOW_ALARM_DELAY_MINUTES) " minutes"));
+#ifdef DEBUG
+    Serial.println(F("START " __FILE__ "\nVersion " VERSION " from " __DATE__ "\nAlarm delay = ") STR(OPEN_WINDOW_ALARM_DELAY_MINUTES) " minutes");
 
     Serial.print(F("Brown Out Detection is "));
     if (getBODLevelFuses() == 7) {
@@ -260,7 +263,7 @@ void setup() {
     Serial.println(F(" micro Ampere sleep current"));
 #endif
 
-#if defined(TRACE)
+#ifdef TRACE
     Serial.print(F("MCUSR=0x"));
     Serial.println(sMCUSRStored, HEX);
     Serial.print(F("WDTCR=0x"));
@@ -284,17 +287,17 @@ void setup() {
     /*
      * Signal power on with a single tone or signal reset with a double click.
      */
-#if defined(DEBUG)
+#ifdef DEBUG
     Serial.print(F("Booting from "));
 #endif
     if (sMCUSRStored & _BV(PORF)) {
         PWMtone(OPEN_WINDOW_ALARM_FREQUENCY_HIGH, 100);
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.println(F("power up"));
 #endif
     } else {
         playDoubleClick();
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.println(F("reset"));
 #endif
     }
@@ -302,7 +305,6 @@ void setup() {
     /*
      * Blink LED at startup to show OPEN_WINDOW_MINUTES
      */
-    delayMilliseconds(1000); // wait extra second after bootloader blink
     for (int i = 0; i < OPEN_WINDOW_ALARM_DELAY_MINUTES; ++i) {
         // activate LED
         digitalWrite(LED_PIN, 1);
@@ -312,9 +314,9 @@ void setup() {
         delayMilliseconds(200);
     }
 
-#if defined(ALARM_TEST)
+#ifdef ALARM_TEST
     if (!digitalRead(ALARM_TEST_PIN)) {
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.println(F("Test signal out"));
 #endif
         alarm();
@@ -343,7 +345,6 @@ void setup() {
 
     /*
      * wait 8 seconds, since ATtinys temperature is increased after the micronucleus boot process
-     * We do not disable ADC here, so we consume 212 uA
      */
     sleep_cpu()
     ;
@@ -379,7 +380,7 @@ void loop() {
      */
     && (sTemperatureArray[0] < sTemperatureArray[TEMPERATURE_ARRAY_SIZE - 2])) {
         // Start from beginning, clear temperature array
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.println(F("Detected porting to a colder place -> reset"));
 #endif
         resetHistory();
@@ -391,8 +392,8 @@ void loop() {
              */
             // tTemperatureOldSum can be 0 -> do not use tTemperatureNewSum < tTemperatureOldSum - (TEMPERATURE_DELTA_THRESHOLD_DEGREE * TEMPERATURE_COMPARE_AMOUNT)
             if (sTemperatureNewSum + (TEMPERATURE_DELTA_THRESHOLD_DEGREE * TEMPERATURE_COMPARE_AMOUNT) < sTemperatureOldSum) {
-#if defined(DEBUG)
-                Serial.println(F("Detected window just opened -> check again in " STR(OPEN_WINDOW_ALARM_DELAY_MINUTES) " minutes"));
+#ifdef DEBUG
+                Serial.println(F("Detected window just opened -> check again in ") STR(OPEN_WINDOW_ALARM_DELAY_MINUTES) " minutes");
 #endif
                 sTemperatureMinimumAfterWindowOpen = sTemperatureNewSum;
                 sTemperatureAtWindowOpen = sTemperatureNewSum;
@@ -406,7 +407,7 @@ void loop() {
              */
             if (sTemperatureNewSum > (sTemperatureMinimumAfterWindowOpen + TEMPERATURE_COMPARE_AMOUNT)) {
                 sOpenWindowDetected = false;
-#if defined(DEBUG)
+#ifdef DEBUG
                 Serial.println(F("Detected window already closed -> start again"));
 #endif
                 // reset history in order to avoid a new detection at next sample, since tTemperatureNewSum may still be lower than tTemperatureOldSum
@@ -432,14 +433,14 @@ void loop() {
                         /*
                          * Window is still open -> ALARM
                          */
-#if defined(DEBUG)
+#ifdef DEBUG
                         Serial.println(F("Detected window still open -> alarm"));
 #endif
                         alarm();
                     } else {
                         // Temperature not 1 degree lower than temperature at time of open detection
                         sOpenWindowDetected = false;
-#if defined(DEBUG)
+#ifdef DEBUG
                         Serial.println(F("Assume wrong window open detection -> start again"));
 #endif
                     }
@@ -458,6 +459,49 @@ void loop() {
     digitalWrite(LED_PIN, 0);
 
     sleepDelay(TEMPERATURE_SAMPLE_SECONDS);
+}
+
+/*
+ * Code to change Digispark Bootloader clock settings to get the right CPU frequency
+ * and to reset Digispark OCCAL tweak.
+ * Call it if you want to use the standard ATtiny85 library, BUT do not call it, if you need Digispark USB functions available for 16 MHz.
+ */
+void changeDigisparkClock() {
+    uint8_t tLowFuse = boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS);
+    if ((tLowFuse & 0x0F) == 0x01) {
+        /*
+         * Here we have High Frequency PLL Clock (16 or 16.5 MHz)
+         */
+#if (F_CPU == 1000000)
+        // Divide 16 MHz Pll clock by 16 for Digispark Boards to get the requested 1 MHz
+        clock_prescale_set(clock_div_16);
+//        CLKPR = (1 << CLKPCE);  // unlock function
+//        CLKPR = (1 << CLKPS2); // %16
+#endif
+#if (F_CPU == 8000000)
+        // Divide 16 MHz Pll clock by 2 for Digispark Boards to get the requested 8 MHz
+        clock_prescale_set(clock_div_2);
+//        CLKPR = (1 << CLKPCE);  // unlock function
+//        CLKPR = (1 << CLKPS0);// %2
+#endif
+    }
+
+    /*
+     * Code to reset Digispark OCCAL tweak
+     */
+#define  SIGRD  5 // needed for boot_signature_byte_get()
+    uint8_t tStoredOSCCAL = boot_signature_byte_get(1);
+    if (OSCCAL != tStoredOSCCAL) {
+#ifdef DEBUG
+        uint8_t tOSCCAL = OSCCAL;
+        Serial.print(F("Changed OSCCAL from 0x"));
+        Serial.print(tOSCCAL);
+        Serial.print(F(" to 0x"));
+        Serial.println(tStoredOSCCAL);
+#endif
+        // retrieve the factory-stored oscillator calibration bytes to revert the digispark OSCCAL tweak
+        OSCCAL = tStoredOSCCAL;
+    }
 }
 
 /*
@@ -490,7 +534,7 @@ void PWMtone(unsigned int aFrequency, unsigned int aDurationMillis) {
  * plays alarm signal for the specified seconds
  */
 void playAlarmSignalSeconds(uint16_t aSecondsToPlay) {
-#if defined(DEBUG)
+#ifdef DEBUG
     Serial.print(F("Play alarm for "));
     Serial.print(aSecondsToPlay);
     Serial.println(F(" seconds"));
@@ -547,7 +591,7 @@ void readTempAndManageHistory() {
     sTemperatureArray[0] = readADCChannelWithReferenceOversample(ADC_TEMPERATURE_CHANNEL_MUX, INTERNAL1V1, 4);
     sTemperatureNewSum += sTemperatureArray[0];
 
-#if defined(DEBUG)
+#ifdef DEBUG
     // needs 4.4 ms
     Serial.print(F("Temp="));
     Serial.print(sTemperatureArray[0]);
@@ -564,7 +608,7 @@ void readTempAndManageHistory() {
 bool checkForTemperatureRising() {
     if (sTemperatureArray[TEMPERATURE_ARRAY_SIZE - 1] != 0
             && sTemperatureNewSum > sTemperatureOldSum + (TEMPERATURE_DELTA_THRESHOLD_DEGREE * TEMPERATURE_COMPARE_AMOUNT)) {
-#if defined(DEBUG)
+#ifdef DEBUG
     Serial.println(F("Alarm - detected window already closed -> start again"));
 #endif
         sOpenWindowDetected = false;
@@ -586,7 +630,7 @@ void alarm() {
 // after 80 seconds the new (increased) temperature is stable
 
 // prepare for new temperature check - reset history
-#if defined(DEBUG)
+#ifdef DEBUG
     Serial.println(F("After 120 seconds prepare for new temperature check -> reset history"));
     Serial.println(F("Play alarm for 480 seconds and check for rising temperature every 30 seconds"));
 #endif
@@ -604,7 +648,7 @@ void alarm() {
         playAlarmSignalSeconds(30);
     }
 
-#if defined(DEBUG)
+#ifdef DEBUG
     Serial.println(F("After 10 minutes continuous alarm play it now for 10 seconds with increasing delay starting at 24 seconds"));
 #endif
 
@@ -614,7 +658,7 @@ void alarm() {
      * The alarm last for 10 minutes now and no rising temperature could be detected in this time, so it makes no sense here.
      */
     while (true) {
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.print(F("Alarm pause for "));
         Serial.print(tDelay);
         Serial.println(F(" seconds"));
@@ -660,10 +704,10 @@ void delayAndSignalOpenWindowDetectionAndLowVCC() {
 /*
  * In Power Down sleep mode we have the watchdog running and ADC disabled, but powered.
  * This needs 5.6 uA.
- * If BOD is enabled by fuses, we need additionally 20 uA resulting in 26 uA current.
+ * If BOD is enabled by fuses -which is default for Digispark boards- we need additionally 20 uA resulting in 26 uA current.
  */
 void sleepDelay(uint16_t aSecondsToSleep) {
-    ADCSRA = 0; // disable ADC -> saves 200 uA
+    ADCSRA = 0; // disable ADC -> saves 150 - 200 uA
     for (uint16_t i = 0; i < (aSecondsToSleep / 8); ++i) {
         /*
          * Turn off the brown-out detector - but this works only for ATtiny85 revision C, which is hardly seen in the wild :-(.
@@ -739,7 +783,7 @@ void checkVCCPeriodically() {
     sVCCMonitoringDelayCounter--;
     if (sVCCMonitoringDelayCounter == 0) {
         sVCCVoltageMillivolt = getVCCVoltageMillivolt();
-#if defined(DEBUG)
+#ifdef DEBUG
         Serial.print(F("VCC="));
         Serial.print(sVCCVoltageMillivolt);
         Serial.print(F("mV - "));
@@ -813,7 +857,7 @@ bool isBODSFlagExistent() {
     return MCUCR & _BV(BODS);
 }
 
-#if defined(DEBUG)
+#ifdef DEBUG
 /*
  * Output description for all fuses except "DebugWire enabled"
  */

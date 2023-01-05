@@ -16,8 +16,10 @@
 
 #include <Arduino_LSM6DS3.h>
 
+#define SENS_AXLM_4G 0.000122
+unsigned int t_new, t_old=0;
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial);
 
   if (!IMU.begin()) {
@@ -30,20 +32,42 @@ void setup() {
   Serial.print(IMU.accelerationSampleRate());
   Serial.println(" Hz");
   Serial.println();
-  Serial.println("Acceleration in g's");
+  Serial.println("Acceleration in G's");
   Serial.println("X\tY\tZ");
 }
 
 void loop() {
-  float x, y, z;
+	byte data[6];
+	int x, y, z;
 
-  if (IMU.accelerationAvailable()) {
-    IMU.readAcceleration(x, y, z);
+	if (IMU.accelerationAvailable()) {
+	IMU.readAcceleration(data);
+	IMU.print_AccelerationData(data, x, y, z, t_new, t_old);
+	// print_axlmData(data);
+	}
+}
 
-    Serial.print(x);
-    Serial.print('\t');
-    Serial.print(y);
-    Serial.print('\t');
-    Serial.println(z);
-  }
+void print_axlmData(byte *temp_a)
+{
+	int ax, ay, az;
+	
+	ax = temp_a[1]<<8 | temp_a[0];
+	if((ax>>15) == 1) ax = ax - (1<<16);
+	ay = temp_a[3]<<8 | temp_a[2];
+	if((ay>>15) == 1) ay = ay - (1<<16);
+	az = temp_a[5]<<8 | temp_a[4];
+	if((az>>15) == 1) az = az - (1<<16);
+	
+	t_new = micros();
+	Serial.print(t_new - t_old);
+	Serial.print('\t');
+	// Serial.print(wx, HEX);
+	Serial.print((float)ax*SENS_AXLM_4G);
+	Serial.print('\t');
+	// Serial.print(wy, HEX);
+	Serial.print((float)ay*SENS_AXLM_4G);
+	Serial.print('\t');
+	// Serial.println(wz, HEX);
+	Serial.println((float)az*SENS_AXLM_4G);
+	t_old = t_new;
 }
