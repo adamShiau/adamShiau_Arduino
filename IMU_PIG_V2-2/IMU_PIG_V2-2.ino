@@ -27,7 +27,8 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define PWM100 7
 #define PWM200 5
 #define PWM250 11
-#define PWM_FIX 0.9755
+#define PWM_FIX 1
+// #define PWM_FIX 0.9755
 TurboPWM  pwm;
 
 // I2C
@@ -147,6 +148,7 @@ void setup() {
 
     // EXTT
   attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
+  EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, LOW);
   
@@ -185,8 +187,8 @@ void setup() {
 	/*** var initialization***/
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
-	// select_fn = SEL_DEFAULT; 	//default set select_fn to 128
-	select_fn = SEL_IMU;
+	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
+	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 	
@@ -440,7 +442,21 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 	if(select_fn&SEL_FOG_1)
 	{
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-    
+    switch(CTRLREG){
+      case INT_SYNC:
+      break;
+      case EXT_SYNC:
+        digitalWrite(PIG_SYNC, HIGH);
+        EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+      break;
+      case STOP_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        Serial.println("STOP_SYNC");
+      break;
+      default:
+      break;
+    }
 	}
 
 	// trig_status[0] = digitalRead(SYS_TRIG);
@@ -467,8 +483,19 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
       #endif
 //         Serial.println(t_new - t_old);
         t_old = t_new;
-        digitalWrite(PIG_SYNC, LOW);
-        EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
+        switch(CTRLREG){
+          case INT_SYNC:
+          break;
+          case EXT_SYNC:
+            digitalWrite(PIG_SYNC, LOW);
+            EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
+          break;
+          case STOP_SYNC:
+          break;
+          default:
+          break;
+    }
+        
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -722,6 +749,7 @@ void print_nano33XlmData(byte *data)
 void clear_SEL_EN(byte &select_fn)
 {
 	select_fn = SEL_DEFAULT;
+  digitalWrite(PIG_SYNC, LOW);
 }
 
 #ifdef ENABLE_SRS200
@@ -848,6 +876,7 @@ void displayGPSInfo()
 
 void ISR_EXTT()
 {
+  // Serial.println("ISR");
   digitalWrite(PIG_SYNC, HIGH);
   // EIC->CONFIG[0].reg = 0; //set interrupt condition to NONE
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
