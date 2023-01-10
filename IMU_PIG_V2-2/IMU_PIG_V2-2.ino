@@ -31,6 +31,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 // #define PWM_FIX 0.9755
 TurboPWM  pwm;
 
+
 // I2C
 #include <Wire.h>
 #define ADXL355_ADDR     0x1D  //Adxl355 I2C address
@@ -151,6 +152,7 @@ void setup() {
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, LOW);
+
   
 	Serial.begin(230400); //debug
 	Serial1.begin(230400); //to PC
@@ -444,6 +446,8 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
     switch(CTRLREG){
       case INT_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
         digitalWrite(PIG_SYNC, HIGH);
@@ -452,7 +456,6 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
       case STOP_SYNC:
         digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        Serial.println("STOP_SYNC");
       break;
       default:
       break;
@@ -470,7 +473,7 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+4, fog, 14);
         myCRC.crc_32(imu_data, 18, CRC32);
         free(imu_data);
-
+      
 	  	// #ifdef UART_SERIAL_5_CMD
       //   mySerial5.write(header, 2);
       //   mySerial5.write(fog, 10);
@@ -485,16 +488,16 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
         t_old = t_new;
         switch(CTRLREG){
           case INT_SYNC:
-          break;
+             break;
           case EXT_SYNC:
             digitalWrite(PIG_SYNC, LOW);
             EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
           break;
           case STOP_SYNC:
-          break;
+             break;
           default:
-          break;
-    }
+              break;
+         }
         
 	}
 	clear_SEL_EN(select_fn);	
@@ -510,15 +513,28 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	if(select_fn&SEL_IMU) {
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
     Serial.println("acq_imu EN");
+    switch(CTRLREG){
+      case INT_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      case EXT_SYNC:
+        digitalWrite(PIG_SYNC, HIGH);
+        EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+      break;
+      case STOP_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      default:
+      break;
+    }
 	}
 	// trig_status[0] = digitalRead(SYS_TRIG);
 
 	if(run_fog_flag) {
         t_new = micros();
 
-		// #ifdef ENABLE_SRS200
-		// 	readSRS200Data(header_srs200, srs200);
-		// #endif
 
 		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
@@ -565,7 +581,19 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		// 	Serial.write(srs200, SRS200_SIZE);
 		// #endif
 // 		Serial.println(t_new - t_old);
-        t_old = t_new;
+    t_old = t_new;
+    switch(CTRLREG){
+      case INT_SYNC:
+          break;
+      case EXT_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
+      break;
+      case STOP_SYNC:
+          break;
+      default:
+          break;
+    }
 	}
 	// trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
@@ -881,3 +909,4 @@ void ISR_EXTT()
   // EIC->CONFIG[0].reg = 0; //set interrupt condition to NONE
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
+
