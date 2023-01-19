@@ -58,7 +58,8 @@ SPIClassSAMD dev_spi(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 
 // Components
-ASM330LHHSensor AccGyr(&dev_spi, CHIP_SELECT_PIN);
+ASM330LHHSensor IMU(&dev_spi, CHIP_SELECT_PIN);
+unsigned int t_new, t_old=0;
 
 void setup() {
   // Led.
@@ -73,36 +74,59 @@ void setup() {
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
   
-  AccGyr.begin();
-  AccGyr.Enable_X();
-  AccGyr.Enable_G();
+  IMU.begin();
+  IMU.Enable_X();
+  IMU.Enable_G();
+  IMU.Set_X_ODR(416.0);
+  IMU.Set_X_FS(4);  
+  IMU.Set_G_ODR(416.0);
+  IMU.Set_G_FS(250);  
 }
 
 void loop() {
+  byte data[6];
+  float ODR, SEN;
+  long FS;
   // Led blinking.
   // digitalWrite(LED_BUILTIN, HIGH);
   // delay(250);
   // digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
+  IMU.readAcceleration(data);
+// Serial.print(data[5], HEX);
+// 	Serial.print(" ");
+// 	Serial.println(data[4], HEX);
+  // IMU.print_AccelerationData(data, t_new, t_old);  
+  IMU.Get_X_ODR(&ODR);
+  IMU.Get_X_FS(&FS);
+  IMU.Get_X_Sensitivity(&SEN);
+  Serial.print(ODR);
+  Serial.print(" ");
+  Serial.print(FS);
+  Serial.print(" ");
+  Serial.println(SEN, 6);
+
+  // delay(10);
 
   // Read accelerometer and gyroscope.
-  int32_t accelerometer[3] = {};
-  int32_t gyroscope[3] = {};
-  AccGyr.Get_X_Axes(accelerometer);
-  AccGyr.Get_G_Axes(gyroscope);
+  // int32_t accelerometer[3] = {};
+  // int32_t gyroscope[3] = {};
+  // AccGyr.Get_X_Axes(accelerometer);
+  // AccGyr.Get_G_Axes(gyroscope);
 
   // Output data.
-  SerialPort.print("ASM330LHH: | Acc[mg]: ");
-  SerialPort.print(accelerometer[0]);
-  SerialPort.print(" ");
-  SerialPort.print(accelerometer[1]);
-  SerialPort.print(" ");
-  SerialPort.print(accelerometer[2]);
-  SerialPort.print(" | Gyr[mdps]: ");
-  SerialPort.print(gyroscope[0]);
-  SerialPort.print(" ");
-  SerialPort.print(gyroscope[1]);
-  SerialPort.print(" ");
-  SerialPort.print(gyroscope[2]);
-  SerialPort.println(" |");
+  // SerialPort.print("ASM330LHH: | Acc[mg]: ");
+  // SerialPort.print(accelerometer[0]);
+  // SerialPort.print(" ");
+  // SerialPort.print(accelerometer[1]);
+  // SerialPort.print(" ");
+  // SerialPort.print(accelerometer[2]);
+  // SerialPort.print(" | Gyr[mdps]: ");
+  // SerialPort.print(gyroscope[0]);
+  // SerialPort.print(" ");
+  // SerialPort.print(gyroscope[1]);
+  // SerialPort.print(" ");
+  // SerialPort.print(gyroscope[2]);
+  // SerialPort.println(" |");
+  // SerialPort.print(accelerometer[2]);
+  // SerialPort.println("");
 }

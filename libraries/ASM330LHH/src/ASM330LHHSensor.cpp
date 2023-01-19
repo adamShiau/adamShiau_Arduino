@@ -541,10 +541,83 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   Acceleration[0] = (int32_t)((float)((float)data_raw.i16bit[0] * sensitivity));
   Acceleration[1] = (int32_t)((float)((float)data_raw.i16bit[1] * sensitivity));
   Acceleration[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
+	//Serial.print(sensitivity);
+	//Serial.print(", ");
+/***
+	Serial.print(data_raw.i16bit[0], HEX);
+	Serial.print(", ");
+	Serial.print(data_raw.u8bit[1], HEX);
+	Serial.print(" ");
+	Serial.print(data_raw.u8bit[0], HEX);
+	Serial.print(", ");
+	Serial.print(data_raw.i16bit[1], HEX);
+	Serial.print(", ");
+	Serial.print(data_raw.u8bit[3], HEX);
+	Serial.print(" ");
+	Serial.print(data_raw.u8bit[2], HEX);
+	Serial.print(", ");
+	Serial.print(data_raw.i16bit[2], HEX);
+	Serial.print(", ");
+	Serial.print(data_raw.u8bit[5], HEX);
+	Serial.print(" ");
+	Serial.print(data_raw.u8bit[4], HEX);
+	Serial.print(", ");
+	Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)), 4);
+***/
 
   return ASM330LHH_OK;
 }
 
+ASM330LHHStatusTypeDef ASM330LHHSensor::readAcceleration(unsigned char *data)
+{
+  axis3bit16_t data_raw;
+  float sensitivity = 0.0f;
+
+  /* Read raw data values. */
+  if (asm330lhh_acceleration_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Get ASM330LHH actual sensitivity. */
+  if (Get_X_Sensitivity(&sensitivity) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Calculate the data. */
+	for(int i=0; i<6; i++)
+		data[i] = data_raw.u8bit[i];
+
+
+
+  return ASM330LHH_OK;
+}
+
+void ASM330LHHSensor::print_AccelerationData(unsigned char *temp_a, unsigned int t_new, unsigned int& t_old)
+{
+	int x, y, z;
+
+	x = temp_a[1]<<8 | temp_a[0];
+	if((x>>15) == 1) x = x - (1<<16);
+	y = temp_a[3]<<8 | temp_a[2];
+	if((y>>15) == 1) y = y - (1<<16);
+	z = temp_a[5]<<8 | temp_a[4];
+	if((z>>15) == 1) z = z - (1<<16);
+	
+	t_new = micros();
+	Serial.print(t_new - t_old);
+	Serial.print('\t');
+	// Serial.print(wx, HEX);
+	// Serial.print((float)x*SENS_AXLM_4G);
+	// Serial.print('\t');
+	// Serial.print(wy, HEX);
+	// Serial.print((float)y*SENS_AXLM_4G);
+	// Serial.print('\t');
+	// Serial.println(wz, HEX);
+	Serial.println((float)z*ASM330LHH_ACC_SENSITIVITY_FS_2G, 4);
+	t_old = t_new;
+}
 
 /**
  * @brief  Get the ASM330LHH ACC data ready bit value
@@ -931,6 +1004,32 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
   AngularRate[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   return ASM330LHH_OK;
+}
+
+
+ASM330LHHStatusTypeDef ASM330LHHSensor::readGyroscope(unsigned char data[6])  
+{
+	axis3bit16_t data_raw;
+	float sensitivity;
+
+	/* Read raw data values. */
+	if (asm330lhh_angular_rate_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+	{
+		return ASM330LHH_ERROR;
+	}
+
+	/* Get ASM330LHH actual sensitivity. */
+	if (Get_G_Sensitivity(&sensitivity) != ASM330LHH_OK)
+	{
+		return ASM330LHH_ERROR;
+	}
+
+	/* Calculate the data. */
+	for(int i=0; i<6; i++)
+		data[i] = data_raw.u8bit[i];
+		
+
+	return ASM330LHH_OK;
 }
 
 

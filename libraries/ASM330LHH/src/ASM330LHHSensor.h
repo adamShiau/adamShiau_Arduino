@@ -48,20 +48,21 @@
 #include "Wire.h"
 #include "SPI.h"
 #include "asm330lhh_reg.h"
+#include "Arduino.h"
 
 /* Defines -------------------------------------------------------------------*/
 
-#define ASM330LHH_ACC_SENSITIVITY_FS_2G   0.061f
-#define ASM330LHH_ACC_SENSITIVITY_FS_4G   0.122f
-#define ASM330LHH_ACC_SENSITIVITY_FS_8G   0.244f
-#define ASM330LHH_ACC_SENSITIVITY_FS_16G  0.488f
+#define ASM330LHH_ACC_SENSITIVITY_FS_2G   0.000061f
+#define ASM330LHH_ACC_SENSITIVITY_FS_4G   0.000122f
+#define ASM330LHH_ACC_SENSITIVITY_FS_8G   0.000244f
+#define ASM330LHH_ACC_SENSITIVITY_FS_16G  0.000488f
 
-#define ASM330LHH_GYRO_SENSITIVITY_FS_125DPS    4.370f
-#define ASM330LHH_GYRO_SENSITIVITY_FS_250DPS    8.750f
-#define ASM330LHH_GYRO_SENSITIVITY_FS_500DPS   17.500f
-#define ASM330LHH_GYRO_SENSITIVITY_FS_1000DPS  35.000f
-#define ASM330LHH_GYRO_SENSITIVITY_FS_2000DPS  70.000f
-#define ASM330LHH_GYRO_SENSITIVITY_FS_4000DPS 140.000f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_125DPS    0.004370f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_250DPS    0.008750f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_500DPS	0.017500f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_1000DPS	0.035000f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_2000DPS	0.070000f
+#define ASM330LHH_GYRO_SENSITIVITY_FS_4000DPS	0.140000f
 
 
 /* Typedefs ------------------------------------------------------------------*/
@@ -97,6 +98,9 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_X_AxesRaw(int16_t *Value);
     ASM330LHHStatusTypeDef Get_X_Axes(int32_t *Acceleration);
     ASM330LHHStatusTypeDef Get_X_DRDY_Status(uint8_t *Status);
+	ASM330LHHStatusTypeDef readAcceleration(unsigned char *);
+	void print_AccelerationData(unsigned char *, unsigned int, unsigned int&);
+
     
     ASM330LHHStatusTypeDef Enable_G();
     ASM330LHHStatusTypeDef Disable_G();
@@ -108,6 +112,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_AxesRaw(int16_t *Value);
     ASM330LHHStatusTypeDef Get_G_Axes(int32_t *AngularRate);
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
+	ASM330LHHStatusTypeDef readGyroscope(unsigned char []);
     
     ASM330LHHStatusTypeDef Read_Reg(uint8_t reg, uint8_t *Data);
     ASM330LHHStatusTypeDef Write_Reg(uint8_t reg, uint8_t Data);

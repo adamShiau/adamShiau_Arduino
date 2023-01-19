@@ -1,5 +1,6 @@
 // #include "adxl355.h"
 #include <ASM330LHH.h>
+#include <ASM330LHHSensor.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
@@ -66,7 +67,8 @@ bool gps_valid = 0;
 SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 #define CHIP_SELECT_PIN 2
-ASM330LHHClass IMU(mySPI, CHIP_SELECT_PIN, SPI_CLOCK_8M);
+// ASM330LHHClass IMU(mySPI, CHIP_SELECT_PIN, SPI_CLOCK_8M);
+ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
 
 // UART
 //SERCOM2: serial2 (PA14, PA15) [tx,  rx]
@@ -181,10 +183,17 @@ void setup() {
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
 	
-	if (!IMU.begin()) {
-    Serial.println("Failed to initialize IMU!");
-    while (1);
-  }
+	// if (!IMU.begin()) {
+  //   Serial.println("Failed to initialize IMU!");
+  //   while (1);
+  // }
+  IMU.begin();
+  IMU.Enable_X();
+  IMU.Enable_G();
+  IMU.Set_X_ODR(416.0);
+  IMU.Set_X_FS(4);  
+  IMU.Set_G_ODR(416.0);
+  IMU.Set_G_FS(250); 
 
 	/*** var initialization***/
 	cmd_complete = 0;

@@ -144,16 +144,16 @@ void ASM330LHHClass::print_AccelerationData(unsigned char *temp_a, int& x, int& 
 	if((z>>15) == 1) z = z - (1<<16);
 	
 	t_new = micros();
-	Serial.print(t_new - t_old);
-	Serial.print('\t');
+	// Serial.print(t_new - t_old);
+	// Serial.print('\t');
 	// Serial.print(wx, HEX);
-	Serial.print((float)x*SENS_AXLM_4G);
-	Serial.print('\t');
+	// Serial.print((float)x*SENS_AXLM_4G);
+	// Serial.print('\t');
 	// Serial.print(wy, HEX);
-	Serial.print((float)y*SENS_AXLM_4G);
-	Serial.print('\t');
+	// Serial.print((float)y*SENS_AXLM_4G);
+	// Serial.print('\t');
 	// Serial.println(wz, HEX);
-	Serial.println((float)z*SENS_AXLM_4G);
+	Serial.println((float)z*SENS_AXLM_4G, 4);
 	t_old = t_new;
 }
 
