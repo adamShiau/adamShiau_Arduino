@@ -81,7 +81,7 @@ void SERCOM2_Handler()
 {
     Serial2.IrqHandler();
 }
-PIG pig_ser2(Serial2);
+// PIG pig_ser2(Serial2);
 
 //SERCOM1: serial3 (PA17, PA18) [rx, tx]
 Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -89,7 +89,7 @@ void SERCOM1_Handler()
 {
     Serial3.IrqHandler();
 }
-PIG pig_ser3(Serial3);
+// PIG pig_ser3(Serial3);
 
 //SERCOM3: serial4 (PA21, PA20) [rx, tx]
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
@@ -97,7 +97,7 @@ void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
 }
-PIG pig_v2(Serial4);
+PIG pig_v2(Serial3);
 
 
 /*** serial data from PC***/
@@ -168,8 +168,8 @@ void setup() {
   
 	Serial.begin(230400); //debug
 	Serial1.begin(230400); //to PC
-  Serial2.begin(115200); //fog
-  Serial3.begin(115200);
+  Serial2.begin(115200); 
+  Serial3.begin(115200);//PIG_EVT
   Serial4.begin(115200);
 
   pinPeripheral(24, PIO_SERCOM);
