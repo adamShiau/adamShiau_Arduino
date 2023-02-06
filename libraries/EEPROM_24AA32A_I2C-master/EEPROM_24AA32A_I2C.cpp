@@ -58,10 +58,10 @@ void EEPROM_24AA32A_I2C::Parameter_Write(unsigned int eeaddress, int value) {
 	myWire.beginTransmission(eeprom);
 	myWire.write(eeaddress >> 8);   // MSB
 	myWire.write(eeaddress & 0xFF); // LSB
-	myWire.write(value>>24);
-	myWire.write(value>>16);
-	myWire.write(value>>8);
 	myWire.write(value);
+	myWire.write(value>>8);
+	myWire.write(value>>16);
+	myWire.write(value>>24);
 	myWire.endTransmission();
 	delay(5);
 }
