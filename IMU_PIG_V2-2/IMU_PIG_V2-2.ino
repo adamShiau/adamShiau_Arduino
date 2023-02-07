@@ -318,7 +318,6 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
   //   while (mySerial5.available()>0){
   //     mySerial5.readBytes((char*)cmd, 5);
   //   #endif
-
     #ifdef UART_RS422_CMD
     while (Serial1.available()>0){
       Serial1.readBytes((char*)cmd, 5);
@@ -533,12 +532,12 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
     Serial.println("acq_imu EN");
     switch(CTRLREG){
-      case INT_SYNC:
+      case INT_SYNC: //delay method
         digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
-        digitalWrite(PIG_SYNC, HIGH);
+        digitalWrite(PIG_SYNC, HIGH); //trigger signal to PIG
         EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
       break;
       case STOP_SYNC:
@@ -602,15 +601,18 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 // 		Serial.println(t_new - t_old);
     t_old = t_new;
     switch(CTRLREG){
-      case INT_SYNC:
+      case INT_SYNC: //delay method
           break;
       case EXT_SYNC:
-        digitalWrite(PIG_SYNC, LOW);
+        digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
         EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
       break;
       case STOP_SYNC:
           break;
       default:
+        Serial.println("default case");
+        digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
+        EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge      
           break;
     }
 	}
@@ -923,7 +925,7 @@ void displayGPSInfo()
 
 void ISR_EXTT()
 {
-  // Serial.println("ISR");
+  Serial.println("ISR");
   digitalWrite(PIG_SYNC, HIGH);
   // EIC->CONFIG[0].reg = 0; //set interrupt condition to NONE
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE

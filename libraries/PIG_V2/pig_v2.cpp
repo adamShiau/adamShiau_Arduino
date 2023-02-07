@@ -165,24 +165,33 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		    headerArr[1] == PIG_HEADER[1]
 		    )
 		{
-           // Serial.print("PASS: ");
-           // Serial.print(headerArr[0], HEX);
-           // Serial.print(",");
-           // Serial.println(headerArr[1], HEX);
+			p_time_cnt = 0;
+           Serial.print("PASS: ");
+           Serial.print(headerArr[0], HEX);
+           Serial.print(",");
+           Serial.println(headerArr[1], HEX);
 		    return headerArr ;
 		}
 
 
 		else {
+			p_time_cnt++;
 			headerArr[0] = headerArr[1];
 			headerArr[1] = port.read();
 			
-           Serial.print("FAIL: ");
-			Serial.print(headerArr[0], HEX);
-           Serial.print(", ");
-           Serial.println(headerArr[1], HEX);
+           // Serial.print("FAIL: ");
+			// Serial.print(headerArr[0], HEX);
+           // Serial.print(", ");
+           // Serial.println(headerArr[1], HEX);
+		   Serial.print("p_time_cnt: ");
+		   Serial.println(p_time_cnt);
+		   if(p_time_cnt > 10000) 
+		   {
+				digitalWrite(29, HIGH); //trigger signal to PIG
+				EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+		   }
+
 		   delayMicroseconds(100);
-		   // delay(1);
 		}
 	}
 }

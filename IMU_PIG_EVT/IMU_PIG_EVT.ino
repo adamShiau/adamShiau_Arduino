@@ -318,7 +318,6 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
   //   while (mySerial5.available()>0){
   //     mySerial5.readBytes((char*)cmd, 5);
   //   #endif
-
     #ifdef UART_RS422_CMD
     while (Serial1.available()>0){
       Serial1.readBytes((char*)cmd, 5);
