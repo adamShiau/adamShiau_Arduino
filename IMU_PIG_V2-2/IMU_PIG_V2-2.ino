@@ -115,6 +115,9 @@ bool run_fog_flag;
 byte select_fn;
 // bool fn_lock;
 
+/*** Control register to control the functionality  of each optput function***/
+unsigned int CtrlReg=-1;
+
 /*** KVH HEADER ***/
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
@@ -521,17 +524,19 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);	
 }
 
-void acq_imu(byte &select_fn, unsigned int CTRLREG)
+void acq_imu(byte &select_fn, unsigned int value)
 {
 	byte header[2], fog[14], nano33_w[6], nano33_a[6];
   byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
 	uint8_t CRC32[4];
 
 
-	if(select_fn&SEL_IMU) {
-		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-    Serial.println("acq_imu EN");
-    switch(CTRLREG){
+	if(select_fn&&SEL_IMU) {
+    CtrlReg = value;
+		run_fog_flag = pig_v2.setSyncMode(CtrlReg);
+    Serial.print("acq_imu EN: ");
+    Serial.println(run_fog_flag);
+    switch(CtrlReg){
       case INT_SYNC: //delay method
         digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
@@ -600,7 +605,12 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		// #endif
 // 		Serial.println(t_new - t_old);
     t_old = t_new;
-    switch(CTRLREG){
+    // if(select_fn&&SEL_IMU) 
+    // {
+    //   Serial.print("done, ");
+    //   Serial.println(CC);      
+    // }
+        switch(CtrlReg){
       case INT_SYNC: //delay method
           break;
       case EXT_SYNC:
@@ -610,11 +620,13 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
       case STOP_SYNC:
           break;
       default:
-        Serial.println("default case");
+        // Serial.println("default case");
         digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
         EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge      
           break;
-    }
+        }
+       
+    
 	}
 	// trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
@@ -925,7 +937,7 @@ void displayGPSInfo()
 
 void ISR_EXTT()
 {
-  Serial.println("ISR");
+  // Serial.println("ISR");
   digitalWrite(PIG_SYNC, HIGH);
   // EIC->CONFIG[0].reg = 0; //set interrupt condition to NONE
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE

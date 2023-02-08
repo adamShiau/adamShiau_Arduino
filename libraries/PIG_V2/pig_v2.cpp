@@ -166,10 +166,10 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		    )
 		{
 			p_time_cnt = 0;
-           Serial.print("PASS: ");
-           Serial.print(headerArr[0], HEX);
-           Serial.print(",");
-           Serial.println(headerArr[1], HEX);
+           // Serial.print("PASS: ");
+           // Serial.print(headerArr[0], HEX);
+           // Serial.print(",");
+           // Serial.println(headerArr[1], HEX);
 		    return headerArr ;
 		}
 
@@ -179,14 +179,15 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 			headerArr[0] = headerArr[1];
 			headerArr[1] = port.read();
 			
-           // Serial.print("FAIL: ");
-			// Serial.print(headerArr[0], HEX);
-           // Serial.print(", ");
-           // Serial.println(headerArr[1], HEX);
+           Serial.print("FAIL: ");
+			Serial.print(headerArr[0], HEX);
+           Serial.print(", ");
+           Serial.println(headerArr[1], HEX);
 		   Serial.print("p_time_cnt: ");
 		   Serial.println(p_time_cnt);
-		   if(p_time_cnt > 10000) 
+		   if(p_time_cnt > 10000) //1s
 		   {
+			   Serial.println("I am Stuck, need Watch Dog Here! ");
 				digitalWrite(29, HIGH); //trigger signal to PIG
 				EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
 		   }
