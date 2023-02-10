@@ -91,6 +91,62 @@ void PIG::readData(unsigned char header[2], unsigned char data[14])
 {
     alignHeader_2B(header);
     port.readBytes(data, 14);
+    printData(data);
+}
+
+unsigned char* PIG::readData()
+{
+	const uint8_t expected_header[2] = {PIG_HEADER[0], PIG_HEADER[1]};
+	const uint8_t buffer_size = 14, header_size = 2;
+	const uint8_t data_size_expected = buffer_size;
+	
+	if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
+	uint8_t data = port.read();
+
+	static uint8_t buffer[buffer_size];
+	static int bytes_received = 0;
+	static enum {
+		EXPECTING_HEADER, 
+		EXPECTING_PAYLOAD
+	} state = EXPECTING_HEADER; // state machine definition
+	
+	switch (state) {
+		case EXPECTING_HEADER:
+			// Serial.println("\nEXPECTING_HEADER");
+			if (data != expected_header[bytes_received++])
+			{
+				state = EXPECTING_HEADER;
+				bytes_received = 0;
+			}
+			// Serial.print("bytes_received: ");
+			// Serial.println(bytes_received);
+			if(bytes_received >= header_size){
+				state = EXPECTING_PAYLOAD;
+				bytes_received = 0;
+			}
+			break;
+
+		case EXPECTING_PAYLOAD:
+			// Serial.println("\nEXPECTING_PAYLOAD");
+			buffer[bytes_received++] = data;
+			// Serial.print("bytes_received: ");
+			// Serial.print(bytes_received);
+			// Serial.print(" ");
+			// Serial.println(buffer[bytes_received-1]);
+			if(bytes_received >= data_size_expected){
+			bytes_received = 0;
+			state = EXPECTING_HEADER;
+			// Serial.print("buf: ");
+			// Serial.print((long)buffer, HEX);
+			// Serial.print(", ");
+			// Serial.print((long)&buffer[0], HEX);
+			// Serial.print(", ");
+			// Serial.println((long)&buffer[1], HEX);
+			return buffer;
+			}
+			break;
+	}
+	return nullptr;
     // printData(data);
 }
 
@@ -102,15 +158,18 @@ void PIG::printData(unsigned char data[14])
     time = data[0]<<24 | data[1]<<16 | data[2]<<8 | data[3];
     err = data[4]<<24 | data[5]<<16 | data[6]<<8 | data[7];
 	step = data[8]<<24 | data[9]<<16 | data[10]<<8 | data[11];
-    pd_T = data[12] + data[13]>>7;
+    pd_T = data[12]<<8 | data[13];
 
-    Serial.print(port.available());
-    Serial.print(", ");
-	Serial.print(time);
-    Serial.print(", ");
-    Serial.print(err);
-    Serial.print(", ");
-    Serial.println(step);
+    Serial.println(port.available());
+    // Serial.print(", ");
+	// Serial.print(time, HEX);
+    // Serial.print(", ");
+    // Serial.print(err, HEX);
+    // Serial.print(", ");
+    // Serial.print(step, HEX);
+	// Serial.print(", ");
+    // Serial.println(pd_T, HEX);
+	// Serial.println("");
 }
 
 //void PIG::convert2Sign_4B(unsigned char data[4]):
@@ -149,15 +208,13 @@ unsigned char* PIG::checkFakeHeader(unsigned char headerArr[4])
 	headerArr[3] = KVH_HEADER[3];
 }
 
+/***
 unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 {
 	unsigned char header[2];
 
 	port.readBytes(headerArr, 2);
-	// Serial.print("In: ");
-	// Serial.print(headerArr[0], HEX);
-	// Serial.print(", ");
-	// Serial.println(headerArr[1], HEX);
+
 	while(1)
 	{
 
@@ -166,32 +223,87 @@ unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
 		    )
 		{
 			p_time_cnt = 0;
-           // Serial.print("PASS: ");
-           // Serial.print(headerArr[0], HEX);
-           // Serial.print(",");
-           // Serial.println(headerArr[1], HEX);
+           Serial.print("\nPASS: ");
+           Serial.print(headerArr[0], HEX);
+           Serial.print(",");
+           Serial.println(headerArr[1], HEX);
 		    return headerArr ;
 		}
 
 
 		else {
 			p_time_cnt++;
+			// Serial.print("\nFAIL: ");
+			// Serial.print(headerArr[0], HEX);
+			// Serial.print(", ");
+			// Serial.println(headerArr[1], HEX);
+			// Serial.print(", ");
+			// Serial.println(p_time_cnt);
+			
+			headerArr[0] = headerArr[1];
+			headerArr[1] = port.read();
+
+		   delayMicroseconds(100);
+		}
+
+	}
+}
+***/
+
+unsigned char* PIG::alignHeader_2B(unsigned char headerArr[2])
+{
+	unsigned char header[2];
+
+	// 
+	// Serial.print("\nIn: ");
+	// Serial.print(headerArr[0], HEX);
+	// Serial.print(", ");
+	// Serial.println(headerArr[1], HEX);
+	while(1)
+	{
+		// if(port.available())
+		// {
+			// Serial.println(port.available());
+		// }
+		// /***
+		port.readBytes(headerArr, 2);
+		Serial.print("In: ");
+		Serial.print(headerArr[0], HEX);
+		Serial.print(",");
+		Serial.println(headerArr[1], HEX);
+		
+		if( (headerArr[0] == PIG_HEADER[0]) &&
+		    headerArr[1] == PIG_HEADER[1]
+		)
+		{
+			p_time_cnt = 0;
+           Serial.print("PASS: ");
+           Serial.print(headerArr[0], HEX);
+           Serial.print(",");
+           Serial.println(headerArr[1], HEX);
+		    return headerArr ;
+		}
+
+
+		else {
+			p_time_cnt++;
+			Serial.print("FAIL: ");
+			Serial.print(headerArr[0], HEX);
+			Serial.print(", ");
+			Serial.println(headerArr[1], HEX);
+			Serial.print(", ");
+			Serial.println(p_time_cnt);
+			
 			headerArr[0] = headerArr[1];
 			headerArr[1] = port.read();
 			
-           Serial.print("FAIL: ");
-			Serial.print(headerArr[0], HEX);
-           Serial.print(", ");
-           Serial.println(headerArr[1], HEX);
-		   Serial.print("p_time_cnt: ");
-		   Serial.println(p_time_cnt);
-		   if(p_time_cnt > 10000) //1s
-		   {
-			   Serial.println("I am Stuck, need Watch Dog Here! ");
-				digitalWrite(29, HIGH); //trigger signal to PIG
-				EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
-		   }
-
+		   // if(p_time_cnt > 10000) //1s
+		   // {
+			   // Serial.println("I am Stuck, need Watch Dog Here! ");
+				// digitalWrite(29, HIGH); //trigger signal to PIG
+				// EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+		   // }
+		// ***/
 		   delayMicroseconds(100);
 		}
 	}

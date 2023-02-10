@@ -12,6 +12,7 @@ class PIG
 		void sendCmd(unsigned char, unsigned int);
 		void printVal(char [], int);
 		void readData(unsigned char [], unsigned char []);
+		unsigned char* readData();
 		void readDataCRC(unsigned char [], unsigned char []);
 		void readFakeDataCRC(unsigned char [], unsigned char []);
 		void readFakeData(unsigned char []);
