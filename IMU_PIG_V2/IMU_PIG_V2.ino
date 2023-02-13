@@ -393,7 +393,8 @@ void acq_fog(byte &select_fn, unsigned int CTRLREG)
 
 void acq_imu(byte &select_fn, unsigned int CTRLREG)
 {
-	byte adxl355_a[9], header[2], fog[14], nano33_w[6], nano33_a[6];
+	byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+  byte header[2], fog[14], nano33_w[6], nano33_a[6];
 	uint8_t CRC32[4];
 
 	#ifdef ENABLE_SRS200
@@ -415,7 +416,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
     pig_v2.readData(header, fog);
-		adxl355.readData(adxl355_a);
+		// adxl355.readData(adxl355_a);
 		IMU.readGyroscope(nano33_w);
 		IMU.readAcceleration(nano33_a);
 
