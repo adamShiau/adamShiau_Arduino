@@ -231,7 +231,22 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-  updateGPS(1000);
+  uint8_t dd=1;
+  Serial3.write(0xAB);
+  delay(dd);
+  Serial3.write(0xBA);
+  delay(dd);
+    Serial3.write(0xDE);
+  delay(dd);
+    Serial3.write(0x01);
+  delay(dd);
+  Serial3.write(0x02);
+  delay(dd);
+  Serial3.write(0x03);
+  delay(dd);
+  Serial3.write(0x04);
+  delay(dd);
+  // updateGPS(1000);
 }
 
 void printAdd(char name[], void* addr)
