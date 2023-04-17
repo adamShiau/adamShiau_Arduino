@@ -105,12 +105,16 @@ unsigned char* PIG::readData()
 
 	static uint8_t buffer[buffer_size];
 	static int bytes_received = 0;
+
+	/******* state machine definition *******/
 	static enum {
 		EXPECTING_HEADER, 
 		EXPECTING_PAYLOAD
-	} state = EXPECTING_HEADER; // state machine definition
+	} state = EXPECTING_HEADER; 
 	
 	switch (state) {
+		/*** The state will stay at EXPECTING_HEADER if incoming bytes don't match HEADER.
+		***/
 		case EXPECTING_HEADER:
 			// Serial.println("\nEXPECTING_HEADER");
 			if (data != expected_header[bytes_received++])
