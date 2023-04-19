@@ -9,13 +9,11 @@ class uartRT
 	public:
 		uartRT(Stream &);
 		~uartRT(void);
-		unsigned char* readData(uint8_t* TRAILER = nullptr);
-		unsigned char* readData_2(uint8_t expected_header[] = {0xAB, 0xBA}, uint8_t header_size = 2, uint8_t* expected_trailer = nullptr, uint16_t*);
-		
+		unsigned char* readData(uint8_t* expected_header, uint8_t header_size=2, uint16_t* try_cnt = nullptr,
+								uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1);
 	
 	private:
 		Stream &port;
-		const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
 		
 };
 	
