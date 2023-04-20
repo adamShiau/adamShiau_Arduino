@@ -97,7 +97,9 @@ void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
 }
-PIG pig_v2(Serial4);
+PIG pig_v2(Serial2); //SP13
+PIG sp14(Serial3); //SP14
+PIG sp9(Serial4); //SP14
 
 
 /*** serial data from PC***/
@@ -157,8 +159,32 @@ TinyGPSPlus gps;
 void setup() {
 
     // EXTT
-  attachInterrupt(26, ISR_EXTT, RISING); // EXTT = PA27, EXTINT[15]
-  EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+    /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
+     *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
+     *  ****/
+  attachInterrupt(26, ISR_EXTT, RISING);
+
+/*** see datasheet p353. 
+ *  SENSEn register table:
+ * -----------------------------
+ *  SENSEn[2:0] |   Name    |   Description   |
+ *  ----------------------------------------------------
+ *       0x0    |   NONE    | No detection
+ *  ----------------------------------------------------
+ *       0x1    |   RISE    |  Rising-edge detection
+ *  -----------------------------------------------------
+ *       0x2    |   FALL    |  Falling-edge detection
+ *  -----------------------------------------------------
+ *       0x3    |   BOTH    |  Both-edges detection
+ *  -----------------------------------------------------
+ * ***/
+// set interrupt mode to None
+  /***----- for PIG MCU & IMU_V4 EXINT[15]----- ***/
+  EIC->CONFIG[1].bit.SENSE7 = 0; 
+
+
+
+
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, LOW);
 
@@ -356,24 +382,63 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	{
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
-			case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
-			case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(ERR_OFFSET_ADDR, value);break;}
-			case CMD_FOG_POLARITY: {pig_v2.sendCmd(POLARITY_ADDR, value);break;}
-			case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(WAIT_CNT_ADDR, value);break;}
-			case CMD_FOG_ERR_TH: {pig_v2.sendCmd(ERR_TH_ADDR, value);break;}
-			case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(ERR_AVG_ADDR, value);break;}
-			case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(TIMER_RST_ADDR, value);break;}
-			case CMD_FOG_GAIN1: {pig_v2.sendCmd(GAIN1_ADDR, value);break;}
-			case CMD_FOG_GAIN2: {pig_v2.sendCmd(GAIN2_ADDR, value);break;}
-			case CMD_FOG_FB_ON: {pig_v2.sendCmd(FB_ON_ADDR, value);break;}
-			case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(CONST_STEP_ADDR, value);break;}
-			case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(FPGA_Q_ADDR, value);break;}
-			case CMD_FOG_FPGA_R: {pig_v2.sendCmd(FPGA_R_ADDR, value);break;}
-			case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
-			case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-			case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
+			// case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
+			// case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
+			// case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
+			// case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(ERR_OFFSET_ADDR, value);break;}
+			// case CMD_FOG_POLARITY: {pig_v2.sendCmd(POLARITY_ADDR, value);break;}
+			// case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(WAIT_CNT_ADDR, value);break;}
+			// case CMD_FOG_ERR_TH: {pig_v2.sendCmd(ERR_TH_ADDR, value);break;}
+			// case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(ERR_AVG_ADDR, value);break;}
+			// case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(TIMER_RST_ADDR, value);break;}
+			// case CMD_FOG_GAIN1: {pig_v2.sendCmd(GAIN1_ADDR, value);break;}
+			// case CMD_FOG_GAIN2: {pig_v2.sendCmd(GAIN2_ADDR, value);break;}
+			// case CMD_FOG_FB_ON: {pig_v2.sendCmd(FB_ON_ADDR, value);break;}
+			// case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(CONST_STEP_ADDR, value);break;}
+			// case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(FPGA_Q_ADDR, value);break;}
+			// case CMD_FOG_FPGA_R: {pig_v2.sendCmd(FPGA_R_ADDR, value);break;}
+			// case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
+			// case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
+			// case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
+
+      // case CMD_FOG_MOD_FREQ: {sp14.sendCmd(MOD_FREQ_ADDR, value);break;}
+			// case CMD_FOG_MOD_AMP_H: {sp14.sendCmd(MOD_AMP_H_ADDR, value);break;}
+			// case CMD_FOG_MOD_AMP_L: {sp14.sendCmd(MOD_AMP_L_ADDR, value);break;}
+			// case CMD_FOG_ERR_OFFSET: {sp14.sendCmd(ERR_OFFSET_ADDR, value);break;}
+			// case CMD_FOG_POLARITY: {sp14.sendCmd(POLARITY_ADDR, value);break;}
+			// case CMD_FOG_WAIT_CNT:{sp14.sendCmd(WAIT_CNT_ADDR, value);break;}
+			// case CMD_FOG_ERR_TH: {sp14.sendCmd(ERR_TH_ADDR, value);break;}
+			// case CMD_FOG_ERR_AVG: {sp14.sendCmd(ERR_AVG_ADDR, value);break;}
+			// case CMD_FOG_TIMER_RST: {sp14.sendCmd(TIMER_RST_ADDR, value);break;}
+			// case CMD_FOG_GAIN1: {sp14.sendCmd(GAIN1_ADDR, value);break;}
+			// case CMD_FOG_GAIN2: {sp14.sendCmd(GAIN2_ADDR, value);break;}
+			// case CMD_FOG_FB_ON: {sp14.sendCmd(FB_ON_ADDR, value);break;}
+			// case CMD_FOG_CONST_STEP: {sp14.sendCmd(CONST_STEP_ADDR, value);break;}
+			// case CMD_FOG_FPGA_Q: {sp14.sendCmd(FPGA_Q_ADDR, value);break;}
+			// case CMD_FOG_FPGA_R: {sp14.sendCmd(FPGA_R_ADDR, value);break;}
+			// case CMD_FOG_DAC_GAIN: {sp14.sendCmd(DAC_GAIN_ADDR, value);break;}
+			// case CMD_FOG_INT_DELAY: {sp14.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
+			// case CMD_FOG_OUT_START: {sp14.sendCmd(DATA_OUT_START_ADDR, value);break;}
+			// default: break;
+
+      case CMD_FOG_MOD_FREQ: {sp9.sendCmd(MOD_FREQ_ADDR, value);break;}
+			case CMD_FOG_MOD_AMP_H: {sp9.sendCmd(MOD_AMP_H_ADDR, value);break;}
+			case CMD_FOG_MOD_AMP_L: {sp9.sendCmd(MOD_AMP_L_ADDR, value);break;}
+			case CMD_FOG_ERR_OFFSET: {sp9.sendCmd(ERR_OFFSET_ADDR, value);break;}
+			case CMD_FOG_POLARITY: {sp9.sendCmd(POLARITY_ADDR, value);break;}
+			case CMD_FOG_WAIT_CNT:{sp9.sendCmd(WAIT_CNT_ADDR, value);break;}
+			case CMD_FOG_ERR_TH: {sp9.sendCmd(ERR_TH_ADDR, value);break;}
+			case CMD_FOG_ERR_AVG: {sp9.sendCmd(ERR_AVG_ADDR, value);break;}
+			case CMD_FOG_TIMER_RST: {sp9.sendCmd(TIMER_RST_ADDR, value);break;}
+			case CMD_FOG_GAIN1: {sp9.sendCmd(GAIN1_ADDR, value);break;}
+			case CMD_FOG_GAIN2: {sp9.sendCmd(GAIN2_ADDR, value);break;}
+			case CMD_FOG_FB_ON: {sp9.sendCmd(FB_ON_ADDR, value);break;}
+			case CMD_FOG_CONST_STEP: {sp9.sendCmd(CONST_STEP_ADDR, value);break;}
+			case CMD_FOG_FPGA_Q: {sp9.sendCmd(FPGA_Q_ADDR, value);break;}
+			case CMD_FOG_FPGA_R: {sp9.sendCmd(FPGA_R_ADDR, value);break;}
+			case CMD_FOG_DAC_GAIN: {sp9.sendCmd(DAC_GAIN_ADDR, value);break;}
+			case CMD_FOG_INT_DELAY: {sp9.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
+			case CMD_FOG_OUT_START: {sp9.sendCmd(DATA_OUT_START_ADDR, value);break;}
 			default: break;
 		}
 	}
@@ -467,13 +532,18 @@ void acq_fog2(byte &select_fn, unsigned int value)
 	{
     Serial.println("select acq_fog2");
     CtrlReg = value;
-		run_fog_flag = pig_v2.setSyncMode(CtrlReg);
+		// run_fog_flag = pig_v2.setSyncMode(CtrlReg);
+    // run_fog_flag = sp14.setSyncMode(CtrlReg);
+    run_fog_flag = sp9.setSyncMode(CtrlReg);
     switch(CtrlReg){
       case INT_SYNC:
         digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to NONE");
+        Serial.println("Write SYNC to H\n");
         digitalWrite(PIG_SYNC, HIGH);
         EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
       break;
@@ -490,7 +560,9 @@ void acq_fog2(byte &select_fn, unsigned int value)
 
 	if(run_fog_flag) {
 	    t_new = micros();
-      fog = pig_v2.readData();
+      // fog = pig_v2.readData();
+      // fog = sp14.readData();
+      fog = sp9.readData();
       if(fog)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
@@ -510,6 +582,8 @@ void acq_fog2(byte &select_fn, unsigned int value)
           case INT_SYNC:
              break;
           case EXT_SYNC:
+            Serial.println("Set EXTT to RISING");
+            Serial.println("Write SYNC to L\n");
             digitalWrite(PIG_SYNC, LOW);
             // Serial.println("EXT_SYNC");
             EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
@@ -519,11 +593,9 @@ void acq_fog2(byte &select_fn, unsigned int value)
           default:
             // Serial.println("default");
           digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
-         EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge   
+          EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge  
               break;
          }
-
-      //  pig_v2.printData(fog);
       }
 	    
         t_old = t_new;
@@ -1105,7 +1177,6 @@ void ISR_EXTT()
 {
   // Serial.println("ISR");
   digitalWrite(PIG_SYNC, HIGH);
-  // EIC->CONFIG[0].reg = 0; //set interrupt condition to NONE
   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
 
