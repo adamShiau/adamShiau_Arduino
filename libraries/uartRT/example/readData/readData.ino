@@ -1,7 +1,7 @@
 #include "wiring_private.h"
 #include "uartRT.h"
 
-uartRT myUart(Serial1);
+uartRT myUart(Serial1, 4);
 uint8_t header[] = {0xAB, 0xBA};
 uint8_t trailer[] = {0x55};
 uint16_t try_cnt;

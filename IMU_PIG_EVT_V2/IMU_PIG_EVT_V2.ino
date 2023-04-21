@@ -490,6 +490,7 @@ void acq_fog2(byte &select_fn, unsigned int value)
 
 	if(run_fog_flag) {
 	    t_new = micros();
+      // fog = pig_v2.readData();
       fog = pig_v2.readData();
       if(fog)
       {

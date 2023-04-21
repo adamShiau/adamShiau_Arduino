@@ -1,12 +1,22 @@
 #include "uartRT.h"
 
-// #define TEST_MODE
+#define TEST_MODE
 
-uartRT::uartRT(Stream &p ) : port(p)
-{}
+// uartRT::uartRT(Stream &p ) : port(p)
+// {}
+
+uartRT::uartRT(Stream &p, uint8_t size) : port(p)
+{
+    // buffer = new uint8_t[size];
+    buffer = (uint8_t*) malloc(size*sizeof(uint8_t));
+    buffer_size = size;
+}
 
 uartRT::~uartRT()
-{}
+{
+    // delete[] buffer;
+    free(buffer);
+}
 
 /*** 
  * readData V0.9
@@ -15,14 +25,12 @@ uartRT::~uartRT()
  ***/
 unsigned char* uartRT::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size)
 {
-	const uint8_t buffer_size = 4;
 	const uint8_t data_size_expected = buffer_size;
     
     if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
     uint8_t data = port.read();
 
 
-	static uint8_t buffer[buffer_size];
 	static int bytes_received = 0;
 	static enum {
 		EXPECTING_HEADER, 

@@ -27,10 +27,9 @@
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
 
-
-PIG::PIG(Stream &p ) : port(p)
+// 
+PIG::PIG(Stream &p ) : port(p), myUart(p, 14) 
 {
-	
 }
 
 PIG::~PIG()
@@ -46,10 +45,18 @@ void PIG::init()
 
 void PIG::sendCmd(unsigned char addr, unsigned int value)
 {
+	// port.write(0xAB);
+	// delay(1);
+	// port.write(0xBA);
+	// delay(1);
 	port.write(addr);
+	// delay(1);
 	port.write(value>>24 & 0xFF);
+	// delay(1);
 	port.write(value>>16 & 0xFF);
+	// delay(1);
 	port.write(value>>8 & 0xFF);
+	// delay(1);
 	port.write(value & 0xFF);
 	delay(1);
 }
@@ -152,6 +159,11 @@ unsigned char* PIG::readData()
 	}
 	return nullptr;
     // printData(data);
+}
+
+unsigned char* PIG::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size)
+{
+	return myUart.readData(expected_header, header_size, try_cnt, expected_trailer, trailer_size);
 }
 
 void PIG::printData(unsigned char data[14])
