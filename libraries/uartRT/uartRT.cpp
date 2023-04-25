@@ -1,6 +1,6 @@
 #include "uartRT.h"
 
-#define TEST_MODE
+// #define TEST_MODE
 
 // uartRT::uartRT(Stream &p ) : port(p)
 // {}
@@ -29,6 +29,12 @@ unsigned char* uartRT::readData(uint8_t* expected_header, uint8_t header_size, u
     
     if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
     uint8_t data = port.read();
+    #if defined(TEST_MODE)
+        Serial.print("\ndata : ");
+        Serial.print(port.available());
+        Serial.print(", ");
+        Serial.println(data, HEX);
+    #endif
 
 
 	static int bytes_received = 0;

@@ -77,9 +77,10 @@ ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
 
 // cmd read from GUI
 uint8_t myCmd_header[] = {0xAB, 0xBA};
-// uint8_t myCmd_trailer[] = {0x55};
+uint8_t myCmd_trailer[] = {0x55, 0x56};
 uint16_t myCmd_try_cnt;
 const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
+const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
 uartRT myCmd(Serial1, 5);
 
 
@@ -90,7 +91,7 @@ void SERCOM2_Handler()
 {
     Serial2.IrqHandler();
 }
-PIG pig_ser2(Serial2);
+// PIG pig_ser2(Serial2);
 uint8_t header[] = {0xAB, 0xBA};
 uint8_t trailer[] = {0x55};
 uint16_t try_cnt;
@@ -103,7 +104,7 @@ void SERCOM1_Handler()
 {
     Serial3.IrqHandler();
 }
-PIG pig_ser3(Serial3);
+// PIG pig_ser3(Serial3);
 
 //SERCOM3: serial4 (PA21, PA20) [rx, tx]
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
@@ -269,12 +270,20 @@ void setup() {
 }
 
 void loop() {
+  
 	getCmdValue(cmd, value, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
+  // sp14.port_read();
   // updateGPS(1000);
+    // Serial.println(millis());
+    // sp14.checkAck(0xCD);
+  // if(Serial3.available()) {
+  //   Serial.println("SER3");
+  //   Serial.println(Serial3.read());
+  // }
 }
 
 void printAdd(char name[], void* addr)
@@ -353,43 +362,48 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
-{
-	byte cmd[5];
-		
-	
-    #ifdef UART_RS422_CMD
-    while (Serial1.available()>0){
-      Serial1.readBytes((char*)cmd, 5);
-    #endif
-
-	#ifdef UART_USB_CMD
-    while (Serial.available()>0){
-      Serial.readBytes((char*)cmd, 5);
-	#endif
-
-		uart_cmd = cmd[0];
-		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-		uart_complete = 1;
-		printVal_0("cmd", uart_cmd);
-		printVal_0("rx", uart_value);
-	}
-}
-
 // void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
 // {
+// 	byte cmd[5];
+		
+	
+//     #ifdef UART_RS422_CMD
+//     while (Serial1.available()>0){
+//       Serial1.readBytes((char*)cmd, 5);
+//     #endif
 
-//   byte *cmd;
+// 	#ifdef UART_USB_CMD
+//     while (Serial.available()>0){
+//       Serial.readBytes((char*)cmd, 5);
+// 	#endif
 
-//     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt);
-//     if(cmd){
-//       uart_cmd = cmd[0];
-//       uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-//       uart_complete = 1;
-//       printVal_0("cmd", uart_cmd);
-//       printVal_0("rx", uart_value);
-//     }
+// 		uart_cmd = cmd[0];
+// 		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+// 		uart_complete = 1;
+// 		printVal_0("cmd", uart_cmd);
+// 		printVal_0("rx", uart_value);
+// 	}
 // }
+
+void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
+{
+
+  byte *cmd;
+
+    cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+
+    if(cmd){
+      uart_cmd = cmd[0];
+      uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+      uart_complete = 1;
+      // printVal_0("uart_cmd", uart_cmd);
+      // printVal_0("uart_value", uart_value);
+      Serial.print("cmd, value: ");
+      Serial.print(uart_cmd);
+      Serial.print(", ");
+      Serial.println(uart_value);
+    }
+}
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 {
@@ -408,6 +422,47 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	{
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
+
+      case CMD_FOG_MOD_FREQ: {sp14.updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_MOD_AMP_H: {sp14.updateParameter(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_MOD_AMP_L: {sp14.updateParameter(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_ERR_OFFSET: {sp14.updateParameter(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_POLARITY: {sp14.updateParameter(myCmd_header, POLARITY_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_WAIT_CNT:{sp14.updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_ERR_TH: {sp14.updateParameter(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_ERR_AVG: {sp14.updateParameter(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_TIMER_RST: {sp14.updateParameter(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_GAIN1: {sp14.updateParameter(myCmd_header, GAIN1_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_GAIN2: {sp14.updateParameter(myCmd_header, GAIN2_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_FB_ON: {sp14.updateParameter(myCmd_header, FB_ON_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_CONST_STEP: {sp14.updateParameter(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_FPGA_Q: {sp14.updateParameter(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_FPGA_R: {sp14.updateParameter(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_DAC_GAIN: {sp14.updateParameter(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value, 0xCC);break;}
+			case CMD_FOG_INT_DELAY: {sp14.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);break;}
+      case CMD_FOG_OUT_START: {sp14.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);break;}
+			// default: break;
+
+      // case CMD_FOG_MOD_FREQ: {sp14.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_MOD_AMP_H: {sp14.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_MOD_AMP_L: {sp14.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_ERR_OFFSET: {sp14.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_POLARITY: {sp14.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_WAIT_CNT:{sp14.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_ERR_TH: {sp14.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_ERR_AVG: {sp14.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_TIMER_RST: {sp14.sendCmd(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_GAIN1: {sp14.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_GAIN2: {sp14.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_FB_ON: {sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_CONST_STEP: {sp14.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_FPGA_Q: {sp14.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_FPGA_R: {sp14.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_DAC_GAIN: {sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value);break;}
+			// case CMD_FOG_INT_DELAY: {sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value);break;}
+      // case CMD_FOG_OUT_START: {sp14.sendCmd(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value);break;}
+			default: break;
+
 			// case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
 			// case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
 			// case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
@@ -426,26 +481,6 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 			// case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
 			// case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
 			// case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
-
-      case CMD_FOG_MOD_FREQ: {sp14.sendCmd(MOD_FREQ_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_H: {sp14.sendCmd(MOD_AMP_H_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_L: {sp14.sendCmd(MOD_AMP_L_ADDR, value);break;}
-			case CMD_FOG_ERR_OFFSET: {sp14.sendCmd(ERR_OFFSET_ADDR, value);break;}
-			case CMD_FOG_POLARITY: {sp14.sendCmd(POLARITY_ADDR, value);break;}
-			case CMD_FOG_WAIT_CNT:{sp14.sendCmd(WAIT_CNT_ADDR, value);break;}
-			case CMD_FOG_ERR_TH: {sp14.sendCmd(ERR_TH_ADDR, value);break;}
-			case CMD_FOG_ERR_AVG: {sp14.sendCmd(ERR_AVG_ADDR, value);break;}
-			case CMD_FOG_TIMER_RST: {sp14.sendCmd(TIMER_RST_ADDR, value);break;}
-			case CMD_FOG_GAIN1: {sp14.sendCmd(GAIN1_ADDR, value);break;}
-			case CMD_FOG_GAIN2: {sp14.sendCmd(GAIN2_ADDR, value);break;}
-			case CMD_FOG_FB_ON: {sp14.sendCmd(FB_ON_ADDR, value);break;}
-			case CMD_FOG_CONST_STEP: {sp14.sendCmd(CONST_STEP_ADDR, value);break;}
-			case CMD_FOG_FPGA_Q: {sp14.sendCmd(FPGA_Q_ADDR, value);break;}
-			case CMD_FOG_FPGA_R: {sp14.sendCmd(FPGA_R_ADDR, value);break;}
-			case CMD_FOG_DAC_GAIN: {sp14.sendCmd(DAC_GAIN_ADDR, value);break;}
-			case CMD_FOG_INT_DELAY: {sp14.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-			case CMD_FOG_OUT_START: {sp14.sendCmd(DATA_OUT_START_ADDR, value);break;}
-			default: break;
 
       // case CMD_FOG_MOD_FREQ: {sp9.sendCmd(MOD_FREQ_ADDR, value);break;}
 			// case CMD_FOG_MOD_AMP_H: {sp9.sendCmd(MOD_AMP_H_ADDR, value);break;}
@@ -529,7 +564,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 void temp_idle(byte &select_fn, unsigned int CTRLREG)
 {
 	clear_SEL_EN(select_fn);
-	delay(100);
+	// delay(100);
 }
 
 void fn_rst(byte &select_fn, unsigned int CTRLREG)
@@ -609,8 +644,8 @@ void acq_fog2(byte &select_fn, unsigned int value)
           case INT_SYNC:
              break;
           case EXT_SYNC:
-            Serial.println("Set EXTT to RISING");
-            Serial.println("Write SYNC to L\n");
+            // Serial.println("Set EXTT to RISING");
+            // Serial.println("Write SYNC to L\n");
             digitalWrite(PIG_SYNC, LOW);
             // Serial.println("EXT_SYNC");
             EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge

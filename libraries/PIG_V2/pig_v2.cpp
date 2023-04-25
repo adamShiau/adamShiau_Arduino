@@ -45,20 +45,68 @@ void PIG::init()
 
 void PIG::sendCmd(unsigned char addr, unsigned int value)
 {
-	// port.write(0xAB);
-	// delay(1);
-	// port.write(0xBA);
-	// delay(1);
+	port.write(0xAB);
+	port.write(0xBA);
 	port.write(addr);
-	// delay(1);
 	port.write(value>>24 & 0xFF);
-	// delay(1);
 	port.write(value>>16 & 0xFF);
-	// delay(1);
 	port.write(value>>8 & 0xFF);
-	// delay(1);
 	port.write(value & 0xFF);
+	port.write(0x55);
+	port.write(0x56);
 	delay(1);
+}
+
+void PIG::sendCmd(unsigned char* header, unsigned char addr, unsigned char* trailer, unsigned int value)
+{
+	port.write(header[0]);
+	port.write(header[1]);
+	port.write(addr);
+	port.write(value>>24 & 0xFF);
+	port.write(value>>16 & 0xFF);
+	port.write(value>>8 & 0xFF);
+	port.write(value & 0xFF);
+	port.write(trailer[0]);
+	port.write(trailer[1]);
+	delay(1);
+}
+
+void PIG::updateParameter(unsigned char* header, unsigned char addr, unsigned char* trailer, unsigned int value, unsigned char ack)
+{
+	static uint16_t resend_cnt=0;
+
+	uint8_t ack_response;
+	sendCmd(header, addr, trailer, value);
+
+	while(!checkAck(ack)){
+		resend_cnt++;
+		if(resend_cnt >= 1000) {
+			resend_cnt = 0;
+			sendCmd(header, addr, trailer, value);
+			// Serial.println("do somrthing and reset resend_cnt!");
+		}
+	} 
+
+	// Serial.print("resend_cnt: ");
+	// Serial.println(resend_cnt);
+
+	resend_cnt=0;
+}
+
+unsigned char PIG::checkAck(unsigned char ack)
+{
+	uint8_t data; 
+		
+	data = port.read();
+	return  (uint8_t)(data == ack);
+}
+
+void PIG::port_read(void)
+{
+	if(port.available()){
+		Serial.print("port_read: ");
+		Serial.println(port.read(), HEX);
+	}
 }
 
 char PIG::setSyncMode(unsigned int CTRLREG)
@@ -160,6 +208,8 @@ unsigned char* PIG::readData()
 	return nullptr;
     // printData(data);
 }
+
+
 
 unsigned char* PIG::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size)
 {
