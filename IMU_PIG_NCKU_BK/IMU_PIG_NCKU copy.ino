@@ -145,8 +145,7 @@ fn_ptr output_fn;
 // Adxl355 adxl355(pin_scl_mux);
 crcCal myCRC;
 
-//SYNC OUT
-bool sync_status = 0;
+
 
 // Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 // void SERCOM0_Handler() 
@@ -178,7 +177,7 @@ void setup() {
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
-  attachInterrupt(26, ISR_EXTT, CHANGE);
+  attachInterrupt(26, ISR_EXTT, RISING);
 
 /*** see datasheet p353. 
  *  SENSEn register table:
@@ -196,13 +195,13 @@ void setup() {
  * ***/
 // set interrupt mode to None
   /***----- for PIG MCU & IMU_V4 EXINT[15]----- ***/
-  EIC->CONFIG[1].bit.SENSE7 = 0;  // set ISR no NONE
+  // EIC->CONFIG[1].bit.SENSE7 = 0;  // set ISR no NONE
 
 
 
 
   pinMode(PIG_SYNC, OUTPUT); 
-  digitalWrite(PIG_SYNC, sync_status);
+  digitalWrite(PIG_SYNC, LOW);
 
   pinMode(MCU_LED, OUTPUT);
   digitalWrite(MCU_LED, HIGH);
@@ -364,7 +363,7 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch
 	if(mux_flag == MUX_PARAMETER)
 	{
     // Serial.println("  STATUS_1");
-    // EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+    EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
 
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
@@ -500,8 +499,8 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch
 			// default: break;
 		}
     // Serial.println("  STATUS_2");
-    // digitalWrite(PIG_SYNC, LOW);
-    // EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising
+    digitalWrite(PIG_SYNC, LOW);
+    EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising
     
 	}
 }
@@ -597,7 +596,7 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
-        // digitalWrite(PIG_SYNC, LOW);
+        digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
@@ -605,8 +604,8 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");
         // Serial.println(" STATUS_3");
-        // digitalWrite(PIG_SYNC, LOW);
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 1; ////set interrupt condition to Rising
 
 
         // if(run_fog_flag) {
@@ -624,7 +623,7 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
       break;
       case STOP_SYNC:
         // Serial.println(" STATUS_4");
-        // digitalWrite(PIG_SYNC, LOW);
+        digitalWrite(PIG_SYNC, HIGH);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       default:
@@ -644,25 +643,25 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 
       if(fog)
       {
-        // switch(CtrlReg){
-        //   case INT_SYNC:
-        //      break;
-        //   case EXT_SYNC:
-        //     Serial.println("STATUS_5");
-        //     digitalWrite(PIG_SYNC, LOW);
-        //     EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        //   break;
-        //   case STOP_SYNC:
-        //     // Serial.println(" STATUS_4-2");
-        //     digitalWrite(PIG_SYNC, HIGH);
-        //     EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        //      break;
-        //   default:
-        //     // Serial.println("default");
-        //   digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
-        //   EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge  
-        //       break;
-        //  }
+        switch(CtrlReg){
+          case INT_SYNC:
+             break;
+          case EXT_SYNC:
+            Serial.println("STATUS_5");
+            digitalWrite(PIG_SYNC, LOW);
+            EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+          break;
+          case STOP_SYNC:
+            // Serial.println(" STATUS_4-2");
+            digitalWrite(PIG_SYNC, HIGH);
+            EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+             break;
+          default:
+            // Serial.println("default");
+          digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
+          EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge  
+              break;
+         }
 
 
         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
@@ -678,19 +677,19 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(CRC32, 4);
        #endif
 
-      //  switch(CtrlReg){
-      //     case INT_SYNC:
-      //        break;
-      //     case EXT_SYNC:
-      //       // Serial.println("STATUS_6");
-      //       EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
-      //       digitalWrite(PIG_SYNC, LOW);
-      //     break;
-      //     case STOP_SYNC:
-      //        break;
-      //     default:
-      //         break;
-      //    }
+       switch(CtrlReg){
+          case INT_SYNC:
+             break;
+          case EXT_SYNC:
+            // Serial.println("STATUS_6");
+            EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
+            digitalWrite(PIG_SYNC, LOW);
+          break;
+          case STOP_SYNC:
+             break;
+          default:
+              break;
+         }
 
         
       }
@@ -1201,9 +1200,8 @@ void displayGPSInfo()
 
 void ISR_EXTT()
 {
-  // Serial.println(millis());
-  sync_status = !sync_status;
-  digitalWrite(PIG_SYNC, sync_status);
+  // Serial.println("ISR");
+  digitalWrite(PIG_SYNC, HIGH);
   // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
 

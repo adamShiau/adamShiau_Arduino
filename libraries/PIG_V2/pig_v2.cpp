@@ -78,18 +78,14 @@ void PIG::updateParameter(unsigned char* header, unsigned char addr, unsigned ch
 	uint8_t ack_response;
 	sendCmd(header, addr, trailer, value);
 
-	while(!checkAck(ack)){
-		resend_cnt++;
-		if(resend_cnt >= 1000) {
-			resend_cnt = 0;
-			sendCmd(header, addr, trailer, value);
-			// Serial.println("do somrthing and reset resend_cnt!");
-		}
-	} 
-
-	// Serial.print("resend_cnt: ");
-	// Serial.println(resend_cnt);
-
+	// while(!checkAck(ack)){
+	// 	resend_cnt++;
+	// 	if(resend_cnt >= 1000) {
+	// 		resend_cnt = 0;
+	// 		sendCmd(header, addr, trailer, value);
+	// 		// Serial.println("do somrthing and reset resend_cnt!");
+	// 	}
+	// } 
 	resend_cnt=0;
 }
 
