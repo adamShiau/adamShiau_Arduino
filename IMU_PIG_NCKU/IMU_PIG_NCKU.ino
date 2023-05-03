@@ -363,9 +363,6 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch
 {
 	if(mux_flag == MUX_PARAMETER)
 	{
-    // Serial.println("  STATUS_1");
-    // EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
       case CMD_FOG_MOD_FREQ: {
@@ -459,49 +456,7 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch
         else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			default: break;
-
-			// case CMD_FOG_MOD_FREQ: {sp13.sendCmd(MOD_FREQ_ADDR, value);break;}
-			// case CMD_FOG_MOD_AMP_H: {sp13.sendCmd(MOD_AMP_H_ADDR, value);break;}
-			// case CMD_FOG_MOD_AMP_L: {sp13.sendCmd(MOD_AMP_L_ADDR, value);break;}
-			// case CMD_FOG_ERR_OFFSET: {sp13.sendCmd(ERR_OFFSET_ADDR, value);break;}
-			// case CMD_FOG_POLARITY: {sp13.sendCmd(POLARITY_ADDR, value);break;}
-			// case CMD_FOG_WAIT_CNT:{sp13.sendCmd(WAIT_CNT_ADDR, value);break;}
-			// case CMD_FOG_ERR_TH: {sp13.sendCmd(ERR_TH_ADDR, value);break;}
-			// case CMD_FOG_ERR_AVG: {sp13.sendCmd(ERR_AVG_ADDR, value);break;}
-			// case CMD_FOG_TIMER_RST: {sp13.sendCmd(TIMER_RST_ADDR, value);break;}
-			// case CMD_FOG_GAIN1: {sp13.sendCmd(GAIN1_ADDR, value);break;}
-			// case CMD_FOG_GAIN2: {sp13.sendCmd(GAIN2_ADDR, value);break;}
-			// case CMD_FOG_FB_ON: {sp13.sendCmd(FB_ON_ADDR, value);break;}
-			// case CMD_FOG_CONST_STEP: {sp13.sendCmd(CONST_STEP_ADDR, value);break;}
-			// case CMD_FOG_FPGA_Q: {sp13.sendCmd(FPGA_Q_ADDR, value);break;}
-			// case CMD_FOG_FPGA_R: {sp13.sendCmd(FPGA_R_ADDR, value);break;}
-			// case CMD_FOG_DAC_GAIN: {sp13.sendCmd(DAC_GAIN_ADDR, value);break;}
-			// case CMD_FOG_INT_DELAY: {sp13.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-			// case CMD_FOG_OUT_START: {sp13.sendCmd(DATA_OUT_START_ADDR, value);break;}
-
-      // case CMD_FOG_MOD_FREQ: {sp9.sendCmd(MOD_FREQ_ADDR, value);break;}
-			// case CMD_FOG_MOD_AMP_H: {sp9.sendCmd(MOD_AMP_H_ADDR, value);break;}
-			// case CMD_FOG_MOD_AMP_L: {sp9.sendCmd(MOD_AMP_L_ADDR, value);break;}
-			// case CMD_FOG_ERR_OFFSET: {sp9.sendCmd(ERR_OFFSET_ADDR, value);break;}
-			// case CMD_FOG_POLARITY: {sp9.sendCmd(POLARITY_ADDR, value);break;}
-			// case CMD_FOG_WAIT_CNT:{sp9.sendCmd(WAIT_CNT_ADDR, value);break;}
-			// case CMD_FOG_ERR_TH: {sp9.sendCmd(ERR_TH_ADDR, value);break;}
-			// case CMD_FOG_ERR_AVG: {sp9.sendCmd(ERR_AVG_ADDR, value);break;}
-			// case CMD_FOG_TIMER_RST: {sp9.sendCmd(TIMER_RST_ADDR, value);break;}
-			// case CMD_FOG_GAIN1: {sp9.sendCmd(GAIN1_ADDR, value);break;}
-			// case CMD_FOG_GAIN2: {sp9.sendCmd(GAIN2_ADDR, value);break;}
-			// case CMD_FOG_FB_ON: {sp9.sendCmd(FB_ON_ADDR, value);break;}
-			// case CMD_FOG_CONST_STEP: {sp9.sendCmd(CONST_STEP_ADDR, value);break;}
-			// case CMD_FOG_FPGA_Q: {sp9.sendCmd(FPGA_Q_ADDR, value);break;}
-			// case CMD_FOG_FPGA_R: {sp9.sendCmd(FPGA_R_ADDR, value);break;}
-			// case CMD_FOG_DAC_GAIN: {sp9.sendCmd(DAC_GAIN_ADDR, value);break;}
-			// case CMD_FOG_INT_DELAY: {sp9.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-			// case CMD_FOG_OUT_START: {sp9.sendCmd(DATA_OUT_START_ADDR, value);break;}
-			// default: break;
 		}
-    // Serial.println("  STATUS_2");
-    // digitalWrite(PIG_SYNC, LOW);
-    // EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising
     
 	}
 }
@@ -549,11 +504,6 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       default: break;
       }
-		
-		// printVal_0("in output_mode_setting");
-		// printVal_0("mux_flag", mux_flag);
-		// printVal_0("mode", mode);
-		// printVal_0("select_fn", select_fn);
 	}
 }
 
@@ -597,34 +547,17 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
-        // digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");
-        // Serial.println(" STATUS_3");
-        // digitalWrite(PIG_SYNC, LOW);
+
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
 
-
-        // if(run_fog_flag) {
-        //   Serial.println("Set EXTT to RISING");
-        //   Serial.println("Write SYNC to LOW\n");
-        //   digitalWrite(PIG_SYNC, LOW);
-        //   EIC->CONFIG[1].bit.SENSE7 = 1; ////set interrupt condition to Rising
-        // }
-        // else if(!run_fog_flag) {
-        //   Serial.println("Set EXTT to NONE");
-        //   Serial.println("Write SYNC to HIGH\n");
-        //   digitalWrite(PIG_SYNC, HIGH);
-        //   EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
-        // }
       break;
       case STOP_SYNC:
-        // Serial.println(" STATUS_4");
-        // digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       default:
@@ -644,27 +577,6 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 
       if(fog)
       {
-        // switch(CtrlReg){
-        //   case INT_SYNC:
-        //      break;
-        //   case EXT_SYNC:
-        //     Serial.println("STATUS_5");
-        //     digitalWrite(PIG_SYNC, LOW);
-        //     EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        //   break;
-        //   case STOP_SYNC:
-        //     // Serial.println(" STATUS_4-2");
-        //     digitalWrite(PIG_SYNC, HIGH);
-        //     EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        //      break;
-        //   default:
-        //     // Serial.println("default");
-        //   digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
-        //   EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge  
-        //       break;
-        //  }
-
-
         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
         
         memcpy(imu_data, KVH_HEADER, 4);
@@ -677,21 +589,6 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(fog, 14);
         Serial1.write(CRC32, 4);
        #endif
-
-      //  switch(CtrlReg){
-      //     case INT_SYNC:
-      //        break;
-      //     case EXT_SYNC:
-      //       // Serial.println("STATUS_6");
-      //       EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
-      //       digitalWrite(PIG_SYNC, LOW);
-      //     break;
-      //     case STOP_SYNC:
-      //        break;
-      //     default:
-      //         break;
-      //    }
-
         
       }
 	    
@@ -908,8 +805,71 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
 void acq_imu_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
-  clear_SEL_EN(select_fn);
-	delay(100);
+  byte *fog1, *fog2, *fog3;
+	uint8_t CRC32[4];
+
+	
+	if(select_fn&SEL_IMU_GPS)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select acq_imu_gps\n");
+    CtrlReg = value;
+    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+
+    switch(CtrlReg){
+      case INT_SYNC:
+        Serial.println("Set INT_SYNC mode");
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        break;
+      case EXT_SYNC:
+        Serial.println("Set EXT_SYNC mode, Set EXTT to CHANGE");
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Change
+
+        break;
+      case STOP_SYNC:
+        Serial.println("Set STOP_SYNC mode");
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        break;
+      default:
+        break;
+    }
+	}
+
+	// trig_status[0] = digitalRead(SYS_TRIG);
+
+	if(run_fog_flag) {
+	    t_new = micros();
+      
+           if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+      else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+      else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+      
+
+      if(fog)
+      {
+        uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
+        
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, fog, 14);
+        myCRC.crc_32(imu_data, 18, CRC32);
+        free(imu_data);
+
+        #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(fog, 14);
+        Serial1.write(CRC32, 4);
+       #endif
+        
+      }
+	    
+        t_old = t_new;
+        
+        
+	}
+	clear_SEL_EN(select_fn);	
 }
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG, byte ch)

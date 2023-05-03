@@ -90,7 +90,7 @@
 #define SEL_IMU 		    1<<4
 #define SEL_EQ	 		    1<<5
 #define SEL_IMU_MEMS	    1<<6
-#define SEL_SPARROW_DEMO 	1<<7
+#define SEL_IMU_GPS 	1<<7
 
 /*** MODE_RST CTRL REG***/
 #define REFILL_SERIAL1 1
