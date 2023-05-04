@@ -13,8 +13,9 @@ class uartRT
 		unsigned char* readData(uint8_t* expected_header, uint8_t header_size=2, uint16_t* try_cnt = nullptr,
 								uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1);
 
-		// unsigned char* readData(uint8_t* expected_header, uint8_t header_size=2, uint16_t* try_cnt = nullptr,
-		// 						uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1, uint8_t en_ack=0);
+		unsigned char* readData_2(uint8_t* expected_header, uint8_t header_size=2, uint16_t* try_cnt = nullptr,
+								uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1);
+
 
 	
 	private:

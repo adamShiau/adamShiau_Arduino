@@ -805,7 +805,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
 void acq_imu_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
-  byte *fog1, *fog2, *fog3;
+  // byte *fog1, *fog2, *fog3;
+  byte *fog;
 	uint8_t CRC32[4];
 
 	
