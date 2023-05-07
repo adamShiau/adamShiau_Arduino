@@ -1,6 +1,6 @@
 #include "uartRT.h"
 
-// #define TEST_MODE
+#define TEST_MODE
 
 // uartRT::uartRT(Stream &p ) : port(p)
 // {}
@@ -35,9 +35,6 @@ unsigned char* uartRT::readData(uint8_t* expected_header, uint8_t header_size, u
         Serial.print(port.available());
         Serial.print(", ");
         Serial.println(data, HEX);
-    #endif
-    #if defined(TEST_MODE)
-        Serial.println("\nreadData");
     #endif
 
 
@@ -145,19 +142,20 @@ unsigned char* uartRT::readData_2(uint8_t* expected_header, uint8_t header_size,
     if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
     uint8_t data = port.read();
     #if defined(TEST_MODE)
-        Serial.print("\ndata : ");
+        Serial.print("\ndata in : ");
         Serial.print(port.available());
         Serial.print(", ");
         Serial.println(data, HEX);
     #endif
-    #if defined(TEST_MODE)
-        Serial.println("\nreadData_2");
-    #endif
+    // #if defined(TEST_MODE)
+    //     Serial.println("\nreadData_2");
+    // #endif
 
 	static int bytes_received = 0;
 	static enum {
         HEADER_FILTER,
-		EXPECTING_HEADER, 
+		EXPECTING_HEADER_AB_BA, 
+        EXPECTING_HEADER_CD_DC, 
 		EXPECTING_PAYLOAD,
         EXPECTING_TRAILER
 	} state = HEADER_FILTER; // state machine definition
@@ -168,15 +166,49 @@ unsigned char* uartRT::readData_2(uint8_t* expected_header, uint8_t header_size,
                 Serial.println("\nstate : HEADER_FILTER");
             #endif
             if(data == 0xAB) {
-                state = EXPECTING_HEADER;
+                state = EXPECTING_HEADER_AB_BA;
                 bytes_received++;
             }
-            bytes_received = 0;
+            if(data == 0xCD) {
+                state = EXPECTING_HEADER_CD_DC;
+                bytes_received++;
+            }
+            #if defined(TEST_MODE)
+                Serial.print("bytes_received: ");
+                Serial.println(bytes_received);
+            #endif
+            // bytes_received = 0;
         break;
 
-		case EXPECTING_HEADER:
+		case EXPECTING_HEADER_AB_BA:
             #if defined(TEST_MODE)
-                Serial.println("\nstate : EXPECTING_HEADER");
+                Serial.println("\nstate : EXPECTING_HEADER_AB_BA");
+            #endif
+			
+			if (data != expected_header[bytes_received++])
+			{
+				state = HEADER_FILTER;
+				bytes_received = 0;
+                (*try_cnt)++;
+			}
+
+            #if defined(TEST_MODE)
+                Serial.print("bytes_received: ");
+                Serial.print(bytes_received);
+                Serial.print(", ");
+                Serial.println(data, HEX);
+            #endif
+
+			if(bytes_received >= header_size){
+				state = EXPECTING_PAYLOAD;
+				bytes_received = 0;
+			}
+
+        break;
+
+        case EXPECTING_HEADER_CD_DC:
+            #if defined(TEST_MODE)
+                Serial.println("\nstate : EXPECTING_HEADER_CD_DC");
             #endif
 			
 			if (data != expected_header[bytes_received++])
