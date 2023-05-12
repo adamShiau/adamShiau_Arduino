@@ -30,13 +30,14 @@ byte select_fn;
 typedef void (*fn_ptr) (byte &, unsigned int);
 fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
-PIG pig_v2;
+
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 void SERCOM0_Handler()
 {
     mySerial5.IrqHandler();
 }
+PIG pig_v2(mySerial5);
 
 void setup() {
 	Serial.begin(230400);

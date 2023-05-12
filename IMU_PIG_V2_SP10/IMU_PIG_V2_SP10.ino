@@ -5,6 +5,7 @@
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
+#include "uartRT.h"
 #include "SparrowParaDefine.h"
 #include "Sparrow_read.h"
 #include <TinyGPSPlus.h>
@@ -23,9 +24,13 @@ unsigned long gps_init_time = 0;
 unsigned int gps_date=0, gps_time=0;
 bool gps_valid = 0;
 
+/*** Control register to control the functionality  of each optput function***/
+unsigned int CtrlReg=-1;
+
 
 /*** serial data from PC***/
-byte rx_cnt = 0, cmd;
+byte rx_cnt = 0, cmd, fog_channel;
+
 unsigned int value;
 bool cmd_complete;
 
@@ -39,6 +44,14 @@ bool run_fog_flag;
 byte select_fn;
 // bool fn_lock;
 
+// cmd read from GUI
+uint8_t myCmd_header[] = {0xAB, 0xBA};
+uint8_t myCmd_trailer[] = {0x55, 0x56};
+uint16_t myCmd_try_cnt;
+const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
+const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
+uartRT myCmd(Serial1, 6);
+
 /*** KVH HEADER ***/
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
@@ -49,6 +62,14 @@ fn_ptr output_fn;
 Adxl355 adxl355(pin_scl_mux);
 crcCal myCRC;
 
+/***
+ * pig
+*/
+uint8_t header[] = {0xAB, 0xBA};
+uint8_t trailer[] = {0x55};
+uint16_t try_cnt;
+const uint8_t sizeofheader = sizeof(header);
+const uint8_t sizeoftrailer = sizeof(trailer);
 
 Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 void SERCOM0_Handler() 
@@ -78,10 +99,10 @@ void setup() {
 	Serial.begin(230400);
 	Serial1.begin(230400); //to PC
 
-    mySerial5.begin(115200); //rx:p5, tx:p6
-    // Reassign pins 5 and 6 to SERCOM alt
-    pinPeripheral(5, PIO_SERCOM_ALT); //RX
-    pinPeripheral(6, PIO_SERCOM_ALT); //TX
+  mySerial5.begin(115200); //rx:p5, tx:p6
+  // Reassign pins 5 and 6 to SERCOM alt
+  pinPeripheral(5, PIO_SERCOM_ALT); //RX
+  pinPeripheral(6, PIO_SERCOM_ALT); //TX
 
 	mySerial13.begin(9600);//rx:p13, tx:p8
 	// Reassign pins 13 and 8 to SERCOM (not alt this time)
@@ -123,12 +144,13 @@ void setup() {
 }
 
 void loop() {
-	getCmdValue(cmd, value, cmd_complete);
+	// getCmdValue(cmd, value, cmd_complete);
+  getCmdValue(cmd, value, fog_channel, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value);
-  updateGPS(1000);
+  // updateGPS(1000);
 }
 
 void printAdd(char name[], void* addr)
@@ -179,32 +201,53 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
+void getCmdValue(byte &uart_cmd, unsigned int &uart_value, byte &fog_ch, bool &uart_complete)
 {
-	byte cmd[5];
-		
-	#ifdef UART_SERIAL_5_CMD
-    while (mySerial5.available()>0){
-      mySerial5.readBytes((char*)cmd, 5);
-    #endif
+  byte *cmd;
 
-    #ifdef UART_RS422_CMD
-    while (Serial1.available()>0){
-      Serial1.readBytes((char*)cmd, 5);
-    #endif
-
-	#ifdef UART_USB_CMD
-    while (Serial.available()>0){
-      Serial.readBytes((char*)cmd, 5);
-	#endif
-
-		uart_cmd = cmd[0];
-		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-		uart_complete = 1;
-		printVal_0("cmd", uart_cmd);
-		printVal_0("rx", uart_value);
-	}
+    cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+    if(cmd){
+      uart_cmd = cmd[0];
+      uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+      fog_ch = cmd[5];
+      uart_complete = 1;
+      // printVal_0("uart_cmd", uart_cmd);
+      // printVal_0("uart_value", uart_value);
+      Serial.print("cmd, value, ch: ");
+      Serial.print(uart_cmd);
+      Serial.print(", ");
+      Serial.print(uart_value);
+      Serial.print(", ");
+      Serial.println(fog_ch);
+    }
 }
+
+// void getCmdValue(byte &uart_cmd, unsigned int &uart_value, bool &uart_complete)
+// {
+// 	byte cmd[5];
+		
+// 	#ifdef UART_SERIAL_5_CMD
+//     while (mySerial5.available()>0){
+//       mySerial5.readBytes((char*)cmd, 5);
+//     #endif
+
+//     #ifdef UART_RS422_CMD
+//     while (Serial1.available()>0){
+//       Serial1.readBytes((char*)cmd, 5);
+//     #endif
+
+// 	#ifdef UART_USB_CMD
+//     while (Serial.available()>0){
+//       Serial.readBytes((char*)cmd, 5);
+// 	#endif
+
+// 		uart_cmd = cmd[0];
+// 		uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+// 		uart_complete = 1;
+// 		printVal_0("cmd", uart_cmd);
+// 		printVal_0("rx", uart_value);
+// 	}
+// }
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 {
@@ -223,28 +266,57 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	{
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
-			case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
-			case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
-			case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(ERR_OFFSET_ADDR, value);break;}
-			case CMD_FOG_POLARITY: {pig_v2.sendCmd(POLARITY_ADDR, value);break;}
-			case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(WAIT_CNT_ADDR, value);break;}
-			case CMD_FOG_ERR_TH: {pig_v2.sendCmd(ERR_TH_ADDR, value);break;}
-			case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(ERR_AVG_ADDR, value);break;}
-			case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(TIMER_RST_ADDR, value);break;}
-			case CMD_FOG_GAIN1: {pig_v2.sendCmd(GAIN1_ADDR, value);break;}
-			case CMD_FOG_GAIN2: {pig_v2.sendCmd(GAIN2_ADDR, value);break;}
-			case CMD_FOG_FB_ON: {pig_v2.sendCmd(FB_ON_ADDR, value);break;}
-			case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(CONST_STEP_ADDR, value);break;}
-			case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(FPGA_Q_ADDR, value);break;}
-			case CMD_FOG_FPGA_R: {pig_v2.sendCmd(FPGA_R_ADDR, value);break;}
-			case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
-			case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-			case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
+			case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_POLARITY: {pig_v2.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_ERR_TH: {pig_v2.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_GAIN1: {pig_v2.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_GAIN2: {pig_v2.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_FB_ON: {pig_v2.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_FPGA_R: {pig_v2.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value);break;}
+			case CMD_FOG_OUT_START: {pig_v2.sendCmd(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value);break;}
 			default: break;
 		}
 	}
 }
+
+// void parameter_setting(byte &mux_flag, byte cmd, unsigned int value) 
+// {
+// 	if(mux_flag == MUX_PARAMETER)
+// 	{
+// 		mux_flag = MUX_ESCAPE;
+// 		switch(cmd) {
+// 			case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
+// 			case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
+// 			case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
+// 			case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(ERR_OFFSET_ADDR, value);break;}
+// 			case CMD_FOG_POLARITY: {pig_v2.sendCmd(POLARITY_ADDR, value);break;}
+// 			case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(WAIT_CNT_ADDR, value);break;}
+// 			case CMD_FOG_ERR_TH: {pig_v2.sendCmd(ERR_TH_ADDR, value);break;}
+// 			case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(ERR_AVG_ADDR, value);break;}
+// 			case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(TIMER_RST_ADDR, value);break;}
+// 			case CMD_FOG_GAIN1: {pig_v2.sendCmd(GAIN1_ADDR, value);break;}
+// 			case CMD_FOG_GAIN2: {pig_v2.sendCmd(GAIN2_ADDR, value);break;}
+// 			case CMD_FOG_FB_ON: {pig_v2.sendCmd(FB_ON_ADDR, value);break;}
+// 			case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(CONST_STEP_ADDR, value);break;}
+// 			case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(FPGA_Q_ADDR, value);break;}
+// 			case CMD_FOG_FPGA_R: {pig_v2.sendCmd(FPGA_R_ADDR, value);break;}
+// 			case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
+// 			case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
+// 			case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
+// 			default: break;
+// 		}
+// 	}
+// }
 
 void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 {
@@ -305,7 +377,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 void temp_idle(byte &select_fn, unsigned int CTRLREG)
 {
 	clear_SEL_EN(select_fn);
-	delay(100);
+	// delay(100);
 }
 
 void fn_rst(byte &select_fn, unsigned int CTRLREG)
@@ -323,67 +395,111 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG)
 	clear_SEL_EN(select_fn);
 }
 
-
-void acq_fog(byte &select_fn, unsigned int CTRLREG)
+void acq_fog(byte &select_fn, unsigned int value)
 {
-	byte header[2], fog[14];
+	byte *fog;
 	uint8_t CRC32[4];
 	
 	if(select_fn&SEL_FOG_1)
 	{
-		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+    CtrlReg = value;
+		run_fog_flag = pig_v2.setSyncMode(CtrlReg);
     
 	}
 
-	trig_status[0] = digitalRead(SYS_TRIG);
+	// trig_status[0] = digitalRead(SYS_TRIG);
 
-	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+	if(run_fog_flag) {
 	    t_new = micros();
 
-	    uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
-        pig_v2.readData(header, fog);
+      fog = pig_v2.readData(header, sizeofheader, &try_cnt);
+
+      if(fog)
+      {
+        uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, fog, 14);
         myCRC.crc_32(imu_data, 18, CRC32);
         free(imu_data);
 
-	  	#ifdef UART_SERIAL_5_CMD
-        mySerial5.write(header, 2);
-        mySerial5.write(fog, 10);
-        mySerial5.write(CRC32, 4);
-      #endif
-      #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(fog, 14);
-        Serial1.write(CRC32, 4);
-      #endif
-//         Serial.println(t_new - t_old);
-        t_old = t_new;
+        #ifdef UART_RS422_CMD
+          Serial1.write(KVH_HEADER, 4);
+          Serial1.write(fog, 14);
+          Serial1.write(CRC32, 4);
+        #endif
+
+      }
+
+
+      t_old = t_new;
 	}
 	clear_SEL_EN(select_fn);	
 }
 
-void acq_imu(byte &select_fn, unsigned int CTRLREG)
+// void acq_fog(byte &select_fn, unsigned int CTRLREG)
+// {
+// 	byte header[2], fog[14];
+// 	uint8_t CRC32[4];
+	
+// 	if(select_fn&SEL_FOG_1)
+// 	{
+// 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+    
+// 	}
+
+// 	trig_status[0] = digitalRead(SYS_TRIG);
+
+// 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+// 	    t_new = micros();
+
+// 	    uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
+//         pig_v2.readData(header, fog);
+//         memcpy(imu_data, KVH_HEADER, 4);
+//         memcpy(imu_data+4, fog, 14);
+//         myCRC.crc_32(imu_data, 18, CRC32);
+//         free(imu_data);
+
+// 	  	#ifdef UART_SERIAL_5_CMD
+//         mySerial5.write(header, 2);
+//         mySerial5.write(fog, 10);
+//         mySerial5.write(CRC32, 4);
+//       #endif
+//       #ifdef UART_RS422_CMD
+//         Serial1.write(KVH_HEADER, 4);
+//         Serial1.write(fog, 14);
+//         Serial1.write(CRC32, 4);
+//       #endif
+// //         Serial.println(t_new - t_old);
+//         t_old = t_new;
+// 	}
+// 	clear_SEL_EN(select_fn);	
+// }
+
+void acq_imu(byte &select_fn, unsigned int value)
 {
-	byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
-  byte header[2], fog[14], nano33_w[6], nano33_a[6];
+	byte nano33_w[6]={0,0,0,0,0,0};
+  byte  nano33_a[6]={0,0,0,0,0,0};;
+  byte *fog;
+  byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
 	uint8_t CRC32[4];
 
-	#ifdef ENABLE_SRS200
-		byte srs200[SRS200_SIZE], header_srs200[2];
-	#endif
 	if(select_fn&SEL_IMU) {
-		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+    CtrlReg = value;
+		run_fog_flag = pig_v2.setSyncMode(value);
     Serial.println("acq_imu EN");
 	}
-	trig_status[0] = digitalRead(SYS_TRIG);
+	// trig_status[0] = digitalRead(SYS_TRIG);
 
-	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+	if(run_fog_flag) {
         t_new = micros();
 
-		#ifdef ENABLE_SRS200
-			readSRS200Data(header_srs200, srs200);
-		#endif
+    fog = pig_v2.readData(header, sizeofheader, &try_cnt);
+
+    if(fog)
+    {
+      
+
+    }
 
 		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
@@ -400,24 +516,7 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
         memcpy(imu_data+25, fog, 14);
         myCRC.crc_32(imu_data, 39, CRC32);
         free(imu_data);
-// 		print_adxl355Data(adxl355_a);
 
-		#ifdef UART_SERIAL_5_CMD
-            mySerial5.write(KVH_HEADER, 4);
-            mySerial5.write(adxl355_a, 9);
-            mySerial5.write(nano33_w, 6);
-            mySerial5.write(nano33_a, 6);
-            mySerial5.write(fog, 14);
-            mySerial5.write(CRC32, 4);
-		#endif
-        #ifdef UART_USB_CMD
-            Serial.write(KVH_HEADER, 4);
-            Serial.write(adxl355_a, 9);
-            Serial.write(nano33_w, 6);
-            Serial.write(nano33_a, 6);
-            Serial.write(fog, 14);
-            Serial.write(CRC32, 4);
-		#endif
 		#ifdef UART_RS422_CMD
             Serial1.write(KVH_HEADER, 4);
             Serial1.write(adxl355_a, 9);
@@ -435,6 +534,79 @@ void acq_imu(byte &select_fn, unsigned int CTRLREG)
 	trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
+
+// void acq_imu(byte &select_fn, unsigned int CTRLREG)
+// {
+// 	byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+//   byte header[2], fog[14], nano33_w[6], nano33_a[6];
+// 	uint8_t CRC32[4];
+
+// 	#ifdef ENABLE_SRS200
+// 		byte srs200[SRS200_SIZE], header_srs200[2];
+// 	#endif
+// 	if(select_fn&SEL_IMU) {
+// 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
+//     Serial.println("acq_imu EN");
+// 	}
+// 	trig_status[0] = digitalRead(SYS_TRIG);
+
+// 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
+//         t_new = micros();
+
+// 		#ifdef ENABLE_SRS200
+// 			readSRS200Data(header_srs200, srs200);
+// 		#endif
+
+// 		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+
+//     pig_v2.readData(header, fog);
+// 		// adxl355.readData(adxl355_a);
+// 		IMU.readGyroscope(nano33_w);
+// 		IMU.readAcceleration(nano33_a);
+
+
+// 		    memcpy(imu_data, KVH_HEADER, 4);
+//         memcpy(imu_data+4, adxl355_a, 9);
+//         memcpy(imu_data+13, nano33_w, 6);
+//         memcpy(imu_data+19, nano33_a, 6);
+//         memcpy(imu_data+25, fog, 14);
+//         myCRC.crc_32(imu_data, 39, CRC32);
+//         free(imu_data);
+// // 		print_adxl355Data(adxl355_a);
+
+// 		#ifdef UART_SERIAL_5_CMD
+//             mySerial5.write(KVH_HEADER, 4);
+//             mySerial5.write(adxl355_a, 9);
+//             mySerial5.write(nano33_w, 6);
+//             mySerial5.write(nano33_a, 6);
+//             mySerial5.write(fog, 14);
+//             mySerial5.write(CRC32, 4);
+// 		#endif
+//         #ifdef UART_USB_CMD
+//             Serial.write(KVH_HEADER, 4);
+//             Serial.write(adxl355_a, 9);
+//             Serial.write(nano33_w, 6);
+//             Serial.write(nano33_a, 6);
+//             Serial.write(fog, 14);
+//             Serial.write(CRC32, 4);
+// 		#endif
+// 		#ifdef UART_RS422_CMD
+//             Serial1.write(KVH_HEADER, 4);
+//             Serial1.write(adxl355_a, 9);
+//             Serial1.write(nano33_w, 6);
+//             Serial1.write(nano33_a, 6);
+//             Serial1.write(fog, 14);
+//             Serial1.write(CRC32, 4);
+// 		#endif
+// 		#ifdef ENABLE_SRS200
+// 			Serial.write(srs200, SRS200_SIZE);
+// 		#endif
+// // 		Serial.println(t_new - t_old);
+//         t_old = t_new;
+// 	}
+// 	trig_status[1] = trig_status[0];
+// 	clear_SEL_EN(select_fn);
+// }
 
 void acq_imu_gps(byte &select_fn, unsigned int CTRLREG)
 {
