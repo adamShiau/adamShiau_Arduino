@@ -10,8 +10,15 @@
 /*** trig pin***/
 #define SYS_TRIG 26
 
-/*** PWM AS SUNC***/
+/*** PWM AS SINC***/
 #define PWM_SYNC
+
+/*** ADC PIN***/
+#define ADC_CONV 3.3/4096.0
+#define ADC_VIN     18
+#define ADC_PD_DC   19
+#define ADC_ASE_TACT 6
+#define ADC_ASE_VPD 17
 
 /*** IMU_PIG Serial CMD map: *********
 0~7 for output mode setting,

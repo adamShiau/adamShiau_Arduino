@@ -148,6 +148,8 @@ crcCal myCRC;
 //SYNC OUT
 bool sync_status = 0;
 
+int t_adc = millis();
+
 // Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 // void SERCOM0_Handler() 
 // {
@@ -198,8 +200,9 @@ void setup() {
   /***----- for PIG MCU & IMU_V4 EXINT[15]----- ***/
   EIC->CONFIG[1].bit.SENSE7 = 0;  // set ISR no NONE
 
-
-
+  /*** ADC setting***/
+  analogReadResolution(12); //set resolution
+  pinMode(ADC_ASE_TACT, INPUT);
 
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, sync_status);
@@ -237,6 +240,9 @@ void setup() {
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
+
+  //ADC
+  //  pinPeripheral(6, PIN_ATTR_ANALOG);
 	
 	// if (!IMU.begin()) {
   //   Serial.println("Failed to initialize IMU!");
@@ -277,6 +283,7 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
+  // readADC();
 }
 
 void printAdd(char name[], void* addr)
@@ -1167,4 +1174,20 @@ void ISR_EXTT()
   digitalWrite(PIG_SYNC, sync_status);
   // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
+
+void readADC()
+{
+  int t_now = millis();
+  if((t_now - t_adc) >= 500){
+    t_adc = t_now;
+    // Serial.print((float)analogRead(ADC_VIN)/0.27*ADC_CONV);
+    // Serial.print(", ");
+    Serial.println((float)analogRead(ADC_ASE_TACT)*ADC_CONV);
+    // Serial.print(", ");
+    // Serial.print((float)analogRead(ADC_ASE_VPD)*ADC_CONV);
+    // Serial.print(", ");
+    // Serial.println((float)analogRead(ADC_PD_DC)*ADC_CONV);
+  }
+  
+}
 

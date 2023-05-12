@@ -1,6 +1,6 @@
 #include "uartRT.h"
 
-#define TEST_MODE
+// #define TEST_MODE
 
 // uartRT::uartRT(Stream &p ) : port(p)
 // {}

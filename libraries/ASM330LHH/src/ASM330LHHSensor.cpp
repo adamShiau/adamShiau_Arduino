@@ -541,29 +541,14 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   Acceleration[0] = (int32_t)((float)((float)data_raw.i16bit[0] * sensitivity));
   Acceleration[1] = (int32_t)((float)((float)data_raw.i16bit[1] * sensitivity));
   Acceleration[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
-	//Serial.print(sensitivity);
-	//Serial.print(", ");
-/***
-	Serial.print(data_raw.i16bit[0], HEX);
-	Serial.print(", ");
-	Serial.print(data_raw.u8bit[1], HEX);
-	Serial.print(" ");
-	Serial.print(data_raw.u8bit[0], HEX);
-	Serial.print(", ");
-	Serial.print(data_raw.i16bit[1], HEX);
-	Serial.print(", ");
-	Serial.print(data_raw.u8bit[3], HEX);
-	Serial.print(" ");
-	Serial.print(data_raw.u8bit[2], HEX);
-	Serial.print(", ");
-	Serial.print(data_raw.i16bit[2], HEX);
-	Serial.print(", ");
-	Serial.print(data_raw.u8bit[5], HEX);
-	Serial.print(" ");
-	Serial.print(data_raw.u8bit[4], HEX);
-	Serial.print(", ");
-	Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)), 4);
-***/
+
+  // Serial.print("X: ");
+  Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  Serial.print(", ");
+  Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  Serial.print(", ");
+  Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+
 
   return ASM330LHH_OK;
 }
@@ -1002,6 +987,13 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
   AngularRate[0] = (int32_t)((float)((float)data_raw.i16bit[0] * sensitivity));
   AngularRate[1] = (int32_t)((float)((float)data_raw.i16bit[1] * sensitivity));
   AngularRate[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
+
+  // Serial.print("Gyro: ");
+  Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  Serial.print(", ");
+  Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  Serial.print(", ");
+  Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
   return ASM330LHH_OK;
 }
