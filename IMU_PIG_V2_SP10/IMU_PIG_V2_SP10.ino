@@ -322,7 +322,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 {
 	if(mux_flag == MUX_OUTPUT)
 	{
-		mux_flag = MUX_ESCAPE;
+		mux_flag = MUX_ESCAPE;;
 		switch(mode) {
 			case MODE_RST: {
 				output_fn = fn_rst;
