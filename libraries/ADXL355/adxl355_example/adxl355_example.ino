@@ -5,10 +5,10 @@
 #define SENS_2G 0.0000039
 
 /*** trig pin***/
-#define SYS_TRIG 14
+#define SYS_TRIG 12
 
 
-int pin_scl_mux = 12;
+int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
 
@@ -22,12 +22,13 @@ void setup() {
 void loop() {
 	byte acc[9];
 	
-	trig_status[0] = digitalRead(SYS_TRIG);
-	if(trig_status[0] & ~trig_status[1]) {
+	// trig_status[0] = digitalRead(SYS_TRIG);
+	// if(trig_status[0] & ~trig_status[1]) {
+		// Serial.println(millis());
 		// adxl355.printRegAll();
 		adxl355.readData(acc);
 		print_adxl355Data(acc);
-	}
+	// }
 	trig_status[1] = trig_status[0];
 }
 

@@ -1,5 +1,6 @@
 #include "adxl355.h"
 #include <Arduino_LSM6DS3.h>
+#include <ASM330LHHSensor.h>
 #include "pig_v2.h"
 // #include "srs200.h"
 #include "IMU_PIG_DEFINE.h"
@@ -95,11 +96,29 @@ void SERCOM1_Handler()
 
 TurboPWM  pwm;
 
+// Components
+ASM330LHHSensor AccGyr(&Wire, ASM330LHH_I2C_ADD_L);
+#define INT_1 A5
+
 void setup() {
 	Serial.begin(230400);
 	Serial1.begin(230400); //to PC
 
   mySerial5.begin(115200); //rx:p5, tx:p6
+
+// Force INT1 of ASM330LHH low in order to enable I2C
+  pinMode(INT_1, OUTPUT);
+
+  digitalWrite(INT_1, LOW);
+
+  delay(200);
+
+  // Initialize I2C bus.
+  Wire.begin();
+  AccGyr.begin();
+  AccGyr.Enable_X();
+  AccGyr.Enable_G();
+
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
   pinPeripheral(6, PIO_SERCOM_ALT); //TX
@@ -116,7 +135,7 @@ void setup() {
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
 	// select_fn = SEL_DEFAULT; 	//default set select_fn to 128
-	select_fn = SEL_IMU;
+	select_fn = SEL_RST;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 	
@@ -182,6 +201,9 @@ void print_adxl355Data(byte *temp_a)
 	t_old = t_new;
 }
 
+/***
+ * 
+*/
 void printVal_1(char name[], int val)
 {
 	Serial1.print(name);
@@ -289,34 +311,6 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value)
 	}
 }
 
-// void parameter_setting(byte &mux_flag, byte cmd, unsigned int value) 
-// {
-// 	if(mux_flag == MUX_PARAMETER)
-// 	{
-// 		mux_flag = MUX_ESCAPE;
-// 		switch(cmd) {
-// 			case CMD_FOG_MOD_FREQ: {pig_v2.sendCmd(MOD_FREQ_ADDR, value);break;}
-// 			case CMD_FOG_MOD_AMP_H: {pig_v2.sendCmd(MOD_AMP_H_ADDR, value);break;}
-// 			case CMD_FOG_MOD_AMP_L: {pig_v2.sendCmd(MOD_AMP_L_ADDR, value);break;}
-// 			case CMD_FOG_ERR_OFFSET: {pig_v2.sendCmd(ERR_OFFSET_ADDR, value);break;}
-// 			case CMD_FOG_POLARITY: {pig_v2.sendCmd(POLARITY_ADDR, value);break;}
-// 			case CMD_FOG_WAIT_CNT:{pig_v2.sendCmd(WAIT_CNT_ADDR, value);break;}
-// 			case CMD_FOG_ERR_TH: {pig_v2.sendCmd(ERR_TH_ADDR, value);break;}
-// 			case CMD_FOG_ERR_AVG: {pig_v2.sendCmd(ERR_AVG_ADDR, value);break;}
-// 			case CMD_FOG_TIMER_RST: {pig_v2.sendCmd(TIMER_RST_ADDR, value);break;}
-// 			case CMD_FOG_GAIN1: {pig_v2.sendCmd(GAIN1_ADDR, value);break;}
-// 			case CMD_FOG_GAIN2: {pig_v2.sendCmd(GAIN2_ADDR, value);break;}
-// 			case CMD_FOG_FB_ON: {pig_v2.sendCmd(FB_ON_ADDR, value);break;}
-// 			case CMD_FOG_CONST_STEP: {pig_v2.sendCmd(CONST_STEP_ADDR, value);break;}
-// 			case CMD_FOG_FPGA_Q: {pig_v2.sendCmd(FPGA_Q_ADDR, value);break;}
-// 			case CMD_FOG_FPGA_R: {pig_v2.sendCmd(FPGA_R_ADDR, value);break;}
-// 			case CMD_FOG_DAC_GAIN: {pig_v2.sendCmd(DAC_GAIN_ADDR, value);break;}
-// 			case CMD_FOG_INT_DELAY: {pig_v2.sendCmd(DATA_INT_DELAY_ADDR, value);break;}
-// 			case CMD_FOG_OUT_START: {pig_v2.sendCmd(DATA_OUT_START_ADDR, value);break;}
-// 			default: break;
-// 		}
-// 	}
-// }
 
 void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 {
@@ -429,6 +423,7 @@ void acq_fog(byte &select_fn, unsigned int value)
         #endif
 
       }
+      
 
 
       t_old = t_new;
@@ -436,44 +431,6 @@ void acq_fog(byte &select_fn, unsigned int value)
 	clear_SEL_EN(select_fn);	
 }
 
-// void acq_fog(byte &select_fn, unsigned int CTRLREG)
-// {
-// 	byte header[2], fog[14];
-// 	uint8_t CRC32[4];
-	
-// 	if(select_fn&SEL_FOG_1)
-// 	{
-// 		run_fog_flag = pig_v2.setSyncMode(CTRLREG);
-    
-// 	}
-
-// 	trig_status[0] = digitalRead(SYS_TRIG);
-
-// 	if((trig_status[0] & ~trig_status[1]) & run_fog_flag) {
-// 	    t_new = micros();
-
-// 	    uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
-//         pig_v2.readData(header, fog);
-//         memcpy(imu_data, KVH_HEADER, 4);
-//         memcpy(imu_data+4, fog, 14);
-//         myCRC.crc_32(imu_data, 18, CRC32);
-//         free(imu_data);
-
-// 	  	#ifdef UART_SERIAL_5_CMD
-//         mySerial5.write(header, 2);
-//         mySerial5.write(fog, 10);
-//         mySerial5.write(CRC32, 4);
-//       #endif
-//       #ifdef UART_RS422_CMD
-//         Serial1.write(KVH_HEADER, 4);
-//         Serial1.write(fog, 14);
-//         Serial1.write(CRC32, 4);
-//       #endif
-// //         Serial.println(t_new - t_old);
-//         t_old = t_new;
-// 	}
-// 	clear_SEL_EN(select_fn);	
-// }
 
 void acq_imu(byte &select_fn, unsigned int value)
 {
@@ -481,6 +438,8 @@ void acq_imu(byte &select_fn, unsigned int value)
   byte  nano33_a[6]={0,0,0,0,0,0};;
   byte *fog;
   byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+  int32_t accelerometer[3] = {};
+  int32_t gyroscope[3] = {};
 	uint8_t CRC32[4];
 
 	if(select_fn&SEL_IMU) {
@@ -488,35 +447,47 @@ void acq_imu(byte &select_fn, unsigned int value)
 		run_fog_flag = pig_v2.setSyncMode(value);
     Serial.println("acq_imu EN");
 	}
+
 	// trig_status[0] = digitalRead(SYS_TRIG);
 
 	if(run_fog_flag) {
         t_new = micros();
 
     fog = pig_v2.readData(header, sizeofheader, &try_cnt);
+    adxl355.readData(adxl355_a);
+    AccGyr.Get_X_Axes(accelerometer);
+
+		// IMU.readGyroscope(nano33_w);
+		// IMU.readAcceleration(nano33_a);
+
+    AccGyr.Get_G_Axes(gyroscope);
+    Serial.print(accelerometer[0]);
+    Serial.print(" ");
+    Serial.print(accelerometer[1]);
+    Serial.print(" ");
+    Serial.println(accelerometer[2]);
+
+		// print_adxl355Data(adxl355_a);
 
     if(fog)
     {
-      
+      uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+       memcpy(imu_data, KVH_HEADER, 4);
+      memcpy(imu_data+4, adxl355_a, 9);
+      memcpy(imu_data+13, nano33_w, 6);
+      memcpy(imu_data+19, nano33_a, 6);
+      memcpy(imu_data+25, fog, 14);
+      myCRC.crc_32(imu_data, 39, CRC32);
+      free(imu_data);
 
     }
 
-		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+    
 
-    pig_v2.readData(header, fog);
-		// adxl355.readData(adxl355_a);
-		IMU.readGyroscope(nano33_w);
-		IMU.readAcceleration(nano33_a);
+		
 
 
-		    memcpy(imu_data, KVH_HEADER, 4);
-        memcpy(imu_data+4, adxl355_a, 9);
-        memcpy(imu_data+13, nano33_w, 6);
-        memcpy(imu_data+19, nano33_a, 6);
-        memcpy(imu_data+25, fog, 14);
-        myCRC.crc_32(imu_data, 39, CRC32);
-        free(imu_data);
-
+		   
 		#ifdef UART_RS422_CMD
             Serial1.write(KVH_HEADER, 4);
             Serial1.write(adxl355_a, 9);
