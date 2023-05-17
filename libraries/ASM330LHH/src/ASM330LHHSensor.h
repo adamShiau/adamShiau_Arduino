@@ -96,6 +96,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_X_FS(int32_t *FullScale);
     ASM330LHHStatusTypeDef Set_X_FS(int32_t FullScale);
     ASM330LHHStatusTypeDef Get_X_AxesRaw(int16_t *Value);
+    ASM330LHHStatusTypeDef Get_X_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_X_Axes(int32_t *Acceleration);
     ASM330LHHStatusTypeDef Get_X_DRDY_Status(uint8_t *Status);
 	ASM330LHHStatusTypeDef readAcceleration(unsigned char *);
@@ -110,6 +111,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_FS(int32_t *FullScale);
     ASM330LHHStatusTypeDef Set_G_FS(int32_t FullScale);
     ASM330LHHStatusTypeDef Get_G_AxesRaw(int16_t *Value);
+    ASM330LHHStatusTypeDef Get_G_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_G_Axes(int32_t *AngularRate);
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
 	ASM330LHHStatusTypeDef readGyroscope(unsigned char []);

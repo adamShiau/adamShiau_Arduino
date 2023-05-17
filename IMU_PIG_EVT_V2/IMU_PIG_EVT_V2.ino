@@ -1,5 +1,5 @@
 // #include "adxl355.h"
-#include <ASM330LHH.h>
+// #include <ASM330LHH.h>
 #include <ASM330LHHSensor.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
@@ -652,8 +652,8 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     {
       uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
-      IMU.readGyroscope(nano33_w);
-		  IMU.readAcceleration(nano33_a);
+      IMU.Get_X_AxesRaw(nano33_a);
+      IMU.Get_G_AxesRaw(nano33_w);
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, adxl355_a, 9);
       memcpy(imu_data+13, nano33_w, 6);

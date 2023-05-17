@@ -1,5 +1,5 @@
 #include "adxl355.h"
-#include <Arduino_LSM6DS3.h>
+// #include <Arduino_LSM6DS3.h>
 #include <ASM330LHHSensor.h>
 #include "pig_v2.h"
 // #include "srs200.h"
@@ -15,6 +15,10 @@
 	#include <SAMD21turboPWM.h>
 #endif
 // #define TESTMODE
+
+#define SENS_8G 0.0000156
+#define SENS_4G 0.0000078
+#define SENS_2G 0.0000039
 
 /*** global var***/
 int pin_scl_mux = 17;
@@ -97,7 +101,7 @@ void SERCOM1_Handler()
 TurboPWM  pwm;
 
 // Components
-ASM330LHHSensor AccGyr(&Wire, ASM330LHH_I2C_ADD_L);
+ASM330LHHSensor IMU(&Wire, ASM330LHH_I2C_ADD_L);
 #define INT_1 A5
 
 void setup() {
@@ -115,9 +119,13 @@ void setup() {
 
   // Initialize I2C bus.
   Wire.begin();
-  AccGyr.begin();
-  AccGyr.Enable_X();
-  AccGyr.Enable_G();
+  IMU.begin();
+  IMU.Enable_X();
+  IMU.Enable_G();
+  IMU.Set_X_ODR(416.0);
+  IMU.Set_X_FS(4);  
+  IMU.Set_G_ODR(416.0);
+  IMU.Set_G_FS(500); 
 
   // Reassign pins 5 and 6 to SERCOM alt
   pinPeripheral(5, PIO_SERCOM_ALT); //RX
@@ -226,7 +234,6 @@ void printVal_0(char name[])
 void getCmdValue(byte &uart_cmd, unsigned int &uart_value, byte &fog_ch, bool &uart_complete)
 {
   byte *cmd;
-
     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
     if(cmd){
       uart_cmd = cmd[0];
@@ -435,42 +442,36 @@ void acq_fog(byte &select_fn, unsigned int value)
 void acq_imu(byte &select_fn, unsigned int value)
 {
 	byte nano33_w[6]={0,0,0,0,0,0};
-  byte  nano33_a[6]={0,0,0,0,0,0};;
+  byte  nano33_a[6]={0,0,0,0,0,0};
+  // int nano33_w[6]={0,0,0,0,0,0};
+  // int  nano33_a[6]={0,0,0,0,0,0};;
   byte *fog;
   byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
-  int32_t accelerometer[3] = {};
-  int32_t gyroscope[3] = {};
+  // int32_t accelerometer[3] = {};
+  // int32_t gyroscope[3] = {};
 	uint8_t CRC32[4];
 
 	if(select_fn&SEL_IMU) {
     CtrlReg = value;
-		run_fog_flag = pig_v2.setSyncMode(value);
+		run_fog_flag = pig_v2.setSyncMode(CtrlReg);
     Serial.println("acq_imu EN");
 	}
 
 	// trig_status[0] = digitalRead(SYS_TRIG);
 
 	if(run_fog_flag) {
-        t_new = micros();
+	    t_new = micros();
 
-    fog = pig_v2.readData(header, sizeofheader, &try_cnt);
-    adxl355.readData(adxl355_a);
-    AccGyr.Get_X_Axes(accelerometer);
-
-		// IMU.readGyroscope(nano33_w);
-		// IMU.readAcceleration(nano33_a);
-
-    AccGyr.Get_G_Axes(gyroscope);
-    Serial.print(accelerometer[0]);
-    Serial.print(" ");
-    Serial.print(accelerometer[1]);
-    Serial.print(" ");
-    Serial.println(accelerometer[2]);
-
-		// print_adxl355Data(adxl355_a);
-
+      fog = pig_v2.readData(header, sizeofheader, &try_cnt);
+      
+      // IMU.Get_X_Axes(accelerometer);
+      // IMU.Get_G_Axes(gyroscope);
+// /***
     if(fog)
     {
+      adxl355.readData(adxl355_a);
+      IMU.Get_X_AxesRaw(nano33_a);
+      IMU.Get_G_AxesRaw(nano33_w);
       uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
        memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, adxl355_a, 9);
@@ -480,29 +481,35 @@ void acq_imu(byte &select_fn, unsigned int value)
       myCRC.crc_32(imu_data, 39, CRC32);
       free(imu_data);
 
+      // print_adxl355Data(adxl355_a);
+        // IMU.Get_X_Axes(accelerometer);
+        // IMU.Get_G_Axes(gyroscope);
+      // Serial.print(nano33_a[0]);
+      // Serial.print(" ");
+      // Serial.print(nano33_a[1]);
+      // Serial.print(" ");
+      // Serial.print(nano33_a[2]);
+      // Serial.print(" ");
+      // Serial.print(nano33_a[3]);
+      // Serial.print(" ");
+      // Serial.print(nano33_a[4]);
+      // Serial.print(" ");
+      // Serial.println(nano33_a[5]);
+ 
+
+      #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(adxl355_a, 9);
+        Serial1.write(nano33_w, 6);
+        Serial1.write(nano33_a, 6);
+        Serial1.write(fog, 14);
+        Serial1.write(CRC32, 4);
+	  	#endif
     }
-
-    
-
-		
-
-
-		   
-		#ifdef UART_RS422_CMD
-            Serial1.write(KVH_HEADER, 4);
-            Serial1.write(adxl355_a, 9);
-            Serial1.write(nano33_w, 6);
-            Serial1.write(nano33_a, 6);
-            Serial1.write(fog, 14);
-            Serial1.write(CRC32, 4);
-		#endif
-		#ifdef ENABLE_SRS200
-			Serial.write(srs200, SRS200_SIZE);
-		#endif
-// 		Serial.println(t_new - t_old);
+// ***/
         t_old = t_new;
 	}
-	trig_status[1] = trig_status[0];
+	// trig_status[1] = trig_status[0];
 	clear_SEL_EN(select_fn);
 }
 
@@ -1087,3 +1094,25 @@ void displayGPSInfo()
   Serial.print(gps_valid);
   Serial.println();
 }
+
+// void print_adxl355Data(byte *temp_a)
+// {
+// 	int accX, accY, accZ;
+	
+// 	accX = temp_a[0]<<12 | temp_a[1]<<4 | temp_a[2]>>4;
+// 	if((accX>>19) == 1) accX = accX - (1<<20);
+// 	accY = temp_a[3]<<12 | temp_a[4]<<4 | temp_a[5]>>4;
+// 	if((accY>>19) == 1) accY = accY - (1<<20);
+// 	accZ = temp_a[6]<<12 | temp_a[7]<<4 | temp_a[8]>>4;
+// 	if((accZ>>19) == 1) accZ = accZ - (1<<20);
+	
+// 	t_new = micros();
+// 	Serial.print(t_new - t_old);
+// 	Serial.print('\t');
+// 	Serial.print((float)accX*SENS_8G);
+// 	Serial.print('\t');
+// 	Serial.print((float)accY*SENS_8G);
+// 	Serial.print('\t');
+// 	Serial.println((float)accZ*SENS_8G);
+// 	t_old = t_new;
+// }

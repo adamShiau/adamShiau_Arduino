@@ -1,45 +1,7 @@
-/**
- ******************************************************************************
- * @file    ASM330LHHSensor.cpp
- * @author  SRA
- * @version V1.0.0
- * @date    March 2020
- * @brief   Implementation of an ASM330LHH Automotive IMU 6 axes
- *          sensor.
- ******************************************************************************
- * @attention
- *
- * <h2><center>&copy; COPYRIGHT(c) 2020 STMicroelectronics</center></h2>
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *   1. Redistributions of source code must retain the above copyright notice,
- *      this list of conditions and the following disclaimer.
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
- *   3. Neither the name of STMicroelectronics nor the names of its contributors
- *      may be used to endorse or promote products derived from this software
- *      without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- ******************************************************************************
- */
-
 
 /* Includes ------------------------------------------------------------------*/
 
-#include "ASM330LHHSensor.h"
+#include "LSM6DS3Sensor.h"
 
 
 /* Class Implementation ------------------------------------------------------*/
@@ -48,7 +10,7 @@
  * @param i2c object of an helper class which handles the I2C peripheral
  * @param address the address of the component's instance
  */
-ASM330LHHSensor::ASM330LHHSensor(TwoWire *i2c, uint8_t address) : dev_i2c(i2c), address(address)
+LSM6DS3Sensor::LSM6DS3Sensor(TwoWire *i2c, uint8_t address) : dev_i2c(i2c), address(address)
 {
   dev_spi = NULL;
   reg_ctx.write_reg = ASM330LHH_io_write;
@@ -63,7 +25,7 @@ ASM330LHHSensor::ASM330LHHSensor(TwoWire *i2c, uint8_t address) : dev_i2c(i2c), 
  * @param cs_pin the chip select pin
  * @param spi_speed the SPI speed
  */
-ASM330LHHSensor::ASM330LHHSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed) : dev_spi(spi), cs_pin(cs_pin), spi_speed(spi_speed)
+LSM6DS3Sensor::LSM6DS3Sensor(SPIClass *spi, int cs_pin, uint32_t spi_speed) : dev_spi(spi), cs_pin(cs_pin), spi_speed(spi_speed)
 {
   reg_ctx.write_reg = ASM330LHH_io_write;
   reg_ctx.read_reg = ASM330LHH_io_read;
@@ -78,7 +40,7 @@ ASM330LHHSensor::ASM330LHHSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed) 
  * @brief  Configure the sensor in order to be used
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::begin()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::begin()
 {
   if(dev_spi)
   {
@@ -152,7 +114,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::begin()
  * @brief  Disable the sensor and relative resources
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::end()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::end()
 {
   /* Disable both acc and gyro */
   if (Disable_X() != ASM330LHH_OK)
@@ -181,7 +143,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::end()
  * @param  Id the WHO_AM_I value
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::ReadID(uint8_t *Id)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::ReadID(uint8_t *Id)
 {
   if (asm330lhh_device_id_get(&reg_ctx, Id) != ASM330LHH_OK)
   {
@@ -195,7 +157,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::ReadID(uint8_t *Id)
  * @brief  Enable the ASM330LHH accelerometer sensor
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Enable_X()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Enable_X()
 {
   /* Check if the component is already enabled */
   if (acc_is_enabled == 1U)
@@ -218,7 +180,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Enable_X()
  * @brief  Disable the ASM330LHH accelerometer sensor
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Disable_X()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Disable_X()
 {
   /* Check if the component is already disabled */
   if (acc_is_enabled == 0U)
@@ -248,9 +210,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Disable_X()
  * @param  Sensitivity pointer
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Sensitivity(float *Sensitivity)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_Sensitivity(float *Sensitivity)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_fs_xl_t full_scale;
 
   /* Read actual full scale selection from sensor. */
@@ -282,8 +244,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Sensitivity(float *Sensitivity)
       ret = ASM330LHH_ERROR;
       break;
   }
-  // Serial.print("X Sensitivity: ");
-  // Serial.println(*Sensitivity, 5);
+
   return ret;
 }
 
@@ -292,9 +253,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Sensitivity(float *Sensitivity)
  * @param  Odr pointer where the output data rate is written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_ODR(float *Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_ODR(float *Odr)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_odr_xl_t odr_low_level;
 
   /* Get current output data rate. */
@@ -353,8 +314,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_ODR(float *Odr)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("X ODR: ");
-  Serial.println(*Odr);
 
   return ret;
 }
@@ -364,7 +323,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_ODR(float *Odr)
  * @param  Odr the output data rate value to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_X_ODR(float Odr)
 {
   /* Check if the component is enabled */
   if (acc_is_enabled == 1U)
@@ -382,7 +341,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR(float Odr)
  * @param  Odr the functional output data rate to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR_When_Enabled(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_X_ODR_When_Enabled(float Odr)
 {
   asm330lhh_odr_xl_t new_odr;
 
@@ -411,7 +370,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR_When_Enabled(float Odr)
  * @param  Odr the functional output data rate to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR_When_Disabled(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_X_ODR_When_Disabled(float Odr)
 {
         acc_odr = (Odr <=   12.5f) ? ASM330LHH_XL_ODR_12Hz5
                 : (Odr <=   26.0f) ? ASM330LHH_XL_ODR_26Hz
@@ -433,9 +392,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR_When_Disabled(float Odr)
  * @param  FullScale pointer where the full scale is written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_FS(int32_t *FullScale)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_FS(int32_t *FullScale)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_fs_xl_t fs_low_level;
 
   /* Read actual full scale selection from sensor. */
@@ -466,8 +425,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_FS(int32_t *FullScale)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("X FS: ");
-  Serial.println(*FullScale);
 
   return ret;
 }
@@ -477,7 +434,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_FS(int32_t *FullScale)
  * @param  FullScale the functional full scale to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_FS(int32_t FullScale)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_X_FS(int32_t FullScale)
 {
   asm330lhh_fs_xl_t new_fs;
 
@@ -501,7 +458,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_FS(int32_t FullScale)
  * @param  Value pointer where the raw values of the axes are written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_AxesRaw(int16_t *Value)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_AxesRaw(int16_t *Value)
 {
   axis3bit16_t data_raw;
 
@@ -519,34 +476,13 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_AxesRaw(int16_t *Value)
   return ASM330LHH_OK;
 }
 
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_AxesRaw(uint8_t *Value)
-{
-  axis3bit16_t data_raw;
-
-  /* Read raw data values. */
-  if (asm330lhh_acceleration_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
-  {
-    return ASM330LHH_ERROR;
-  }
-
-  /* Format the data. */
-  Value[0] = data_raw.u8bit[0];
-  Value[1] = data_raw.u8bit[1];
-  Value[2] = data_raw.u8bit[2];
-  Value[3] = data_raw.u8bit[3];
-  Value[4] = data_raw.u8bit[4];
-  Value[5] = data_raw.u8bit[5];
-
-  return ASM330LHH_OK;
-}
-
 
 /**
  * @brief  Get the ASM330LHH accelerometer sensor axes
  * @param  Acceleration pointer where the values of the axes are written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_Axes(int32_t *Acceleration)
 {
   axis3bit16_t data_raw;
   float sensitivity = 0.0f;
@@ -569,8 +505,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   Acceleration[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   // Serial.print("X: ");
-  Serial.print(millis());
-  Serial.print(", ");
   Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
   Serial.print(", ");
   Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
@@ -581,7 +515,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   return ASM330LHH_OK;
 }
 
-ASM330LHHStatusTypeDef ASM330LHHSensor::readAcceleration(unsigned char *data)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::readAcceleration(unsigned char *data)
 {
   axis3bit16_t data_raw;
   float sensitivity = 0.0f;
@@ -607,7 +541,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::readAcceleration(unsigned char *data)
   return ASM330LHH_OK;
 }
 
-void ASM330LHHSensor::print_AccelerationData(unsigned char *temp_a, unsigned int t_new, unsigned int& t_old)
+void LSM6DS3Sensor::print_AccelerationData(unsigned char *temp_a, unsigned int t_new, unsigned int& t_old)
 {
 	int x, y, z;
 
@@ -637,7 +571,7 @@ void ASM330LHHSensor::print_AccelerationData(unsigned char *temp_a, unsigned int
  * @param  Status the status of data ready bit
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_DRDY_Status(uint8_t *Status)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_X_DRDY_Status(uint8_t *Status)
 {
   if (asm330lhh_xl_flag_data_ready_get(&reg_ctx, Status) != ASM330LHH_OK)
   {
@@ -652,7 +586,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_DRDY_Status(uint8_t *Status)
  * @brief  Enable the ASM330LHH gyroscope sensor
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Enable_G()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Enable_G()
 {
   /* Check if the component is already enabled */
   if (gyro_is_enabled == 1U)
@@ -676,7 +610,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Enable_G()
  * @brief  Disable the ASM330LHH gyroscope sensor
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Disable_G()
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Disable_G()
 {
   /* Check if the component is already disabled */
   if (gyro_is_enabled == 0U)
@@ -706,9 +640,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Disable_G()
  * @param  Sensitivity pointer
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Sensitivity(float *Sensitivity)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_Sensitivity(float *Sensitivity)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_fs_g_t full_scale;
 
   /* Read actual full scale selection from sensor. */
@@ -740,16 +674,14 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Sensitivity(float *Sensitivity)
       *Sensitivity = ASM330LHH_GYRO_SENSITIVITY_FS_2000DPS;
       break;
 
-    case ASM330LHH_4000dps:
-      *Sensitivity = ASM330LHH_GYRO_SENSITIVITY_FS_4000DPS;
-      break;
+    // case ASM330LHH_4000dps:
+    //   *Sensitivity = ASM330LHH_GYRO_SENSITIVITY_FS_4000DPS;
+    //   break;
 
     default:
       ret = ASM330LHH_ERROR;
       break;
   }
-  // Serial.print("G Sensitivity: ");
-  // Serial.println(*Sensitivity, 5);
 
   return ret;
 }
@@ -759,9 +691,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Sensitivity(float *Sensitivity)
  * @param  Odr pointer where the output data rate is written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_ODR(float *Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_ODR(float *Odr)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_odr_g_t odr_low_level;
 
   /* Get current output data rate. */
@@ -820,8 +752,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_ODR(float *Odr)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("G ODR: ");
-  Serial.println(*Odr);
 
   return ret;
 }
@@ -831,7 +761,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_ODR(float *Odr)
  * @param  Odr the output data rate value to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_G_ODR(float Odr)
 {
   /* Check if the component is enabled */
   if (gyro_is_enabled == 1U)
@@ -849,7 +779,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR(float Odr)
  * @param  Odr the functional output data rate to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR_When_Enabled(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_G_ODR_When_Enabled(float Odr)
 {
   asm330lhh_odr_g_t new_odr;
 
@@ -878,7 +808,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR_When_Enabled(float Odr)
  * @param  Odr the functional output data rate to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR_When_Disabled(float Odr)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_G_ODR_When_Disabled(float Odr)
 {
   gyro_odr = (Odr <=   12.5f) ? ASM330LHH_GY_ODR_12Hz5
                  : (Odr <=   26.0f) ? ASM330LHH_GY_ODR_26Hz
@@ -900,9 +830,9 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_ODR_When_Disabled(float Odr)
  * @param  FullScale pointer where the full scale is written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_FS(int32_t  *FullScale)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_FS(int32_t  *FullScale)
 {
-  ASM330LHHStatusTypeDef ret = ASM330LHH_OK;
+  LSM6DS3StatusTypeDef ret = ASM330LHH_OK;
   asm330lhh_fs_g_t fs_low_level;
 
   /* Read actual full scale selection from sensor. */
@@ -941,8 +871,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_FS(int32_t  *FullScale)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("G FS: ");
-  Serial.println(*FullScale);
 
   return ret;
 }
@@ -952,7 +880,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_FS(int32_t  *FullScale)
  * @param  FullScale the functional full scale to be set
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_FS(int32_t FullScale)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Set_G_FS(int32_t FullScale)
 {
   asm330lhh_fs_g_t new_fs;
 
@@ -976,7 +904,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_FS(int32_t FullScale)
  * @param  Value pointer where the raw values of the axes are written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_AxesRaw(int16_t *Value)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_AxesRaw(int16_t *Value)
 {
   axis3bit16_t data_raw;
 
@@ -994,34 +922,13 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_AxesRaw(int16_t *Value)
   return ASM330LHH_OK;
 }
 
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_AxesRaw(uint8_t *Value)
-{
-  axis3bit16_t data_raw;
-
-  /* Read raw data values. */
-  if (asm330lhh_angular_rate_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
-  {
-    return ASM330LHH_ERROR;
-  }
-
-  /* Format the data. */
-  Value[0] = data_raw.u8bit[0];
-  Value[1] = data_raw.u8bit[1];
-  Value[2] = data_raw.u8bit[2];
-  Value[3] = data_raw.u8bit[3];
-  Value[4] = data_raw.u8bit[4];
-  Value[5] = data_raw.u8bit[5];
-
-  return ASM330LHH_OK;
-}
-
 
 /**
  * @brief  Get the ASM330LHH gyroscope sensor axes
  * @param  AngularRate pointer where the values of the axes are written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_Axes(int32_t *AngularRate)
 {
   axis3bit16_t data_raw;
   float sensitivity;
@@ -1044,8 +951,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
   AngularRate[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   // Serial.print("Gyro: ");
-  Serial.print(millis());
-  Serial.print(", ");
   Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
   Serial.print(", ");
   Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
@@ -1056,7 +961,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
 }
 
 
-ASM330LHHStatusTypeDef ASM330LHHSensor::readGyroscope(unsigned char data[6])  
+LSM6DS3StatusTypeDef LSM6DS3Sensor::readGyroscope(unsigned char data[6])  
 {
 	axis3bit16_t data_raw;
 	float sensitivity;
@@ -1087,7 +992,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::readGyroscope(unsigned char data[6])
  * @param  Status the status of data ready bit
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_DRDY_Status(uint8_t *Status)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_DRDY_Status(uint8_t *Status)
 {
   if (asm330lhh_gy_flag_data_ready_get(&reg_ctx, Status) != ASM330LHH_OK)
   {
@@ -1104,7 +1009,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_DRDY_Status(uint8_t *Status)
  * @param  Data pointer where the value is written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Read_Reg(uint8_t Reg, uint8_t *Data)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Read_Reg(uint8_t Reg, uint8_t *Data)
 {
   if (asm330lhh_read_reg(&reg_ctx, Reg, Data, 1) != ASM330LHH_OK)
   {
@@ -1121,7 +1026,7 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Read_Reg(uint8_t Reg, uint8_t *Data)
  * @param  Data value to be written
  * @retval 0 in case of success, an error code otherwise
  */
-ASM330LHHStatusTypeDef ASM330LHHSensor::Write_Reg(uint8_t Reg, uint8_t Data)
+LSM6DS3StatusTypeDef LSM6DS3Sensor::Write_Reg(uint8_t Reg, uint8_t Data)
 {
   if (asm330lhh_write_reg(&reg_ctx, Reg, &Data, 1) != ASM330LHH_OK)
   {
@@ -1134,11 +1039,11 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Write_Reg(uint8_t Reg, uint8_t Data)
 
 int32_t ASM330LHH_io_write(void *handle, uint8_t WriteAddr, uint8_t *pBuffer, uint16_t nBytesToWrite)
 {
-  return ((ASM330LHHSensor *)handle)->IO_Write(pBuffer, WriteAddr, nBytesToWrite);
+  return ((LSM6DS3Sensor *)handle)->IO_Write(pBuffer, WriteAddr, nBytesToWrite);
 }
 
 
 int32_t ASM330LHH_io_read(void *handle, uint8_t ReadAddr, uint8_t *pBuffer, uint16_t nBytesToRead)
 {
-  return ((ASM330LHHSensor *)handle)->IO_Read(pBuffer, ReadAddr, nBytesToRead);
+  return ((LSM6DS3Sensor *)handle)->IO_Read(pBuffer, ReadAddr, nBytesToRead);
 }
