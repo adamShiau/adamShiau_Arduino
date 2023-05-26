@@ -20,6 +20,24 @@
 #define SENS_4G 0.0000078
 #define SENS_2G 0.0000039
 
+// #SP init parameter
+#define MOD_FREQ_INIT 135
+#define WAIT_CNT_INIT 61
+#define ERR_AVG_INIT 4
+#define MOD_AMP_H_INIT 4096
+#define MOD_AMP_L_INIT -4096
+#define ERR_TH_INIT 93
+#define ERR_OFFSET_INIT 0
+#define POLARITY_INIT 0
+#define CONST_STEP_INIT 8192
+#define FPGA_Q_INIT 10
+#define FPGA_R_INIT 10
+#define GAIN1_INIT 7
+#define GAIN2_INIT 5
+#define FB_ON_INIT 1
+#define DAC_GAIN_INIT 325
+#define DATA_INT_DELAY_ADDR 2194
+
 /*** global var***/
 int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
@@ -36,7 +54,7 @@ unsigned int CtrlReg=-1;
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd, fog_channel;
 
-unsigned int value;
+int value;
 bool cmd_complete;
 
 /*** output mode flag***/
@@ -136,6 +154,7 @@ void setup() {
 	pinPeripheral(13, PIO_SERCOM);
 	pinPeripheral(8, PIO_SERCOM);
 	
+  set_parameter_init();
 	IMU.begin();
 	adxl355.init();
 	pinMode(SYS_TRIG, INPUT);
@@ -165,13 +184,12 @@ void setup() {
     delay(1000);
 //     sparrow.gyroInitialize(50);
 // 	sparrow.flushInputBuffer();
-	Serial.print("initial buffer: ");
-	Serial.println(mySerial5.available());
+	// Serial.print("initial buffer: ");
+	// Serial.println(mySerial5.available());
 // 	sparrow.startRead(1);
 }
 
 void loop() {
-	// getCmdValue(cmd, value, cmd_complete);
   getCmdValue(cmd, value, fog_channel, cmd_complete);
 	cmd_mux(cmd_complete, cmd, mux_flag);
 	parameter_setting(mux_flag, cmd, value);
@@ -231,7 +249,7 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, unsigned int &uart_value, byte &fog_ch, bool &uart_complete)
+void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
 {
   byte *cmd;
     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
@@ -285,8 +303,47 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 		cmd_complete = 0;
 		if(cmd >7) mux_flag = MUX_PARAMETER; 
 		else mux_flag = MUX_OUTPUT;
-		
 	}
+}
+
+void set_parameter_init()
+{
+  // Serial.println("Setting SP initail parameters!");
+  pig_v2.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT);
+  delay(100);
+  pig_v2.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_ADDR);
 }
 
 void parameter_setting(byte &mux_flag, byte cmd, unsigned int value) 
@@ -482,6 +539,7 @@ void acq_imu(byte &select_fn, unsigned int value)
       free(imu_data);
 
       // print_adxl355Data(adxl355_a);
+      adxl355.printRegVal("RANGE_ADDR", 0x2C, HEX);
         // IMU.Get_X_Axes(accelerometer);
         // IMU.Get_G_Axes(gyroscope);
       // Serial.print(nano33_a[0]);
