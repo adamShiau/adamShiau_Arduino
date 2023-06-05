@@ -28,6 +28,24 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
+// #SP init parameter
+#define MOD_FREQ_INIT 104
+#define WAIT_CNT_INIT 60
+#define ERR_AVG_INIT 4
+#define MOD_AMP_H_INIT 9492
+#define MOD_AMP_L_INIT -9492
+#define ERR_TH_INIT 64
+#define ERR_OFFSET_INIT 0
+#define POLARITY_INIT 1
+#define CONST_STEP_INIT 16384
+#define FPGA_Q_INIT 10
+#define FPGA_R_INIT 104
+#define GAIN1_INIT 5
+#define GAIN2_INIT 7
+#define FB_ON_INIT 1
+#define DAC_GAIN_INIT 70
+#define DATA_INT_DELAY_ADDR 2220
+
 //PWM
 #include <SAMD21turboPWM.h>
 #define PWM100 7
@@ -241,6 +259,8 @@ void setup() {
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
 
+   set_parameter_init();
+
   //ADC
   //  pinPeripheral(6, PIN_ATTR_ANALOG);
 	
@@ -364,6 +384,46 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 		if(cmd >7) mux_flag = MUX_PARAMETER; 
 		else mux_flag = MUX_OUTPUT;
 	}
+}
+
+void set_parameter_init()
+{
+  // Serial.println("Setting SP initail parameters!");
+  sp14.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_ADDR);
 }
 
 void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch) 

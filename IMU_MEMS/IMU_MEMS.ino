@@ -41,7 +41,7 @@
 /*** global var***/
 int pin_scl_mux = 17;
 bool trig_status[2] = {0, 0};
-unsigned int t_new, t_old=0;
+unsigned int t_new, t_old=0, cnt;;
 
 unsigned long gps_init_time = 0;
 unsigned int gps_date=0, gps_time=0;
@@ -73,7 +73,7 @@ uint8_t myCmd_trailer[] = {0x55, 0x56};
 uint16_t myCmd_try_cnt;
 const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
 const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
-uartRT myCmd(Serial1, 6);
+uartRT myCmd(Serial, 6);
 
 /*** KVH HEADER ***/
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
@@ -155,7 +155,7 @@ void setup() {
 	pinPeripheral(8, PIO_SERCOM);
 	
   set_parameter_init();
-	IMU.begin();
+	// IMU.begin();
 	adxl355.init();
 	pinMode(SYS_TRIG, INPUT);
 	/*** var initialization***/
@@ -637,6 +637,7 @@ void acq_imu_mems(byte &select_fn, unsigned int value)
   // byte *fog;
   byte fog[14] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0}; 
   byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+  unsigned int tt;
 
 	uint8_t CRC32[4];
 
@@ -653,13 +654,16 @@ void acq_imu_mems(byte &select_fn, unsigned int value)
 
 	if(run_fog_flag) {
 	    t_new = micros();
-
       // fog = true;
       
 
     // if(fog)
     
       // adxl355.readData(adxl355_a);
+      fog[0] = cnt>>24;
+      fog[1] = cnt>>16;
+      fog[2] = cnt>>8;
+      fog[3] = cnt;
       IMU.Get_X_AxesRaw(nano33_a);
       IMU.Get_G_AxesRaw(nano33_w);
       uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
@@ -687,14 +691,14 @@ void acq_imu_mems(byte &select_fn, unsigned int value)
       // Serial.print(" ");
       // Serial.println(nano33_a[5]);
  
-
+      cnt++;
       #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(adxl355_a, 9);
-        Serial1.write(nano33_w, 6);
-        Serial1.write(nano33_a, 6);
-        Serial1.write(fog, 14);
-        Serial1.write(CRC32, 4);
+        Serial.write(KVH_HEADER, 4);
+        Serial.write(adxl355_a, 9);
+        Serial.write(nano33_w, 6);
+        Serial.write(nano33_a, 6);
+        Serial.write(fog, 14);
+        Serial.write(CRC32, 4);
 	  	#endif
       delay(10);
 // ***/

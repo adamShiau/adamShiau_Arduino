@@ -65,12 +65,12 @@ ASM330LHHSensor AccGyr(&DEV_I2C, ASM330LHH_I2C_ADD_L);
 void setup() {
 
   // Led.
-  pinMode(LED_BUILTIN, OUTPUT);
+  // pinMode(LED_BUILTIN, OUTPUT);
 
   // Force INT1 of ASM330LHH low in order to enable I2C
-  pinMode(INT_1, OUTPUT);
+  // pinMode(INT_1, OUTPUT);
 
-  digitalWrite(INT_1, LOW);
+  // digitalWrite(INT_1, LOW);
 
   delay(200);
 
