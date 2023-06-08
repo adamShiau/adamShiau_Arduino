@@ -20,7 +20,7 @@ class PIG
 		void readData(unsigned char [], unsigned char []);
 		unsigned char* readData(void);
 		unsigned char* readData(uint8_t* expected_header, uint8_t header_size=2, uint16_t* try_cnt = nullptr,
-								uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1);
+								uint8_t* expected_trailer = nullptr, uint8_t trailer_sizes=1, uint8_t print = 0);
 		unsigned char checkAck(unsigned char);
 		void port_read(void);
 		void readDataCRC(unsigned char [], unsigned char []);

@@ -63,6 +63,59 @@ unsigned long gps_init_time = 0;
 unsigned int gps_date=0, gps_time=0;
 bool gps_valid = 0;
 
+// #SP init parameter
+/******SP13  *******/
+#define MOD_FREQ_INIT_SP13 102
+#define WAIT_CNT_INIT_SP13 50
+#define ERR_AVG_INIT_SP13 5
+#define MOD_AMP_H_INIT_SP13 4096
+#define MOD_AMP_L_INIT_SP13 -4096
+#define ERR_TH_INIT_SP13 0
+#define ERR_OFFSET_INIT_SP13 0
+#define POLARITY_INIT_SP13 0
+#define CONST_STEP_INIT_SP13 16384
+#define FPGA_Q_INIT_SP13 10
+#define FPGA_R_INIT_SP13 104
+#define GAIN1_INIT_SP13 6
+#define GAIN2_INIT_SP13 5
+#define FB_ON_INIT_SP13 1
+#define DAC_GAIN_INIT_SP13 346
+#define DATA_INT_DELAY_SP13 2220
+/******SP14  *******/
+#define MOD_FREQ_INIT_SP14 102
+#define WAIT_CNT_INIT_SP14 53
+#define ERR_AVG_INIT_SP14 5
+#define MOD_AMP_H_INIT_SP14 4096
+#define MOD_AMP_L_INIT_SP14 -4096
+#define ERR_TH_INIT_SP14 0
+#define ERR_OFFSET_INIT_SP14 0
+#define POLARITY_INIT_SP14 0
+#define CONST_STEP_INIT_SP14 16384
+#define FPGA_Q_INIT_SP14 10
+#define FPGA_R_INIT_SP14 104
+#define GAIN1_INIT_SP14 6
+#define GAIN2_INIT_SP14 5
+#define FB_ON_INIT_SP14 1
+#define DAC_GAIN_INIT_SP14 348
+#define DATA_INT_DELAY_SP14 2220
+/******SP9  *******/
+#define MOD_FREQ_INIT_SP9 135
+#define WAIT_CNT_INIT_SP9 60
+#define ERR_AVG_INIT_SP9 6
+#define MOD_AMP_H_INIT_SP9 4096
+#define MOD_AMP_L_INIT_SP9 -4096
+#define ERR_TH_INIT_SP9 0
+#define ERR_OFFSET_INIT_SP9 0
+#define POLARITY_INIT_SP9 0
+#define CONST_STEP_INIT_SP9 16384
+#define FPGA_Q_INIT_SP9 10
+#define FPGA_R_INIT_SP9 104
+#define GAIN1_INIT_SP9 6
+#define GAIN2_INIT_SP9 4
+#define FB_ON_INIT_SP9 1
+#define DAC_GAIN_INIT_SP9 302
+#define DATA_INT_DELAY_SP9 2220
+
 // SPI
 #include <SPI.h>
 #define SPI_CLOCK_8M 8000000
@@ -82,6 +135,7 @@ uint16_t myCmd_try_cnt;
 const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
 const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
 uartRT myCmd(Serial1, 6);
+
 
 
 // UART
@@ -112,10 +166,12 @@ void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
 }
-PIG sp13(Serial2); //SP13
+PIG sp13(Serial2); //SP13`
 PIG sp14(Serial3); //SP14
 PIG sp9(Serial4); //SP14
-
+uartRT SP9_Read(Serial4, 14);
+uartRT SP13_Read(Serial2, 14);
+uartRT SP14_Read(Serial3, 14);
 
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd, fog_channel;
@@ -147,6 +203,11 @@ crcCal myCRC;
 
 //SYNC OUT
 bool sync_status = 0;
+
+//fog data ready
+bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
+byte reg_fog_sp9[16] = {0}, reg_fog_sp13[16] = {0}, reg_fog_sp14[16] = {0};
+
 
 // Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 // void SERCOM0_Handler() 
@@ -237,6 +298,10 @@ void setup() {
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
+
+  set_parameter_init_SP9();
+  set_parameter_init_SP13();
+  set_parameter_init_SP14();
 	
 	// if (!IMU.begin()) {
   //   Serial.println("Failed to initialize IMU!");
@@ -450,11 +515,11 @@ void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch
         else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);
         else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);
         break;}
-      case CMD_FOG_OUT_START: {
-        if(fog_ch==1)       sp13.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
-        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
-        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
-        break;}
+      // case CMD_FOG_OUT_START: {
+      //   if(fog_ch==1)       sp13.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+      //   else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+      //   else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+      //   break;}
 			default: break;
 		}
     
@@ -488,7 +553,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				break;
 			}
 			case MODE_EQ: {
-				output_fn = temp_idle;
+				output_fn = acq_imu_eq;
 				select_fn = SEL_EQ;
 				break;
             }
@@ -589,7 +654,7 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(fog, 14);
         Serial1.write(CRC32, 4);
        #endif
-        
+        Serial.println(millis());
       }
 	    
         t_old = t_new;
@@ -609,24 +674,29 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 	uint8_t CRC32[4];
 
 
-	if(select_fn&&SEL_IMU) {
+  if(select_fn&SEL_IMU)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select acq_imu2\n");
     CtrlReg = value;
-		// run_fog_flag = sp13.setSyncMode(CtrlReg);
-    run_fog_flag = sp14.setSyncMode(CtrlReg);
-    // run_fog_flag = sp9.setSyncMode(CtrlReg);
-    Serial.print("acq_imu2 EN: ");
-    Serial.println(run_fog_flag);
+    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+
     switch(CtrlReg){
-      case INT_SYNC: //delay method
-        digitalWrite(PIG_SYNC, LOW);
+      case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       case EXT_SYNC:
-        digitalWrite(PIG_SYNC, HIGH); //trigger signal to PIG
-        EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to RISING");
+        Serial.println("Write SYNC to LOW\n");
+
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
+
       break;
       case STOP_SYNC:
-        digitalWrite(PIG_SYNC, LOW);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
       break;
       default:
@@ -637,10 +707,10 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 	if(run_fog_flag) {
         t_new = micros();
 
-    // fog = sp13.readData();
-    // fog = sp9.readData(header, sizeofheader, &try_cnt);
-      // fog = sp13.readData(header, sizeofheader, &try_cnt);
-    fog = sp14.readData(header, sizeofheader, &try_cnt);
+        if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+        else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+        else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+
     if(fog)
     {
       uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
@@ -656,14 +726,6 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 
       free(imu_data);
 
-      #ifdef UART_USB_CMD
-            // Serial.write(KVH_HEADER, 4);
-            // Serial.write(adxl355_a, 9);
-            // Serial.write(nano33_w, 6);
-            // Serial.write(nano33_a, 6);
-            // Serial.write(fog, 14);
-            // Serial.write(CRC32, 4);
-      #endif
       #ifdef UART_RS422_CMD
               Serial1.write(KVH_HEADER, 4);
               Serial1.write(adxl355_a, 9);
@@ -672,21 +734,7 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
               Serial1.write(fog, 14);
               Serial1.write(CRC32, 4);
       #endif   
-      switch(CtrlReg){
-        case INT_SYNC: //delay method
-            break;
-        case EXT_SYNC:
-          digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
-          EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
-        break;
-        case STOP_SYNC:
-            break;
-        default:
-          digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
-          EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge      
-            break;
-        }   
-      // sp13.printData(fog);
+      Serial.println(millis());
     }
     t_old = t_new;    
     
@@ -800,6 +848,123 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     
 	}
 	// trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
+
+void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
+{
+	byte nano33_w[6]={0,0,0,0,0,0};
+  byte  nano33_a[6]={0,0,0,0,0,0};;
+  byte *fog_sp9, *fog_sp13, *fog_sp14;
+  // byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+	uint8_t CRC32[4];
+
+
+  if(select_fn&SEL_EQ)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select acq_imu_eq\n");
+    CtrlReg = value;
+    // if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    // else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    // else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+
+    switch(CtrlReg){
+      case INT_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      case EXT_SYNC:
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to RISING");
+        Serial.println("Write SYNC to LOW\n");
+
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
+
+      break;
+      case STOP_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      default:
+      break;
+    }
+	}
+
+	if(run_fog_flag) {
+        t_new = micros();
+
+
+        fog_sp13 = SP13_Read.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+        fog_sp14 = SP14_Read.readData_2(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+        fog_sp9 = SP9_Read.readData_3(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+        
+
+        if(fog_sp13) {
+          g_sp13_ready = true;
+          memcpy(reg_fog_sp13, fog_sp13, sizeof(reg_fog_sp13));
+        }
+        if(fog_sp14) {
+          g_sp14_ready = true;
+          memcpy(reg_fog_sp14, fog_sp14, sizeof(reg_fog_sp14));
+        }
+        if(fog_sp9) {
+          g_sp9_ready = true;
+          memcpy(reg_fog_sp9, fog_sp9, sizeof(reg_fog_sp9));
+        }
+        
+        
+
+    if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
+    {
+      g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
+      uint8_t* imu_data = (uint8_t*)malloc(58); // KVH_HEADER:4 + nano33_w:6 + nano33_a:6 + pig:14*3
+
+      IMU.readGyroscope(nano33_w);
+		  IMU.readAcceleration(nano33_a);
+
+      memcpy(imu_data, KVH_HEADER, 4);
+      memcpy(imu_data+13, nano33_w, 6);
+      memcpy(imu_data+19, nano33_a, 6);
+      memcpy(imu_data+25, reg_fog_sp9, 14);
+      memcpy(imu_data+25, reg_fog_sp13, 14);
+      memcpy(imu_data+25, reg_fog_sp14, 14);
+      myCRC.crc_32(imu_data, 58, CRC32);
+      free(imu_data);
+      #ifdef UART_RS422_CMD
+          // Serial1.write(KVH_HEADER, 4);
+          Serial1.write(nano33_w, 6);
+          Serial1.write(nano33_a, 6);
+          // Serial1.write(fog_sp9, 14);
+          // Serial1.write(fog_sp13, 14);
+          // Serial1.write(fog_sp14, 14);
+          // Serial1.write(CRC32, 4);
+
+          Serial1.write(KVH_HEADER, 4);
+          Serial1.write(nano33_w, 6);
+          Serial1.write(nano33_a, 6);
+          Serial1.write(reg_fog_sp13, 14);
+          // Serial1.write(0xFF);
+          // Serial1.write(0xFE);
+          Serial1.write(reg_fog_sp14, 14);
+          // Serial1.write(0xFF);
+          // Serial1.write(0xFE);
+          Serial1.write(reg_fog_sp9, 14);
+          Serial1.write(CRC32, 4);
+      #endif 
+      Serial.println(t_new - t_old);
+      // Serial.print(", ");
+      // Serial.print(Serial2.available());
+      // Serial.print(", ");
+      // Serial.print(Serial2.available());
+      // Serial.print(", ");
+      // Serial.print(Serial3.available());
+      // Serial.print(", ");
+      // Serial.println(Serial4.available());
+      t_old = t_new;
+    }
+    
+	}
 	clear_SEL_EN(select_fn);
 }
 
@@ -1159,6 +1324,128 @@ void displayGPSInfo()
   Serial.println();
 }
 
+void set_parameter_init_SP13()
+{
+  Serial.println("Setting SP13 initail parameters!_start");
+  sp13.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  sp13.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT_SP13);
+  delay(100);
+  sp13.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_SP13);
+  Serial.println("Setting SP13 initail parameters!_done");
+}
+
+void set_parameter_init_SP14()
+{
+  Serial.println("Setting SP14 initail parameters!");
+  sp14.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT_SP14);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_SP14);
+  Serial.println("Setting SP14 initail parameters!_done");
+}
+
+void set_parameter_init_SP9()
+{
+  Serial.println("Setting SP9 initail parameters!");
+  sp9.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  sp9.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT_SP9);
+  delay(100);
+  sp9.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_SP9);
+  Serial.println("Setting SP9 initail parameters!_done");
+}
 
 void ISR_EXTT()
 {

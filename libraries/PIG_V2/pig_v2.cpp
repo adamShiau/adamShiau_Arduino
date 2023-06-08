@@ -207,9 +207,9 @@ unsigned char* PIG::readData()
 
 
 
-unsigned char* PIG::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size)
+unsigned char* PIG::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size, uint8_t print)
 {
-	return myUart.readData(expected_header, header_size, try_cnt, expected_trailer, trailer_size);
+	return myUart.readData_3(expected_header, header_size, try_cnt, expected_trailer, trailer_size, print);
 }
 
 void PIG::printData(unsigned char data[14])
