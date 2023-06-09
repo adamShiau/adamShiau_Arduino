@@ -33,7 +33,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define PWM100 7
 #define PWM200 5
 #define PWM250 11
-#define PWM_FIX 1
+#define PWM_FIX 0.978
 // #define PWM_FIX 0.9755
 TurboPWM  pwm;
 
@@ -106,7 +106,7 @@ bool gps_valid = 0;
 #define MOD_AMP_L_INIT_SP9 -4096
 #define ERR_TH_INIT_SP9 0
 #define ERR_OFFSET_INIT_SP9 0
-#define POLARITY_INIT_SP9 0
+#define POLARITY_INIT_SP9 1
 #define CONST_STEP_INIT_SP9 16384
 #define FPGA_Q_INIT_SP9 10
 #define FPGA_R_INIT_SP9 104
@@ -654,7 +654,7 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(fog, 14);
         Serial1.write(CRC32, 4);
        #endif
-        Serial.println(millis());
+        // Serial.println(millis());
       }
 	    
         t_old = t_new;
@@ -918,23 +918,24 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
     if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
     {
       g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
-      uint8_t* imu_data = (uint8_t*)malloc(58); // KVH_HEADER:4 + nano33_w:6 + nano33_a:6 + pig:14*3
+      uint8_t* imu_data = (uint8_t*)malloc(4+6+6+14+14+14); // KVH_HEADER:4 + nano33_w:6 + nano33_a:6 + pig:14*3
 
       IMU.readGyroscope(nano33_w);
 		  IMU.readAcceleration(nano33_a);
 
       memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+13, nano33_w, 6);
-      memcpy(imu_data+19, nano33_a, 6);
-      memcpy(imu_data+25, reg_fog_sp9, 14);
-      memcpy(imu_data+25, reg_fog_sp13, 14);
-      memcpy(imu_data+25, reg_fog_sp14, 14);
-      myCRC.crc_32(imu_data, 58, CRC32);
+      memcpy(imu_data+4, nano33_w, 6);
+      memcpy(imu_data+10, nano33_a, 6);
+      memcpy(imu_data+16, reg_fog_sp13, 14);
+      memcpy(imu_data+30, reg_fog_sp14, 14);
+      memcpy(imu_data+44, reg_fog_sp9, 14);
+      // myCRC.crc_32(imu_data, 58, CRC32);
+      myCRC.crc_32(imu_data, 4+6+6+14+14+14, CRC32);
       free(imu_data);
       #ifdef UART_RS422_CMD
           // Serial1.write(KVH_HEADER, 4);
-          Serial1.write(nano33_w, 6);
-          Serial1.write(nano33_a, 6);
+          // Serial1.write(nano33_w, 6);
+          // Serial1.write(nano33_a, 6);
           // Serial1.write(fog_sp9, 14);
           // Serial1.write(fog_sp13, 14);
           // Serial1.write(fog_sp14, 14);
@@ -944,15 +945,22 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(nano33_w, 6);
           Serial1.write(nano33_a, 6);
           Serial1.write(reg_fog_sp13, 14);
-          // Serial1.write(0xFF);
-          // Serial1.write(0xFE);
           Serial1.write(reg_fog_sp14, 14);
-          // Serial1.write(0xFF);
-          // Serial1.write(0xFE);
           Serial1.write(reg_fog_sp9, 14);
           Serial1.write(CRC32, 4);
       #endif 
-      Serial.println(t_new - t_old);
+      // for(int i=0; i<14; i++) {
+      //   Serial.print(reg_fog_sp9[i], HEX);
+      //   Serial.print(" ");
+      // }
+      // Serial.print(CRC32[0], HEX);
+      // Serial.print(" ");
+      // Serial.print(CRC32[1], HEX);
+      // Serial.print(" ");
+      // Serial.print(CRC32[2], HEX);
+      // Serial.print(" ");
+      // Serial.println(CRC32[3], HEX);
+      // Serial.println(t_new - t_old);
       // Serial.print(", ");
       // Serial.print(Serial2.available());
       // Serial.print(", ");
