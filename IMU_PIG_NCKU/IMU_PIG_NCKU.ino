@@ -9,7 +9,7 @@
 // #include "SparrowParaDefine.h"
 // #include "Sparrow_read.h"
 #include <TinyGPSPlus.h>
-
+#include <EEPROM_24AA32A_I2C.h>
 
 // #define TESTMODE
 /***
@@ -136,7 +136,18 @@ const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
 const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
 uartRT myCmd(Serial1, 6);
 
+// EEPROMM
+EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
 
+typedef union
+{
+  float float_val;
+  uint8_t bin_val[4];
+  int int_val;
+}
+my_float_t;
+
+my_float_t my_f;
 
 // UART
 //SERCOM2: serial2 (PA14, PA15) [tx,  rx]
