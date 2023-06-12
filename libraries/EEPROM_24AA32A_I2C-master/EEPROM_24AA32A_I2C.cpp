@@ -36,7 +36,15 @@ void EEPROM_24AA32A_I2C::Parameter_Read(unsigned int eeaddress, unsigned char* b
 	myWire.endTransmission();
 	myWire.requestFrom(eeprom, 4);
 	while(myWire.available()) buf[i++] = myWire.read();
-	// delay(2);
+}
+
+void EEPROM_24AA32A_I2C::Read(unsigned int eeaddress, unsigned char* buf) {
+	myWire.beginTransmission(eeprom);
+	myWire.write(eeaddress >> 8);   // MSB
+	myWire.write(eeaddress & 0xFF); // LSB
+	myWire.endTransmission();
+	myWire.requestFrom(eeprom, 1);
+	while(myWire.available()) *buf = myWire.read();;
 }
 
 void EEPROM_24AA32A_I2C::read(unsigned int eeaddress, unsigned char* data, unsigned int num_chars) {
@@ -52,7 +60,9 @@ void EEPROM_24AA32A_I2C::read(unsigned int eeaddress, unsigned char* data, unsig
 
 }
 
-
+/***
+ * eeaddress << 2 for 32bit write
+ */
 void EEPROM_24AA32A_I2C::Parameter_Write(unsigned int eeaddress, int value) {
 	eeaddress <<= 2;
 	myWire.beginTransmission(eeprom);
@@ -62,6 +72,15 @@ void EEPROM_24AA32A_I2C::Parameter_Write(unsigned int eeaddress, int value) {
 	myWire.write(value>>8);
 	myWire.write(value>>16);
 	myWire.write(value>>24);
+	myWire.endTransmission();
+	delay(5);
+}
+
+void EEPROM_24AA32A_I2C::Write(unsigned int eeaddress, char value) {
+	myWire.beginTransmission(eeprom);
+	myWire.write(eeaddress >> 8);   // MSB
+	myWire.write(eeaddress & 0xFF); // LSB
+	myWire.write(value);
 	myWire.endTransmission();
 	delay(5);
 }

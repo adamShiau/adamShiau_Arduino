@@ -22,8 +22,12 @@ class EEPROM_24AA32A_I2C {
         void begin();
         void write(unsigned int eeaddress, char* data);
         void read(unsigned int eeaddress, unsigned char* data, unsigned int num_chars);
+       
+        
 		void Parameter_Read(unsigned int eeaddress, unsigned char* buf);
 		void Parameter_Write(unsigned int eeaddress, int value);
+        void Read(unsigned int eeaddress, unsigned char* buf);
+        void Write(unsigned int eeaddress, char data);
 		
     private:
 		TwoWire &myWire;
