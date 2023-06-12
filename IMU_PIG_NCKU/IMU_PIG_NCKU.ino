@@ -106,14 +106,14 @@ bool gps_valid = 0;
 #define MOD_AMP_L_INIT_SP9 -4096
 #define ERR_TH_INIT_SP9 0
 #define ERR_OFFSET_INIT_SP9 0
-#define POLARITY_INIT_SP9 1
+#define POLARITY_INIT_SP9 0
 #define CONST_STEP_INIT_SP9 16384
 #define FPGA_Q_INIT_SP9 10
 #define FPGA_R_INIT_SP9 104
 #define GAIN1_INIT_SP9 6
 #define GAIN2_INIT_SP9 4
 #define FB_ON_INIT_SP9 1
-#define DAC_GAIN_INIT_SP9 302
+#define DAC_GAIN_INIT_SP9 304
 #define DATA_INT_DELAY_SP9 2220
 
 // SPI
@@ -231,7 +231,14 @@ TinyGPSPlus gps;
 //     #define SRS200_SIZE 15
 // #endif
 
+/*** * Watch dog  * **/
+static void   WDTsync() {
+  while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
+}
+int WDT_CNT=0;
+bool WDT_Start_flag = true;
 
+int tt1, tt2;
 
 void setup() {
 
@@ -239,6 +246,7 @@ void setup() {
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
+     tt1 = millis();
   attachInterrupt(26, ISR_EXTT, CHANGE);
 
 /*** see datasheet p353. 
@@ -269,7 +277,7 @@ void setup() {
   digitalWrite(MCU_LED, HIGH);
   
   pinMode(nCONFIG, OUTPUT);
-  digitalWrite(nCONFIG, HIGH);
+
 
   
 	Serial.begin(230400); //debug
@@ -299,9 +307,21 @@ void setup() {
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
 
+  Serial.println("DISABLE WDT");
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync();
+
+  Serial.println("nCONFIG");
+  digitalWrite(nCONFIG, LOW);
+  delay(50);
+  digitalWrite(nCONFIG, HIGH);
+  delay(500);
+
   set_parameter_init_SP9();
   set_parameter_init_SP13();
   set_parameter_init_SP14();
+
+  
 	
 	// if (!IMU.begin()) {
   //   Serial.println("Failed to initialize IMU!");
@@ -874,6 +894,8 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
     switch(CtrlReg){
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        // Serial.println("ENABLE WDT");
+        // setupWDT( 11 );
       break;
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
@@ -885,6 +907,9 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
       break;
       case STOP_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        // Serial.println("DISABLE WDT");
+        // WDT->CTRL.reg = 0; // disable watchdog
+        WDTsync();
       break;
       default:
       break;
@@ -917,6 +942,22 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
 
     if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
     {
+      Serial.print(WDT_CNT);
+      Serial.print(", ");
+      Serial.println(t_new-t_old);
+      /*** WDT
+       WDT_CNT++;
+      if(WDT_CNT == 500) {
+        if(WDT_Start_flag) {
+          WDT_Start_flag = false;
+          Serial.println("ENABLE WDT");
+          setupWDT( 11 );
+        }
+      }
+      Serial.println("reset WDT");
+      resetWDT();
+      */
+      
       g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
       uint8_t* imu_data = (uint8_t*)malloc(4+6+6+14+14+14); // KVH_HEADER:4 + nano33_w:6 + nano33_a:6 + pig:14*3
 
@@ -1453,6 +1494,35 @@ void set_parameter_init_SP9()
   delay(100);
   sp9.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_SP9);
   Serial.println("Setting SP9 initail parameters!_done");
+}
+
+//============= resetWDT ===================================================== resetWDT ============
+void resetWDT() {
+  // reset the WDT watchdog timer.
+  // this must be called before the WDT resets the system
+  WDT->CLEAR.reg= 0xA5; // reset the WDT
+  WDTsync(); 
+}
+
+//============= systemReset ================================================== systemReset ============
+void systemReset() {
+  // use the WDT watchdog timer to force a system reset.
+  // WDT MUST be running for this to work
+  WDT->CLEAR.reg= 0x00; // system reset via WDT
+  WDTsync(); 
+}
+
+//============= setupWDT ===================================================== setupWDT ============
+void setupWDT( uint8_t period) {
+  // initialize the WDT watchdog timer
+
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+
+  WDT->CONFIG.reg = min(period,11); // see Table 17-5 Timeout Period (valid values 0-11)
+
+  WDT->CTRL.reg = WDT_CTRL_ENABLE; //enable watchdog
+  WDTsync(); 
 }
 
 void ISR_EXTT()
