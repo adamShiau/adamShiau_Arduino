@@ -332,14 +332,12 @@ void setup() {
   // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    delay(100);
+    // delay(100);
     Serial.println("AUTO RST");
     output_fn = acq_fog2;
     select_fn = SEL_FOG_1;
     value = 2;
     fog_channel = 2;
-    // tt0 = millis();
-    // resetWDT();
     setupWDT(11);
   }
 }
