@@ -695,8 +695,6 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         
       break;
       case EXT_SYNC:
-        // tt1 = millis();
-        // resetWDT();
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");

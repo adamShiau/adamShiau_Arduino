@@ -99,3 +99,6 @@
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
 #define START_SPARROW 3
+
+/*** EEPROM ADDR*/
+#define EEPROM_ADDR_FOG_STATUS 4095

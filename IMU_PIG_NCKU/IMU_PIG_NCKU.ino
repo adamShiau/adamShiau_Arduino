@@ -11,6 +11,7 @@
 #include <TinyGPSPlus.h>
 #include <EEPROM_24AA32A_I2C.h>
 
+
 // #define TESTMODE
 /***
 SERCOM0: I2C     (PA08, PA09) [sda, scl]
@@ -148,6 +149,7 @@ typedef union
 my_float_t;
 
 my_float_t my_f;
+unsigned char fog_op_status;
 
 // UART
 //SERCOM2: serial2 (PA14, PA15) [tx,  rx]
@@ -220,27 +222,8 @@ bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
 byte reg_fog_sp9[16] = {0}, reg_fog_sp13[16] = {0}, reg_fog_sp14[16] = {0};
 
 
-// Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-// void SERCOM0_Handler() 
-// {
-// 	mySerial5.IrqHandler();
-// }
-
-// Sparrow_read sparrow(mySerial5);
-// PIG sp13(mySerial5);
-
 // The TinyGPSPlus object
 TinyGPSPlus gps;
-
-// Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
-// void SERCOM1_Handler()
-// {
-//     mySerial13.IrqHandler();
-// }
-
-// #ifdef ENABLE_SRS200
-//     #define SRS200_SIZE 15
-// #endif
 
 /*** * Watch dog  * **/
 static void   WDTsync() {
@@ -259,6 +242,8 @@ void setup() {
      *  ****/
      tt1 = millis();
   attachInterrupt(26, ISR_EXTT, CHANGE);
+
+  disableWDT();
 
 /*** see datasheet p353. 
  *  SENSEn register table:
@@ -318,11 +303,9 @@ void setup() {
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
 
-  Serial.println("DISABLE WDT");
-  WDT->CTRL.reg = 0; // disable watchdog
-  WDTsync();
 
-  Serial.println("nCONFIG");
+
+  //Re-configure FPGA when system reset on MCU
   digitalWrite(nCONFIG, LOW);
   delay(50);
   digitalWrite(nCONFIG, HIGH);
@@ -353,6 +336,9 @@ void setup() {
 	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
+
+  /***read eeprom current status*/
+  eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 	
 /*** pwm ***/
 
@@ -364,6 +350,18 @@ void setup() {
   pwm.analogWrite(PWM100, 500);  
   pwm.analogWrite(PWM200, 500);  
   pwm.analogWrite(PWM250, 500);
+
+  if(fog_op_status==1) // disconnected last time, send cmd again
+  {
+    delay(100);
+    Serial.println("AUTO RST");
+    output_fn = acq_imu_eq;
+    select_fn = SEL_EQ;
+    value = 2;
+    fog_channel = 2;
+    setupWDT(11);
+  }
+
 }
 
 void loop() {
@@ -901,12 +899,17 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
     // else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
     // else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
     run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    delay(10);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    Serial.print("run_fog_flag: ");
+    Serial.println(run_fog_flag);
 
     switch(CtrlReg){
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        // Serial.println("ENABLE WDT");
-        // setupWDT( 11 );
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
       break;
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
@@ -914,13 +917,16 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Write SYNC to LOW\n");
 
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
 
       break;
       case STOP_SYNC:
+        Serial.println("Enter STOP_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        // Serial.println("DISABLE WDT");
-        // WDT->CTRL.reg = 0; // disable watchdog
-        WDTsync();
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        disableWDT();
+
       break;
       default:
       break;
@@ -953,21 +959,9 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
 
     if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
     {
-      Serial.print(WDT_CNT);
-      Serial.print(", ");
-      Serial.println(t_new-t_old);
-      /*** WDT
-       WDT_CNT++;
-      if(WDT_CNT == 500) {
-        if(WDT_Start_flag) {
-          WDT_Start_flag = false;
-          Serial.println("ENABLE WDT");
-          setupWDT( 11 );
-        }
-      }
-      Serial.println("reset WDT");
-      resetWDT();
-      */
+      // Serial.print(WDT_CNT);
+      // Serial.print(", ");
+      // Serial.println(t_new-t_old);
       
       g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
       uint8_t* imu_data = (uint8_t*)malloc(4+6+6+14+14+14); // KVH_HEADER:4 + nano33_w:6 + nano33_a:6 + pig:14*3
@@ -985,13 +979,6 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
       myCRC.crc_32(imu_data, 4+6+6+14+14+14, CRC32);
       free(imu_data);
       #ifdef UART_RS422_CMD
-          // Serial1.write(KVH_HEADER, 4);
-          // Serial1.write(nano33_w, 6);
-          // Serial1.write(nano33_a, 6);
-          // Serial1.write(fog_sp9, 14);
-          // Serial1.write(fog_sp13, 14);
-          // Serial1.write(fog_sp14, 14);
-          // Serial1.write(CRC32, 4);
 
           Serial1.write(KVH_HEADER, 4);
           Serial1.write(nano33_w, 6);
@@ -1001,29 +988,10 @@ void acq_imu_eq(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_sp9, 14);
           Serial1.write(CRC32, 4);
       #endif 
-      // for(int i=0; i<14; i++) {
-      //   Serial.print(reg_fog_sp9[i], HEX);
-      //   Serial.print(" ");
-      // }
-      // Serial.print(CRC32[0], HEX);
-      // Serial.print(" ");
-      // Serial.print(CRC32[1], HEX);
-      // Serial.print(" ");
-      // Serial.print(CRC32[2], HEX);
-      // Serial.print(" ");
-      // Serial.println(CRC32[3], HEX);
-      // Serial.println(t_new - t_old);
-      // Serial.print(", ");
-      // Serial.print(Serial2.available());
-      // Serial.print(", ");
-      // Serial.print(Serial2.available());
-      // Serial.print(", ");
-      // Serial.print(Serial3.available());
-      // Serial.print(", ");
-      // Serial.println(Serial4.available());
+
       t_old = t_new;
     }
-    
+  resetWDT();
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -1507,15 +1475,16 @@ void set_parameter_init_SP9()
   Serial.println("Setting SP9 initail parameters!_done");
 }
 
-//============= resetWDT ===================================================== resetWDT ============
+//============= resetWDT ===================================================== 
 void resetWDT() {
   // reset the WDT watchdog timer.
   // this must be called before the WDT resets the system
   WDT->CLEAR.reg= 0xA5; // reset the WDT
   WDTsync(); 
+  // Serial.println("resetWDT");
 }
 
-//============= systemReset ================================================== systemReset ============
+//============= systemReset ================================================== 
 void systemReset() {
   // use the WDT watchdog timer to force a system reset.
   // WDT MUST be running for this to work
@@ -1523,7 +1492,7 @@ void systemReset() {
   WDTsync(); 
 }
 
-//============= setupWDT ===================================================== setupWDT ============
+//============= setupWDT =====================================================
 void setupWDT( uint8_t period) {
   // initialize the WDT watchdog timer
 
@@ -1534,6 +1503,14 @@ void setupWDT( uint8_t period) {
 
   WDT->CTRL.reg = WDT_CTRL_ENABLE; //enable watchdog
   WDTsync(); 
+  Serial.println("setupWDT");
+}
+
+//============= disable WDT =====================================================
+void disableWDT() {
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+  Serial.println("disableWDT");
 }
 
 void ISR_EXTT()
