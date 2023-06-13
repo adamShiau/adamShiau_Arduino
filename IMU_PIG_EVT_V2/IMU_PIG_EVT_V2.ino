@@ -182,14 +182,12 @@ bool sync_status = 0;
 
 int t_adc = millis();
 
-// Uart mySerial5 (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-// void SERCOM0_Handler() 
-// {
-// 	mySerial5.IrqHandler();
-// }
-
-// Sparrow_read sparrow(mySerial5);
-// PIG sp13(mySerial5);
+/*** * Watch dog  * **/
+static void   WDTsync() {
+  while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
+}
+int WDT_CNT=0;
+int tt0=0, tt1, tt2, tt3;
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
@@ -213,6 +211,8 @@ void setup() {
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
   attachInterrupt(26, ISR_EXTT, CHANGE);
+
+  disableWDT();
 
 /*** see datasheet p353. 
  *  SENSEn register table:
@@ -338,6 +338,9 @@ void setup() {
     select_fn = SEL_FOG_1;
     value = 2;
     fog_channel = 2;
+    // tt0 = millis();
+    // resetWDT();
+    setupWDT(11);
   }
 }
 
@@ -441,7 +444,7 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 
 void set_parameter_init()
 {
-  // Serial.println("Setting SP initail parameters!");
+  Serial.println("Setting SP initail parameters!");
   sp14.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT);
   delay(100);
   sp14.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT);
@@ -477,6 +480,7 @@ void set_parameter_init()
   sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT);
   delay(100);
   sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_ADDR);
+  Serial.println("Setting SP parameters done");
 }
 
 void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch) 
@@ -687,21 +691,27 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         
       break;
       case EXT_SYNC:
+        // tt1 = millis();
+        // resetWDT();
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");
 
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Rising
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
 
       break;
       case STOP_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        disableWDT();
       break;
+
       default:
       break;
     }
@@ -716,7 +726,6 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
-
       if(fog)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
@@ -734,8 +743,8 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         
       }
 	    
-        t_old = t_new;
-        
+      t_old = t_new;
+      resetWDT();
         
 	}
 	clear_SEL_EN(select_fn);	
@@ -1324,5 +1333,43 @@ void readADC()
     // Serial.println((float)analogRead(ADC_PD_DC)*ADC_CONV);
   }
   
+}
+
+//============= resetWDT ===================================================== 
+void resetWDT() {
+  // reset the WDT watchdog timer.
+  // this must be called before the WDT resets the system
+  WDT->CLEAR.reg= 0xA5; // reset the WDT
+  WDTsync(); 
+  // Serial.println("resetWDT");
+}
+
+//============= systemReset ================================================== 
+void systemReset() {
+  // use the WDT watchdog timer to force a system reset.
+  // WDT MUST be running for this to work
+  WDT->CLEAR.reg= 0x00; // system reset via WDT
+  WDTsync(); 
+}
+
+//============= setupWDT =====================================================
+void setupWDT( uint8_t period) {
+  // initialize the WDT watchdog timer
+
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+
+  WDT->CONFIG.reg = min(period,11); // see Table 17-5 Timeout Period (valid values 0-11)
+
+  WDT->CTRL.reg = WDT_CTRL_ENABLE; //enable watchdog
+  WDTsync(); 
+  Serial.println("setupWDT");
+}
+
+//============= disable WDT =====================================================
+void disableWDT() {
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+  Serial.println("disableWDT");
 }
 
