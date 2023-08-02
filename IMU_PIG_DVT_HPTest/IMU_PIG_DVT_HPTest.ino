@@ -28,23 +28,46 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
+#define G05
 // #SP init parameter
-#define MOD_FREQ_INIT 104
-#define WAIT_CNT_INIT 60
-#define ERR_AVG_INIT 4
-#define MOD_AMP_H_INIT 9492
-#define MOD_AMP_L_INIT -9492
-#define ERR_TH_INIT 64
+
+#ifdef G04
+#define MOD_FREQ_INIT 103
+#define WAIT_CNT_INIT 20
+#define ERR_AVG_INIT 6
+#define MOD_AMP_H_INIT 9100
+#define MOD_AMP_L_INIT -9100
+#define ERR_TH_INIT 54
 #define ERR_OFFSET_INIT 0
 #define POLARITY_INIT 1
 #define CONST_STEP_INIT 16384
-#define FPGA_Q_INIT 10
-#define FPGA_R_INIT 104
+#define FPGA_Q_INIT 1
+#define FPGA_R_INIT 6
 #define GAIN1_INIT 5
 #define GAIN2_INIT 7
 #define FB_ON_INIT 1
 #define DAC_GAIN_INIT 70
-#define DATA_INT_DELAY_ADDR 2220
+#define DATA_INT_DELAY_ADDR 1990
+#endif
+
+#ifdef G05
+#define MOD_FREQ_INIT 104
+#define WAIT_CNT_INIT 20
+#define ERR_AVG_INIT 6
+#define MOD_AMP_H_INIT 9100
+#define MOD_AMP_L_INIT -9100
+#define ERR_TH_INIT 54
+#define ERR_OFFSET_INIT 0
+#define POLARITY_INIT 1
+#define CONST_STEP_INIT 16384
+#define FPGA_Q_INIT 1
+#define FPGA_R_INIT 6
+#define GAIN1_INIT 5
+#define GAIN2_INIT 7
+#define FB_ON_INIT 1
+#define DAC_GAIN_INIT 77
+#define DATA_INT_DELAY_ADDR 2000
+#endif
 
 //PWM
 #include <SAMD21turboPWM.h>
@@ -189,6 +212,8 @@ static void   WDTsync() {
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
 
+unsigned int MCU_cnt = 0;
+
 // The TinyGPSPlus object
 TinyGPSPlus gps;
 
@@ -281,7 +306,7 @@ void setup() {
   digitalWrite(nCONFIG, HIGH);
   delay(500);
 
-  // set_parameter_init();
+  set_parameter_init();
 
    
 
@@ -316,7 +341,10 @@ void setup() {
       /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
-  
+  /***write EEPROM DVT test value*/
+eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+
 	
 /*** pwm ***/
 
@@ -336,9 +364,9 @@ void setup() {
     Serial.println("AUTO RST");
     // output_fn = acq_imu2;
     // select_fn = SEL_IMU;
-    output_fn = acq_fog2;
-    select_fn = SEL_FOG_1;
-    value = 2;
+    output_fn = acq_HP_test; 
+    select_fn = SEL_HP_TEST;
+    value = 3;
     fog_channel = 2;
     setupWDT(11);
   }
@@ -625,9 +653,9 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 				select_fn = SEL_IMU;
 				break;
 			}
-			case MODE_IMU_GPS: {
-				output_fn = acq_imu_gps; 
-				select_fn = SEL_IMU;
+			case MODE_FOG_HP_TEST: {
+				output_fn = acq_HP_test; 
+				select_fn = SEL_HP_TEST;
 				break;
 			}
 			case MODE_EQ: {
@@ -749,6 +777,203 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);	
 }
 
+void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
+{
+  byte *fog, eeprom_var[4], mcu_var[4], adc_var[8];
+	uint8_t CRC32[4];
+
+	
+	if(select_fn&SEL_HP_TEST)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select SEL_HP_TEST\n");
+    CtrlReg = value;
+    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+
+    switch(CtrlReg){
+      case INT_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        
+      break;
+      case EXT_SYNC:
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to RISING");
+        Serial.println("Write SYNC to LOW\n");
+
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
+      break;
+      case STOP_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        MCU_cnt = 0;
+        disableWDT();
+      break;
+
+      case HP_TEST:
+        Serial.println("Enter HP_TEST mode");
+        Serial.println("Set EXTT to CHANGE");
+        
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
+      break;
+
+      default:
+      break;
+    }
+	}
+
+	// trig_status[0] = digitalRead(SYS_TRIG);
+
+	if(run_fog_flag) {
+	    t_new = micros();
+      
+           if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+      else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+      else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+      
+      if(fog)
+      {
+        uint8_t* imu_data = (uint8_t*)malloc(34); // KVH_HEADER:4 + pig:14
+
+        readEEPROM(eeprom_var); //4
+        readADC(adc_var);
+        MCU_counter(mcu_var);
+        // MCU_cnt++;//4
+        
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, fog, 14);
+        memcpy(imu_data+18, eeprom_var, 4);
+        memcpy(imu_data+22, mcu_var, 4);
+        memcpy(imu_data+26, adc_var, 8);
+        myCRC.crc_32(imu_data, 34, CRC32);
+        free(imu_data);
+
+        #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(fog, 14);
+        Serial1.write(eeprom_var, 4);
+        Serial1.write(mcu_var, 4);
+        Serial1.write(adc_var, 8);
+        Serial1.write(CRC32, 4);
+       #endif
+        
+      }
+	    
+      t_old = t_new;
+      resetWDT();
+        
+	}
+	clear_SEL_EN(select_fn);	
+}
+
+/***
+ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
+{
+  byte *fog, *eeprom_var;
+	uint8_t CRC32[4];
+
+	
+	if(select_fn&SEL_HP_TEST)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select acq_HP Test\n");
+    CtrlReg = value;
+    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+
+    switch(CtrlReg){
+      case INT_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        
+      break;
+      case EXT_SYNC:
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to CHANGE");
+        
+
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
+      break;
+      case HP_TEST:
+        Serial.println("Enter HP_TEST mode");
+        Serial.println("Set EXTT to CHANGE");
+        
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
+      break;
+      case STOP_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        MCU_cnt = 0;
+        disableWDT();
+      break;
+
+      default:
+      break;
+    }
+	}
+
+	// trig_status[0] = digitalRead(SYS_TRIG);
+
+	if(run_fog_flag) {
+	    t_new = micros();
+      
+           if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+      else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+      else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+      
+      if(fog)
+      {
+        uint8_t* imu_data = (uint8_t*)malloc(26); // KVH_HEADER:4 + pig:14
+
+        readEEPROM(eeprom_var); //4
+        MCU_cnt++;//4
+
+        
+        memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, fog, 14);
+        memcpy(imu_data+18, eeprom_var, 4);
+        memcpy(imu_data+22, &MCU_cnt, 4);
+
+        myCRC.crc_32(imu_data, 26, CRC32);
+        free(imu_data);
+
+        #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(fog, 14);
+        Serial1.write(eeprom_var, 4);
+        Serial1.write((byte*)&MCU_cnt, 4);
+        Serial1.write(CRC32, 4);
+       #endif
+        
+      }
+	    
+      t_old = t_new;
+      resetWDT();
+        
+	}
+	clear_SEL_EN(select_fn);	
+}
+ * **/
+
 
 void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 {
@@ -758,29 +983,6 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
   byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
 	uint8_t CRC32[4];
 
-
-	// if(select_fn&&SEL_IMU) {
-  //   CtrlReg = value;
-  //   run_fog_flag = sp14.setSyncMode(CtrlReg);
-  //   Serial.print("acq_imu2 EN: ");
-  //   Serial.println(run_fog_flag);
-  //   switch(CtrlReg){
-  //     case INT_SYNC: //delay method
-  //       digitalWrite(PIG_SYNC, LOW);
-  //       EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-  //     break;
-  //     case EXT_SYNC:
-  //       digitalWrite(PIG_SYNC, HIGH); //trigger signal to PIG
-  //       EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
-  //     break;
-  //     case STOP_SYNC:
-  //       digitalWrite(PIG_SYNC, LOW);
-  //       EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-  //     break;
-  //     default:
-  //     break;
-  //   }
-	// }
   if(select_fn&SEL_IMU)
 	{
     Serial.print("fog channel: ");
@@ -822,9 +1024,6 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 	if(run_fog_flag) {
         t_new = micros();
 
-    // fog = sp13.readData();
-    // fog = sp9.readData(header, sizeofheader, &try_cnt);
-      // fog = sp13.readData(header, sizeofheader, &try_cnt);
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog)
     {
@@ -980,75 +1179,75 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);
 }
 
-void acq_imu_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
-{
-  // byte *fog1, *fog2, *fog3;
-  byte *fog;
-	uint8_t CRC32[4];
+// void acq_imu_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
+// {
+//   // byte *fog1, *fog2, *fog3;
+//   byte *fog;
+// 	uint8_t CRC32[4];
 
 	
-	if(select_fn&SEL_IMU_GPS)
-	{
-    Serial.print("fog channel: ");
-    Serial.println(ch);
-    Serial.println("select acq_imu_gps\n");
-    CtrlReg = value;
-    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+// 	if(select_fn&SEL_IMU_GPS)
+// 	{
+//     Serial.print("fog channel: ");
+//     Serial.println(ch);
+//     Serial.println("select acq_imu_gps\n");
+//     CtrlReg = value;
+//     if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+//     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+//     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
 
-    switch(CtrlReg){
-      case INT_SYNC:
-        Serial.println("Set INT_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        break;
-      case EXT_SYNC:
-        Serial.println("Set EXT_SYNC mode, Set EXTT to CHANGE");
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Change
+//     switch(CtrlReg){
+//       case INT_SYNC:
+//         Serial.println("Set INT_SYNC mode");
+//         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+//         break;
+//       case EXT_SYNC:
+//         Serial.println("Set EXT_SYNC mode, Set EXTT to CHANGE");
+//         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Change
 
-        break;
-      case STOP_SYNC:
-        Serial.println("Set STOP_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        break;
-      default:
-        break;
-    }
-	}
+//         break;
+//       case STOP_SYNC:
+//         Serial.println("Set STOP_SYNC mode");
+//         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+//         break;
+//       default:
+//         break;
+//     }
+// 	}
 
-	// trig_status[0] = digitalRead(SYS_TRIG);
+// 	// trig_status[0] = digitalRead(SYS_TRIG);
 
-	if(run_fog_flag) {
-	    t_new = micros();
+// 	if(run_fog_flag) {
+// 	    t_new = micros();
       
-           if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
-      else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
-      else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+//            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+//       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+//       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
 
-      if(fog)
-      {
-        uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
+//       if(fog)
+//       {
+//         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
         
-        memcpy(imu_data, KVH_HEADER, 4);
-        memcpy(imu_data+4, fog, 14);
-        myCRC.crc_32(imu_data, 18, CRC32);
-        free(imu_data);
+//         memcpy(imu_data, KVH_HEADER, 4);
+//         memcpy(imu_data+4, fog, 14);
+//         myCRC.crc_32(imu_data, 18, CRC32);
+//         free(imu_data);
 
-        #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(fog, 14);
-        Serial1.write(CRC32, 4);
-       #endif
+//         #ifdef UART_RS422_CMD
+//         Serial1.write(KVH_HEADER, 4);
+//         Serial1.write(fog, 14);
+//         Serial1.write(CRC32, 4);
+//        #endif
         
-      }
+//       }
 	    
-        t_old = t_new;
+//         t_old = t_new;
         
         
-	}
-	clear_SEL_EN(select_fn);	
-}
+// 	}
+// 	clear_SEL_EN(select_fn);	
+// }
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
@@ -1345,19 +1544,59 @@ void ISR_EXTT()
   // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
 
-void readADC()
+
+void readEEPROM(byte data[4])
 {
-  int t_now = millis();
-  if((t_now - t_adc) >= 500){
-    t_adc = t_now;
-    // Serial.print((float)analogRead(ADC_VIN)/0.27*ADC_CONV);
-    // Serial.print(", ");
-    Serial.println((float)analogRead(ADC_ASE_TACT)*ADC_CONV);
-    // Serial.print(", ");
-    // Serial.print((float)analogRead(ADC_ASE_VPD)*ADC_CONV);
-    // Serial.print(", ");
-    // Serial.println((float)analogRead(ADC_PD_DC)*ADC_CONV);
-  }
+    // Serial1.println("\n\nEEPROM Value: ");
+    eeprom.Parameter_Read(EEPROM_ADDR_DVT_TEST_1,my_f.bin_val);
+    data[0] = my_f.bin_val[2];
+    data[1] = my_f.bin_val[1];
+    // Serial.println(" ");
+    // Serial.println(my_f.bin_val[2], HEX);
+    // Serial.println(my_f.bin_val[1], HEX);
+    eeprom.Parameter_Read(EEPROM_ADDR_DVT_TEST_2,my_f.bin_val);
+    data[2] = my_f.bin_val[2];
+    data[3] = my_f.bin_val[1];
+    // Serial.println(my_f.bin_val[2], HEX);
+    // Serial.println(my_f.bin_val[1], HEX);
+}
+
+void MCU_counter(byte data[4])
+{
+  MCU_cnt++;
+  data[0] = MCU_cnt >> 24;
+  data[1] = MCU_cnt >> 16;
+  data[2] = MCU_cnt >> 8;
+  data[3] = MCU_cnt;
+}
+
+void readADC(byte data[8])
+{
+
+  // Serial1.print("\n\nVIN: ");
+  // Serial1.println((float)analogRead(ADC_VIN)/0.27*ADC_CONV);
+  // Serial1.print("ASE_TACT: ");
+  // Serial1.println((float)analogRead(ADC_ASE_TACT)*ADC_CONV);
+  // Serial1.print("ASE_IACT: ");
+  // Serial1.println((float)analogRead(ADC_ASE_IACT)*ADC_CONV);
+  // Serial1.print("PD_DC: ");
+  // Serial1.println((float)analogRead(ADC_PD_DC)*ADC_CONV);
+
+  my_f.int_val = analogRead(ADC_VIN);
+  data[0] = my_f.bin_val[1];
+  data[1] = my_f.bin_val[0];
+  my_f.int_val = analogRead(ADC_ASE_TACT);
+  data[2] = my_f.bin_val[1];
+  data[3] = my_f.bin_val[0];
+  my_f.int_val = analogRead(ADC_ASE_IACT);
+  data[4] = my_f.bin_val[1];
+  data[5] = my_f.bin_val[0];
+  my_f.int_val = analogRead(ADC_PD_DC);
+  data[6] = my_f.bin_val[1];
+  data[7] = my_f.bin_val[0];
+  // Serial.print(my_f.bin_val[1], HEX);
+  // Serial.print(" ");
+  // Serial.println(my_f.bin_val[0], HEX);
   
 }
 

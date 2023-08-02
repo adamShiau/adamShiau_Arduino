@@ -396,7 +396,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_ODR_When_Enabled(float Odr)
           : (Odr <= 1667.0f) ? ASM330LHH_XL_ODR_1667Hz
           : (Odr <= 3333.0f) ? ASM330LHH_XL_ODR_3333Hz
           :                    ASM330LHH_XL_ODR_6667Hz;
-
   /* Output data rate selection. */
   if (asm330lhh_xl_data_rate_set(&reg_ctx, new_odr) != ASM330LHH_OK)
   {
@@ -569,13 +568,14 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   Acceleration[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   // Serial.print("X: ");
-  Serial.print(millis());
-  Serial.print(", ");
-  Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
-  Serial.print(", ");
-  Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
-  Serial.print(", ");
-  Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+  // Serial1.print(millis());
+  // Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+
 
 
   return ASM330LHH_OK;
@@ -1044,13 +1044,13 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
   AngularRate[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   // Serial.print("Gyro: ");
-  Serial.print(millis());
-  Serial.print(", ");
-  Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
-  Serial.print(", ");
-  Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
-  Serial.print(", ");
-  Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+  // Serial1.print(millis());
+  // Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
   return ASM330LHH_OK;
 }

@@ -26,6 +26,7 @@
 #define INT_SYNC	1
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
+#define HP_TEST 	3
 
 // 
 PIG::PIG(Stream &p ) : port(p), myUart(p, 14) 
@@ -117,6 +118,11 @@ char PIG::setSyncMode(unsigned int CTRLREG)
 		}
 		case EXT_SYNC: {
 			sendCmd(DATA_OUT_START_ADDR, 2);
+			run_fog_flag = 1;
+			break;
+		}
+		case HP_TEST: {
+			sendCmd(DATA_OUT_START_ADDR, 3);
 			run_fog_flag = 1;
 			break;
 		}

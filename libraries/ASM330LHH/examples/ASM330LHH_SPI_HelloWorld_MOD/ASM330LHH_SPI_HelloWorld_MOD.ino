@@ -139,8 +139,8 @@ void loop() {
   /***Read accelerometer and gyroscope.***/
   int32_t accelerometer[3] = {};
   int32_t gyroscope[3] = {};
-  // IMU.Get_X_Axes(accelerometer);
-  IMU.Get_G_Axes(gyroscope);
+  IMU.Get_X_Axes(accelerometer);
+  // IMU.Get_G_Axes(gyroscope);
 
   /**
    * @brief Output data.

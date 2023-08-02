@@ -951,11 +951,13 @@ LSM6DS3StatusTypeDef LSM6DS3Sensor::Get_G_Axes(int32_t *AngularRate)
   AngularRate[2] = (int32_t)((float)((float)data_raw.i16bit[2] * sensitivity));
 
   // Serial.print("Gyro: ");
-  Serial.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
-  Serial.print(", ");
-  Serial.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
-  Serial.print(", ");
-  Serial.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+  Serial1.print(millis());
+  Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  Serial1.print(", ");
+  Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
   return ASM330LHH_OK;
 }
