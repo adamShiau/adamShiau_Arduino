@@ -362,15 +362,27 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   {
     // delay(100);
     Serial.println("AUTO RST");
+
     // output_fn = acq_imu2;
     // select_fn = SEL_IMU;
-    output_fn = acq_HP_test; 
-    select_fn = SEL_HP_TEST;
-    value = 3;
+    // value = 2;
+
+    // output_fn = acq_HP_test; 
+    // select_fn = SEL_HP_TEST;
+    // value = 2;
+
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    output_fn = (fn_ptr)my_f.int_val; 
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    value = my_f.int_val;
+
     fog_channel = 2;
     setupWDT(11);
   }
-  
+
+
 }
 
 void loop() {
@@ -458,6 +470,7 @@ void getCmdValue(byte &uart_cmd, unsigned int &uart_value, byte &fog_ch, bool &u
       Serial.print(uart_value);
       Serial.print(", ");
       Serial.println(fog_ch);
+      // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
     }
 }
 
@@ -675,7 +688,30 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       default: break;
       }
+
+      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+      // Serial.print("output_mode_setting - select_fn: ");
+      // Serial.print(select_fn, HEX);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val, HEX);
+
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
+      // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+      // Serial.print("output_mode_setting - output_fn: ");
+      // Serial.print((int)output_fn, HEX);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val, HEX);
+
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+      // Serial.print("output_mode_setting - value: ");
+      // Serial.print((int)value);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val);
+
 	}
+  
 }
 
 void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
@@ -989,6 +1025,7 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     Serial.println(ch);
     Serial.println("select acq_imu2\n");
     CtrlReg = value;
+
     if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
