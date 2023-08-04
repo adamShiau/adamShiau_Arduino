@@ -28,7 +28,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
-#define G05
+#define G04
 // #SP init parameter
 
 #ifdef G04

@@ -292,13 +292,13 @@ void setup() {
   //   Serial.println("Failed to initialize IMU!");
   //   while (1);
   // }
-  // IMU.begin();
-  // IMU.Enable_X();
-  // IMU.Enable_G();
-  // IMU.Set_X_ODR(416.0);
-  // IMU.Set_X_FS(4);  
-  // IMU.Set_G_ODR(416.0);
-  // IMU.Set_G_FS(250); 
+  IMU.begin();
+  IMU.Enable_X();
+  IMU.Enable_G();
+  IMU.Set_X_ODR(416.0);
+  IMU.Set_X_FS(4);  
+  IMU.Set_G_ODR(416.0);
+  IMU.Set_G_FS(250); 
 
 
   
@@ -334,10 +334,10 @@ void setup() {
   {
     // delay(100);
     Serial.println("AUTO RST");
-    // output_fn = acq_imu2;
-    // select_fn = SEL_IMU;
-    output_fn = acq_fog2;
-    select_fn = SEL_FOG_1;
+    output_fn = acq_imu2;
+    select_fn = SEL_IMU;
+    // output_fn = acq_fog2;
+    // select_fn = SEL_FOG_1;
     value = 2;
     fog_channel = 2;
     setupWDT(11);
