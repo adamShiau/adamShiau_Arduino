@@ -44,7 +44,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define GAIN2_INIT 7
 #define FB_ON_INIT 1
 #define DAC_GAIN_INIT 70
-#define DATA_INT_DELAY_ADDR 2220
+#define DATA_INT_DELAY_INIT 2220
 
 //PWM
 #include <SAMD21turboPWM.h>
@@ -480,7 +480,7 @@ void set_parameter_init()
   delay(100);
   sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT);
   delay(100);
-  sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_ADDR);
+  sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_INIT);
   Serial.println("Setting SP parameters done");
 }
 
