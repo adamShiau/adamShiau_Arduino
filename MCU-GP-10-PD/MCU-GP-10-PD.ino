@@ -787,7 +787,8 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
          /*** MCU Version*/
          Serial.println("MCU_VERSION: ");
          Serial.println(MCU_VERSION);
-         Serial1.println(MCU_VERSION);
+         Serial1.print(MCU_VERSION);
+         Serial1.print(',');
          /*** FPGA zversion*/
          Serial.println("FPGA_VERSION: ");
          if(Serial3.available())
