@@ -18,6 +18,7 @@
 */
 
 #include <Arduino.h>
+#include "BLELocalDevice.h"
 
 #include "utility/ATT.h"
 #include "utility/GAP.h"
@@ -28,40 +29,41 @@
 
 #include "BLELocalCharacteristic.h"
 
-BLELocalCharacteristic::BLELocalCharacteristic(const char* uuid, uint8_t properties, int valueSize, bool fixedLength) :
+BLELocalCharacteristic::BLELocalCharacteristic(const char* uuid, uint16_t permissions, int valueSize, bool fixedLength) :
   BLELocalAttribute(uuid),
-  _properties(properties),
+  _properties((uint8_t)(permissions&0x000FF)),
   _valueSize(min(valueSize, 512)),
   _valueLength(0),
   _fixedLength(fixedLength),
   _handle(0x0000),
   _broadcast(false),
   _written(false),
-  _cccdValue(0x0000)
+  _cccdValue(0x0000),
+  _permissions((uint8_t)((permissions&0xFF00)>>8))
 {
   memset(_eventHandlers, 0x00, sizeof(_eventHandlers));
 
-  if (properties & (BLENotify | BLEIndicate)) {
+  if (permissions & (BLENotify | BLEIndicate)) {
     BLELocalDescriptor* cccd = new BLELocalDescriptor("2902", (uint8_t*)&_cccdValue, sizeof(_cccdValue));
   
+    cccd->retain();
     _descriptors.add(cccd);
   }
 
   _value = (uint8_t*)malloc(valueSize);
 }
 
-BLELocalCharacteristic::BLELocalCharacteristic(const char* uuid, uint8_t properties, const char* value) :
-  BLELocalCharacteristic(uuid, properties, strlen(value))
+BLELocalCharacteristic::BLELocalCharacteristic(const char* uuid, uint16_t permissions, const char* value) :
+  BLELocalCharacteristic(uuid, permissions, strlen(value))
 {
   writeValue(value);
 }
-
 BLELocalCharacteristic::~BLELocalCharacteristic()
 {
   for (unsigned int i = 0; i < descriptorCount(); i++) {
     BLELocalDescriptor* d = descriptor(i);
 
-    if (d->release() <= 0) {
+    if (d->release() == 0) {
       delete d;
     }
   }
@@ -81,6 +83,10 @@ enum BLEAttributeType BLELocalCharacteristic::type() const
 uint8_t BLELocalCharacteristic::properties() const
 {
   return _properties;
+}
+
+uint8_t BLELocalCharacteristic::permissions() const {
+  return _permissions;
 }
 
 int BLELocalCharacteristic::valueSize() const
@@ -121,10 +127,10 @@ int BLELocalCharacteristic::writeValue(const uint8_t value[], int length)
   if (_broadcast) {
     uint16_t serviceUuid = GATT.serviceUuidForCharacteristic(this);
 
-    GAP.setAdvertisedServiceData(serviceUuid, value, length);
+    BLE.setAdvertisedServiceData(serviceUuid, value, length);
   
     if (!ATT.connected() && GAP.advertising()) {
-      GAP.advertise();
+      BLE.advertise();
     }
   }
 

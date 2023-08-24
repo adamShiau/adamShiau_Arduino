@@ -2,7 +2,7 @@
  * ATtinySerialOutExample.cpp
  * Example for using ATtinySerialOut library
  *
- *  Copyright (C) 2015-2019  Armin Joachimsmeyer
+ *  Copyright (C) 2015-2021  Armin Joachimsmeyer
  *  Email: armin.joachimsmeyer@gmail.com
  *
  *  This file is part of TinySerialOut https://github.com/ArminJo/ATtinySerialOut.
@@ -14,19 +14,28 @@
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  See the GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/gpl.html>.
+ *  along with this program. If not, see <http://www.gnu.org/licenses/gpl.html>.
  *
  */
 
-#include <Arduino.h> // needed for main()
+#include <Arduino.h> // required for main()
 
-#include "ATtinySerialOut.h"
+/*
+ * You can specify TX_PIN here (before the line #include "ATtinySerialOut.hpp")
+ */
+//#if defined(__AVR_ATtiny87__) || defined(__AVR_ATtiny167__)
+//#define TX_PIN PIN_PA1 // (package pin 2 / TXD on Tiny167) - can use one of PIN_PA0 to PIN_PA7 here
+//#elif defined(__AVR_ATtiny84__)
+//#define TX_PIN PIN_PA1 // can use one of PIN_PA0 to PIN_PA7 and PIN_PB0 to PIN_PB2 here
+//#else
+//#define TX_PIN PIN_PB2 // (package pin 7 on Tiny85) - can use one of PIN_PB0 to PIN_PB4 (+PIN_PB5) here
+//#endif
 
-#include <avr/pgmspace.h> // needed for PSTR()
+#include "ATtinySerialOut.hpp"
 
 void setup(void) {
     initTXPin();
@@ -40,14 +49,14 @@ void setup(void) {
 void loop(void) {
     static uint8_t tIndex = 0;
     /*
-     * Example of 3 Byte output. View in combined ASSCI / HEX View in HTerm (http://www.der-hammer.info/terminal/)
+     * Example of 3 byte output. View in combined ASSCI / HEX View in HTerm (http://www.der-hammer.info/terminal/)
      * Otherwise use writeUnsignedByteHexWithoutPrefix or writeUnsignedByteHex
      */
     write1Start8Data1StopNoParityWithCliSei('I');
-    writeBinary(tIndex);                    // 1 Byte binary output
-    writeUnsignedByte(tIndex);              // 1-3 Byte ASCII output
-    writeUnsignedByteHexWithPrefix(tIndex); // 4 Byte output
-    writeUnsignedByteHex(tIndex);           // 2 Byte output
+    writeBinary(tIndex);                    // 1 byte binary output
+    writeUnsignedByte(tIndex);              // 1-3 byte ASCII output
+    writeUnsignedByteHexWithPrefix(tIndex); // 4 byte output
+    writeUnsignedByteHex(tIndex);           // 2 byte output
     write1Start8Data1StopNoParityWithCliSei('\n');
     /*
      * Serial.print usage example

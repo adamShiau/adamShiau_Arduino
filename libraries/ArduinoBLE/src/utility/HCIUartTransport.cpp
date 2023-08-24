@@ -17,18 +17,20 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#if !defined(ARDUINO_ARCH_MBED)
+#if !defined(ARDUINO_ARCH_MBED) && !defined(ESP32) || defined(TARGET_NANO_RP2040_CONNECT)
 
 #include "HCIUartTransport.h"
 
 #if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
 #define SerialHCI Serial2
-#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+#elif defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_NANO_RP2040_CONNECT)
 // SerialHCI is already defined in the variant
 #elif defined(ARDUINO_PORTENTA_H7_M4)
 // SerialHCI is already defined in the variant
-#elif defined(ARDUINO_PORTENTA_H7_M7)
+#elif defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
 #define SerialHCI Serial2
+#elif defined(ARDUINO_PORTENTA_C33)
+#define SerialHCI Serial5
 #else
 #error "Unsupported board selected!"
 #endif
@@ -93,7 +95,7 @@ size_t HCIUartTransportClass::write(const uint8_t* data, size_t length)
   return result;
 }
 
-#ifdef ARDUINO_AVR_UNO_WIFI_REV2
+#if defined(ARDUINO_AVR_UNO_WIFI_REV2) || defined(ARDUINO_NANO_RP2040_CONNECT)
 HCIUartTransportClass HCIUartTransport(SerialHCI, 119600);
 #else
 HCIUartTransportClass HCIUartTransport(SerialHCI, 912600);

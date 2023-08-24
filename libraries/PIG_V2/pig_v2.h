@@ -10,7 +10,7 @@
 class PIG
 {
 	public:
-		PIG(Stream &);
+		PIG(Stream &, byte l=14);
 		~PIG(void);
 		void init(void);
 		void sendCmd(unsigned char, unsigned int);

@@ -792,11 +792,11 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
   //     break;
   //   }
 	// }
-  Serial.println(micros() - t_loop_start);
+  // Serial.println(micros() - t_loop_start);
   t_loop_start = micros();
   if(select_fn&SEL_IMU)
 	{
-    Serial.print("fog channel: ");
+    Serial.print("fog channel: HIHI EVT");
     Serial.println(ch);
     Serial.println("select acq_imu2\n");
     CtrlReg = value;

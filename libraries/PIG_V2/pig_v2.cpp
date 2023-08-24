@@ -29,7 +29,7 @@
 #define HP_TEST 	3
 
 // 
-PIG::PIG(Stream &p ) : port(p), myUart(p, 14) 
+PIG::PIG(Stream &p, byte l) : port(p), myUart(p, l) 
 {
 }
 

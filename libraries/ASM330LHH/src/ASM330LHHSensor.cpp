@@ -570,11 +570,11 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   // Serial.print("X: ");
   // Serial1.print(millis());
   // Serial1.print(", ");
-  Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
-  Serial1.print(", ");
-  Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
-  Serial1.print(", ");
-  Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+  // Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  // Serial1.print(", ");
+  // Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  // Serial1.print(", ");
+  // Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
 
 
