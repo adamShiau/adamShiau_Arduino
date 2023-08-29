@@ -24,54 +24,31 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
-// #define G04
-// #SP init parameter
+#define MOD_FREQ_INIT 104
+#define WAIT_CNT_INIT 20
+#define ERR_AVG_INIT 6
+#define MOD_AMP_H_INIT 9100
+#define MOD_AMP_L_INIT -9100
+#define ERR_TH_INIT 0
+#define ERR_OFFSET_INIT 0
+#define POLARITY_INIT 1
+#define CONST_STEP_INIT 16384
+#define FPGA_Q_INIT 1
+#define FPGA_R_INIT 6
+#define GAIN1_INIT 5
+#define GAIN2_INIT 7
+#define FB_ON_INIT 1
+#define DAC_GAIN_INIT 77
+#define DATA_INT_DELAY_INIT 2000
 
-// #ifdef G04
-// #define MOD_FREQ_INIT 103
-// #define WAIT_CNT_INIT 20
-// #define ERR_AVG_INIT 6
-// #define MOD_AMP_H_INIT 9100
-// #define MOD_AMP_L_INIT -9100
-// #define ERR_TH_INIT 54
-// #define ERR_OFFSET_INIT 0
-// #define POLARITY_INIT 1
-// #define CONST_STEP_INIT 16384
-// #define FPGA_Q_INIT 1
-// #define FPGA_R_INIT 6
-// #define GAIN1_INIT 5
-// #define GAIN2_INIT 7
-// #define FB_ON_INIT 1
-// #define DAC_GAIN_INIT 70
-// #define DATA_INT_DELAY_ADDR 1990
-// #endif
-
-// #ifdef G05
-// #define MOD_FREQ_INIT 104
-// #define WAIT_CNT_INIT 20
-// #define ERR_AVG_INIT 6
-// #define MOD_AMP_H_INIT 9100
-// #define MOD_AMP_L_INIT -9100
-// #define ERR_TH_INIT 54
-// #define ERR_OFFSET_INIT 0
-// #define POLARITY_INIT 1
-// #define CONST_STEP_INIT 16384
-// #define FPGA_Q_INIT 1
-// #define FPGA_R_INIT 6
-// #define GAIN1_INIT 5
-// #define GAIN2_INIT 7
-// #define FB_ON_INIT 1
-// #define DAC_GAIN_INIT 77
-// #define DATA_INT_DELAY_ADDR 2000
-// #endif
 
 //PWM
 #include <SAMD21turboPWM.h>
 #define PWM100 7
 #define PWM200 5
 #define PWM250 11
-#define PWM_FIX 0.981
-// #define PWM_FIX 0.978
+// #define PWM_FIX 0.981
+#define PWM_FIX 0.986 
 TurboPWM  pwm;
 
 
@@ -170,7 +147,7 @@ PIG sp9(Serial4); //SP14
 
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd, fog_channel;
-int value;
+unsigned int value;
 bool cmd_complete;
 
 /*** output mode flag***/
@@ -226,7 +203,7 @@ TinyGPSPlus gps;
 // unsigned int tt1=0, tt2=0;
 
 void setup() {
-  
+
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
@@ -270,7 +247,7 @@ void setup() {
 
   
 	Serial.begin(230400); //debug
-	Serial1.begin(230400); //to PC
+	Serial1.begin(115200); //to PC
   Serial2.begin(115200); //fog
   Serial3.begin(115200);
   Serial4.begin(115200);
@@ -302,7 +279,8 @@ void setup() {
   digitalWrite(nCONFIG, HIGH);
   delay(500);
 
-  parameter_init();
+  set_parameter_init();
+
    
 
   //ADC
@@ -437,7 +415,7 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
+void getCmdValue(byte &uart_cmd, unsigned int &uart_value, byte &fog_ch, bool &uart_complete)
 {
   byte *cmd;
 
@@ -470,208 +448,161 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 	}
 }
 
-void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch) 
+void set_parameter_init()
+{
+  Serial.println("Setting SP initail parameters!");
+  sp14.sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, MOD_FREQ_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, WAIT_CNT_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, ERR_AVG_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, MOD_AMP_H_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, MOD_AMP_L_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, ERR_TH_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, ERR_OFFSET_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, POLARITY_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, CONST_STEP_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, FPGA_Q_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, FPGA_R_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, GAIN1_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, GAIN2_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
+  delay(100);
+  sp14.sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, FB_ON_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, DAC_GAIN_INIT);
+  delay(100);
+  sp14.sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, DATA_INT_DELAY_INIT);
+  Serial.println("Setting SP parameters done");
+}
+
+void parameter_setting(byte &mux_flag, byte cmd, unsigned int value, byte fog_ch) 
 {
 	if(mux_flag == MUX_PARAMETER)
 	{
-    PIG *sp;
-    if(fog_ch==1) sp=&sp13;
-    else if(fog_ch==2) sp=&sp14;
-    else if(fog_ch=3) sp=&sp9;
-
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
       case CMD_FOG_MOD_FREQ: {
-        if(value != EEPROM_Mod_freq){
-          Serial.println("FOG_MOD_FREQ changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ, value);
-          sp->updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, EEPROM_Mod_freq, 0xCC);
-        }
+        Serial.println(1);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_MOD_AMP_H: {
-       if(value != EEPROM_Amp_H){
-          Serial.println("FOG_MOD_AMP_H changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Amp_H, EEPROM_ADDR_MOD_AMP_H, value);
-          sp->updateParameter(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, EEPROM_Amp_H, 0xCC);
-        }
+        Serial.println(2);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_MOD_AMP_L: {
-        if(value != EEPROM_Amp_L){
-          Serial.println("FOG_MOD_AMP_L changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Amp_L, EEPROM_ADDR_MOD_AMP_L, value);
-          sp->updateParameter(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, EEPROM_Amp_L, 0xCC);
-        }
+        Serial.println(3);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_ERR_OFFSET: {
-        if(value != EEPROM_Err_offset){
-          Serial.println("FOG_ERR_OFFSET changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Err_offset, EEPROM_ADDR_ERR_OFFSET, value);
-          sp->updateParameter(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, EEPROM_Err_offset, 0xCC);
-        }
+        Serial.println(4);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_POLARITY: {
-        if(value != EEPROM_Polarity){
-          Serial.println("FOG_POLARITY changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Polarity, EEPROM_ADDR_POLARITY, value);
-          sp->updateParameter(myCmd_header, POLARITY_ADDR, myCmd_trailer, EEPROM_Polarity, 0xCC);
-        }
+        Serial.println(5);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, POLARITY_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, POLARITY_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, POLARITY_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_WAIT_CNT:{
-        if(value != EEPROM_Wait_cnt){
-          Serial.println("FOG_WAIT_CNT changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Wait_cnt, EEPROM_ADDR_WAIT_CNT, value);
-          sp->updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, EEPROM_Wait_cnt, 0xCC);
-        }
+        Serial.println(6);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_ERR_TH: {
-        if(value != EEPROM_Err_th){
-          Serial.println("FOG_ERR_TH changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Err_th, EEPROM_ADDR_ERR_TH, value);
-          sp->updateParameter(myCmd_header, ERR_TH_ADDR, myCmd_trailer, EEPROM_Err_th, 0xCC);
-        }
+        Serial.println(7);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, ERR_TH_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_ERR_AVG: {
-        if(value != EEPROM_Err_avg){
-          Serial.println("FOG_ERR_AVG changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Err_avg, EEPROM_ADDR_ERR_AVG, value);
-          sp->updateParameter(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, EEPROM_Err_avg, 0xCC);
-        }
+        Serial.println(8);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_TIMER_RST: {
-        sp->updateParameter(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value, 0xCC);
+        Serial.println(9);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, TIMER_RST_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_GAIN1: {
-       if(value != EEPROM_Gain1){
-          Serial.println("FOG_GAIN1 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Gain1, EEPROM_ADDR_GAIN1, value);
-          sp->updateParameter(myCmd_header, GAIN1_ADDR, myCmd_trailer, EEPROM_Gain1, 0xCC);
-        }
+        Serial.println(10);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, GAIN1_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, GAIN1_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, GAIN1_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_GAIN2: {
-       if(value != EEPROM_Gain2){
-          Serial.println("FOG_GAIN2 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Gain2, EEPROM_ADDR_GAIN2, value);
-          sp->updateParameter(myCmd_header, GAIN2_ADDR, myCmd_trailer, EEPROM_Gain2, 0xCC);
-        }
+        Serial.println(11);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, GAIN2_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, GAIN2_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, GAIN2_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_FB_ON: {
-       if(value != EEPROM_FB_ON){
-          Serial.println("FOG_FB_ON changed!");
-          write_fog_parameter_to_eeprom(EEPROM_FB_ON, EEPROM_ADDR_FB_ON, value);
-          sp->updateParameter(myCmd_header, FB_ON_ADDR, myCmd_trailer, EEPROM_FB_ON, 0xCC);
-        }
+        Serial.println(12);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, FB_ON_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, FB_ON_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, FB_ON_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_CONST_STEP: {
-        if(value != EEPROM_Const_step){
-          Serial.println("FOG_CONST_STEP changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Const_step, EEPROM_ADDR_CONST_STEP, value);
-          sp->updateParameter(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, EEPROM_Const_step, 0xCC);
-        }
+        Serial.println(13);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_FPGA_Q: {
-       if(value != EEPROM_Fpga_Q){
-          Serial.println("FOG_FPGA_Q changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Fpga_Q, EEPROM_ADDR_FPGA_Q, value);
-          sp->updateParameter(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, EEPROM_Fpga_Q, 0xCC);
-        }
+        Serial.println(14);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_FPGA_R: {
-       if(value != EEPROM_Fpga_R){
-          Serial.println("FOG_FPGA_R changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Fpga_R, EEPROM_ADDR_FPGA_R, value);
-          sp->updateParameter(myCmd_header, FPGA_R_ADDR, myCmd_trailer, EEPROM_Fpga_R, 0xCC);
-        }
+        Serial.println(15);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, FPGA_R_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_DAC_GAIN: {
-       if(value != EEPROM_DAC_gain){
-          Serial.println("FOG_DAC_GAIN changed!");
-          write_fog_parameter_to_eeprom(EEPROM_DAC_gain, EEPROM_ADDR_DAC_GAIN, value);
-          sp->updateParameter(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, EEPROM_DAC_gain, 0xCC);
-        }
+        Serial.println(16);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, value, 0xCC);
         break;}
 			case CMD_FOG_INT_DELAY: {
-        if(value != EEPROM_Data_delay){
-          Serial.println("FOG_INT_DELAY changed!");
-          write_fog_parameter_to_eeprom(EEPROM_Data_delay, EEPROM_ADDR_DATA_DELAY, value);
-          sp->updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, EEPROM_Data_delay, 0xCC);
-        }
+        Serial.println(17);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, value, 0xCC);
         break;}
       case CMD_FOG_OUT_START: {
-        sp->updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+        Serial.println(18);
+        if(fog_ch==1)       sp13.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==2)  sp14.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
+        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, DATA_OUT_START_ADDR, myCmd_trailer, value, 0xCC);
         break;}
-      
-      case CMD_FOG_SF0: {
-        if(value != EEPROM_SF0){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF0, EEPROM_ADDR_SF_0, value);
-          sp->updateParameter(myCmd_header, SF0_ADDR, myCmd_trailer, EEPROM_SF0, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF1: {
-        if(value != EEPROM_SF1){
-          Serial.println("FOG_SF1 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF1, EEPROM_ADDR_SF_1, value);
-          sp->updateParameter(myCmd_header, SF1_ADDR, myCmd_trailer, EEPROM_SF1, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF2: {
-        if(value != EEPROM_SF2){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF2, EEPROM_ADDR_SF_2, value);
-          sp->updateParameter(myCmd_header, SF2_ADDR, myCmd_trailer, EEPROM_SF2, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF3: {
-        if(value != EEPROM_SF3){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF3, EEPROM_ADDR_SF_3, value);
-          sp->updateParameter(myCmd_header, SF3_ADDR, myCmd_trailer, EEPROM_SF3, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF4: {
-        if(value != EEPROM_SF4){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF4, EEPROM_ADDR_SF_4, value);
-          sp->updateParameter(myCmd_header, SF4_ADDR, myCmd_trailer, EEPROM_SF4, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF5: {
-        if(value != EEPROM_SF5){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF5, EEPROM_ADDR_SF_5, value);
-          sp->updateParameter(myCmd_header, SF5_ADDR, myCmd_trailer, EEPROM_SF5, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF6: {
-        if(value != EEPROM_SF6){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF6, EEPROM_ADDR_SF_6, value);
-          sp->updateParameter(myCmd_header, SF6_ADDR, myCmd_trailer, EEPROM_SF6, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF7: {
-        if(value != EEPROM_SF7){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7, value);
-          sp->updateParameter(myCmd_header, SF7_ADDR, myCmd_trailer, EEPROM_SF7, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF8: {
-        if(value != EEPROM_SF8){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8, value);
-          sp->updateParameter(myCmd_header, SF8_ADDR, myCmd_trailer, EEPROM_SF8, 0xCC);
-        }
-      break;}
-      case CMD_FOG_SF9: {
-        if(value != EEPROM_SF9){
-          Serial.println("FOG_SF0 changed!");
-          write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, value);
-          sp->updateParameter(myCmd_header, SF9_ADDR, myCmd_trailer, EEPROM_SF9, 0xCC);
-        }
-      break;}
-
-
 
       case CMD_FPGA_VERSION: {
         Serial.println(19);
@@ -1561,141 +1492,5 @@ void disableWDT() {
   WDT->CTRL.reg = 0; // disable watchdog
   WDTsync(); // sync is required
   Serial.println("disableWDT");
-}
-
-void parameter_init(void)
-{
-  // delay(2000);
-  eeprom.Parameter_Read(EEPROM_ADDR_PARAMETER_EXIST,my_f.bin_val);
-  EEPROM_Parameter_exist = my_f.int_val;
-  /***fog parameter is empty,  write initial fog data*/
-  if(EEPROM_Parameter_exist != EEPROM_PARAMETER_EXIST){
-    eeprom.Parameter_Write(EEPROM_ADDR_PARAMETER_EXIST, EEPROM_PARAMETER_EXIST);
-    Serial.println("EEPROM FOG parameter not exist!");
-    Serial.println("Start writing initial fog data.");
-    write_fog_parameter_to_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ, MOD_FREQ_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Wait_cnt, EEPROM_ADDR_WAIT_CNT, WAIT_CNT_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Err_avg, EEPROM_ADDR_ERR_AVG, ERR_AVG_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Amp_H, EEPROM_ADDR_MOD_AMP_H, MOD_AMP_H_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Amp_L, EEPROM_ADDR_MOD_AMP_L, MOD_AMP_L_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Err_th, EEPROM_ADDR_ERR_TH, ERR_TH_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Err_offset, EEPROM_ADDR_ERR_OFFSET, ERR_OFFSET_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Polarity, EEPROM_ADDR_POLARITY, POLARITY_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Const_step, EEPROM_ADDR_CONST_STEP, CONST_STEP_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Fpga_Q, EEPROM_ADDR_FPGA_Q, FPGA_Q_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Fpga_R, EEPROM_ADDR_FPGA_R, FPGA_R_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Gain1, EEPROM_ADDR_GAIN1, GAIN1_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Gain2, EEPROM_ADDR_GAIN2, GAIN2_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_FB_ON, EEPROM_ADDR_FB_ON, FB_ON_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_DAC_gain, EEPROM_ADDR_DAC_GAIN, DAC_GAIN_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_Data_delay, EEPROM_ADDR_DATA_DELAY, DATA_INT_DELAY_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF0, EEPROM_ADDR_SF_0, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF1, EEPROM_ADDR_SF_1, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF2, EEPROM_ADDR_SF_2, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF3, EEPROM_ADDR_SF_3, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF4, EEPROM_ADDR_SF_4, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF5, EEPROM_ADDR_SF_5, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF6, EEPROM_ADDR_SF_6, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8, SF_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, SF_INIT);
-    update_fpga_fog_parameter_init(100, 2);
-  }
-  else{
-    Serial.println("EEPROM FOG parameter exist!");
-    Serial.println("Start reading fog parameter from eeprom.");
-    read_fog_parameter_from_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ);
-    read_fog_parameter_from_eeprom(EEPROM_Wait_cnt, EEPROM_ADDR_WAIT_CNT);
-    read_fog_parameter_from_eeprom(EEPROM_Err_avg, EEPROM_ADDR_ERR_AVG);
-    read_fog_parameter_from_eeprom(EEPROM_Amp_H, EEPROM_ADDR_MOD_AMP_H);
-    read_fog_parameter_from_eeprom(EEPROM_Amp_L, EEPROM_ADDR_MOD_AMP_L);
-    read_fog_parameter_from_eeprom(EEPROM_Err_th, EEPROM_ADDR_ERR_TH);
-    read_fog_parameter_from_eeprom(EEPROM_Err_offset, EEPROM_ADDR_ERR_OFFSET);
-    read_fog_parameter_from_eeprom(EEPROM_Polarity, EEPROM_ADDR_POLARITY);
-    read_fog_parameter_from_eeprom(EEPROM_Const_step, EEPROM_ADDR_CONST_STEP);
-    read_fog_parameter_from_eeprom(EEPROM_Fpga_Q, EEPROM_ADDR_FPGA_Q);
-    read_fog_parameter_from_eeprom(EEPROM_Fpga_R, EEPROM_ADDR_FPGA_R);
-    read_fog_parameter_from_eeprom(EEPROM_Gain1, EEPROM_ADDR_GAIN1);
-    read_fog_parameter_from_eeprom(EEPROM_Gain2, EEPROM_ADDR_GAIN2);
-    read_fog_parameter_from_eeprom(EEPROM_FB_ON, EEPROM_ADDR_FB_ON);
-    read_fog_parameter_from_eeprom(EEPROM_DAC_gain, EEPROM_ADDR_DAC_GAIN);
-    read_fog_parameter_from_eeprom(EEPROM_Data_delay, EEPROM_ADDR_DATA_DELAY);
-    read_fog_parameter_from_eeprom(EEPROM_SF0, EEPROM_ADDR_SF_0);
-    read_fog_parameter_from_eeprom(EEPROM_SF1, EEPROM_ADDR_SF_1);
-    read_fog_parameter_from_eeprom(EEPROM_SF2, EEPROM_ADDR_SF_2);
-    read_fog_parameter_from_eeprom(EEPROM_SF3, EEPROM_ADDR_SF_3);
-    read_fog_parameter_from_eeprom(EEPROM_SF4, EEPROM_ADDR_SF_4);
-    read_fog_parameter_from_eeprom(EEPROM_SF5, EEPROM_ADDR_SF_5);
-    read_fog_parameter_from_eeprom(EEPROM_SF6, EEPROM_ADDR_SF_6);
-    read_fog_parameter_from_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7);
-    read_fog_parameter_from_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8);
-    read_fog_parameter_from_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9);
-    update_fpga_fog_parameter_init(100, 2);
-  }
-}
-
-void write_fog_parameter_to_eeprom(int& eeprom_var, unsigned int eeprom_addr, int value)
-{
-  /**copy to eeprom variable*/
-  eeprom_var = value;
-  /**write to eeprom address*/
-  eeprom.Parameter_Write(eeprom_addr, value);
-}
-
-void read_fog_parameter_from_eeprom(int& eeprom_var, unsigned int eeprom_addr)
-{
-  
-  /**read from eeprom address*/
-  eeprom.Parameter_Read(eeprom_addr, my_f.bin_val);
-  /**copy to eeprom variable*/
-  eeprom_var = my_f.int_val;
-  Serial.println(eeprom_var);
-}
-
-void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
-{
-  Serial.println("Setting SP initail parameters!");
-
-  PIG *sp;
-  if(fog_ch==1) sp=&sp13;
-  else if(fog_ch==2) sp=&sp14;
-  else if(fog_ch=3) sp=&sp9;
-
-  sp->sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, EEPROM_Mod_freq);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, EEPROM_Wait_cnt);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, ERR_AVG_ADDR, myCmd_trailer, EEPROM_Err_avg);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, MOD_AMP_H_ADDR, myCmd_trailer, EEPROM_Amp_H);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, MOD_AMP_L_ADDR, myCmd_trailer, EEPROM_Amp_L);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, ERR_TH_ADDR, myCmd_trailer, EEPROM_Err_th);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, ERR_OFFSET_ADDR, myCmd_trailer, EEPROM_Err_offset);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, POLARITY_ADDR, myCmd_trailer, EEPROM_Polarity);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, CONST_STEP_ADDR, myCmd_trailer, EEPROM_Const_step);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, FPGA_Q_ADDR, myCmd_trailer, EEPROM_Fpga_Q);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, FPGA_R_ADDR, myCmd_trailer, EEPROM_Fpga_R);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, GAIN1_ADDR, myCmd_trailer, EEPROM_Gain1);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, GAIN2_ADDR, myCmd_trailer, EEPROM_Gain2);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, EEPROM_FB_ON);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, 0);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, FB_ON_ADDR, myCmd_trailer, EEPROM_FB_ON);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, EEPROM_DAC_gain);
-  delay(dly_time);
-  sp->sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, EEPROM_Data_delay);
-  Serial.println("Setting SP parameters done");
 }
 
