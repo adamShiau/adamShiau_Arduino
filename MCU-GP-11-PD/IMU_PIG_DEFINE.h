@@ -64,7 +64,10 @@
 #define CMD_FOG_SF7     	33
 #define CMD_FOG_SF8     	34
 #define CMD_FOG_SF9     	35
+#define CMD_FOG_TMIN     	36
+#define CMD_FOG_TMAX     	37
 #define CMD_FPGA_VERSION	101
+#define CMD_DUMP_PARAMETERS	102
 
 #define MUX_OUTPUT		    0
 #define MUX_PARAMETER	    1
@@ -95,11 +98,14 @@
 #define SF7_ADDR  		    22
 #define SF8_ADDR  		    23
 #define SF9_ADDR  		    24
+#define TMIN_ADDR           25
+#define TMAX_ADDR           26
 #define DAC_GAIN_ADDR  		50
 #define DATA_INT_DELAY_ADDR	98
 #define DATA_OUT_START_ADDR	99
 
 #define FPGA_VERSION_ADDR	101
+#define FPGA_DUMP_PARAMETERS_ADDR	102
 
 /*** UART port***/
 // #define UART_SERIAL_5_CMD
@@ -135,12 +141,15 @@
 #define VERSION     5
 #define HP_TEST     3
 
-#define EEPROM_PARAMETER_EXIST 0xAA
+#define EEPROM_PARAMETER_EXIST 0xAB
 
 #define FLOAT_1 0x3f800000  
 #define FLOAT_2 0x40000000  
 #define FLOAT_3 0x40400000  
 #define FLOAT_4 0x40800000  
+
+#define MINUS20 0xC1A00000
+#define PLUS60  0x42700000
 
 /***FOG INIT VALUE*/
 #define MOD_FREQ_INIT       104
@@ -160,6 +169,7 @@
 #define DAC_GAIN_INIT       77
 #define DATA_INT_DELAY_INIT 2000
 #define SF_INIT             FLOAT_1   
+
 
 /*** EEPROM ADDR*/
 #define EEPROM_ADDR_FOG_STATUS 4095
@@ -197,6 +207,8 @@
 #define EEPROM_ADDR_SF_7            25
 #define EEPROM_ADDR_SF_8            26
 #define EEPROM_ADDR_SF_9            27
+#define EEPROM_ADDR_TMIN            28
+#define EEPROM_ADDR_TMAX            29
 
 
 /**Global Variable for EEPROM*/
@@ -206,6 +218,7 @@ int EEPROM_Mod_freq, EEPROM_Wait_cnt, EEPROM_Err_avg, EEPROM_Polarity, EEPROM_Fp
 int EEPROM_Amp_H, EEPROM_Amp_L, EEPROM_Err_offset, EEPROM_Err_th, EEPROM_Const_step;
 int EEPROM_SF0, EEPROM_SF1, EEPROM_SF2, EEPROM_SF3, EEPROM_SF4;
 int EEPROM_SF5, EEPROM_SF6, EEPROM_SF7, EEPROM_SF8, EEPROM_SF9; 
+int EEPROM_TMIN, EEPROM_TMAX;
 
 /*** ADC PIN***/
 #define ADC_CONV 3.3/4096.0

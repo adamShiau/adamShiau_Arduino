@@ -470,14 +470,28 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 	}
 }
 
+// PIG sp13(Serial2); //SP13
+// PIG sp14(Serial3); //SP14
+// PIG sp9(Serial4); //SP14
 void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch) 
 {
 	if(mux_flag == MUX_PARAMETER)
 	{
     PIG *sp;
-    if(fog_ch==1) sp=&sp13;
-    else if(fog_ch==2) sp=&sp14;
-    else if(fog_ch=3) sp=&sp9;
+    Stream *SER;
+
+    if(fog_ch==1){
+      sp = &sp13;
+      SER = &Serial2;
+    }
+    else if(fog_ch==2){
+      sp = &sp14;
+      SER = &Serial3;
+    } 
+    else if(fog_ch=3){
+      sp = &sp9;
+      SER = &Serial4;
+    } 
 
 		mux_flag = MUX_ESCAPE;
 		switch(cmd) {
@@ -670,18 +684,42 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
           sp->updateParameter(myCmd_header, SF9_ADDR, myCmd_trailer, EEPROM_SF9, 0xCC);
         }
       break;}
-
-
+      case CMD_FOG_TMIN: {
+        if(value != EEPROM_TMIN){
+          Serial.println("FOG_T_MIN changed!");
+          write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, value);
+          sp->updateParameter(myCmd_header, TMIN_ADDR, myCmd_trailer, EEPROM_TMIN, 0xCC);
+        }
+      break;}
+      case CMD_FOG_TMAX: {
+        // Serial.println(value, HEX);
+        // Serial.println(EEPROM_TMAX, HEX);
+        if(value != EEPROM_TMAX){
+          Serial.println("FOG_T_MAX changed!");
+          write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, value);
+          sp->updateParameter(myCmd_header, TMAX_ADDR, myCmd_trailer, EEPROM_TMAX, 0xCC);
+        }
+      break;}
 
       case CMD_FPGA_VERSION: {
-        Serial.println(19);
-        if(fog_ch==1)       sp13.updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
-        else if(fog_ch==2)  {
-          for(int i=0; i<255; i++) //clear serial buffer
-            Serial3.read();
-          sp14.updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
-        }
-        else if(fog_ch==3)  sp9.updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
+        for(int i=0; i<255; i++) SER->read();//clear serial buffer
+        sp->updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
+        break;
+      }
+
+      case CMD_DUMP_PARAMETERS: {
+        String fog_parameter;
+        for(int i=0; i<255; i++) SER->read();//clear serial buffer
+        sp->updateParameter(myCmd_header, FPGA_DUMP_PARAMETERS_ADDR, myCmd_trailer, value, 0xCC);
+
+        while(!SER->available());
+        if(SER->available())
+         {
+          fog_parameter = SER->readStringUntil('\n');
+          Serial.println(fog_parameter);
+          Serial1.println(fog_parameter);
+         }  
+
         break;
       }
 			default: break;
@@ -1599,6 +1637,8 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7, SF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8, SF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, SF_INIT);
+    write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
+    write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS60);
     update_fpga_fog_parameter_init(100, 2);
   }
   else{
@@ -1630,6 +1670,9 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7);
     read_fog_parameter_from_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8);
     read_fog_parameter_from_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9);
+    read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
+    read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
+    
     update_fpga_fog_parameter_init(100, 2);
   }
 }
