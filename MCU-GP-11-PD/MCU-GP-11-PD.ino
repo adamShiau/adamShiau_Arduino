@@ -1603,7 +1603,7 @@ void disableWDT() {
 
 void parameter_init(void)
 {
-  // delay(2000);
+  delay(2000);
   eeprom.Parameter_Read(EEPROM_ADDR_PARAMETER_EXIST,my_f.bin_val);
   EEPROM_Parameter_exist = my_f.int_val;
   /***fog parameter is empty,  write initial fog data*/
@@ -1611,6 +1611,7 @@ void parameter_init(void)
     eeprom.Parameter_Write(EEPROM_ADDR_PARAMETER_EXIST, EEPROM_PARAMETER_EXIST);
     Serial.println("EEPROM FOG parameter not exist!");
     Serial.println("Start writing initial fog data.");
+    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
     write_fog_parameter_to_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ, MOD_FREQ_INIT);
     write_fog_parameter_to_eeprom(EEPROM_Wait_cnt, EEPROM_ADDR_WAIT_CNT, WAIT_CNT_INIT);
     write_fog_parameter_to_eeprom(EEPROM_Err_avg, EEPROM_ADDR_ERR_AVG, ERR_AVG_INIT);
@@ -1638,7 +1639,7 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8, SF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, SF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
-    write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS60);
+    write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS80);
     update_fpga_fog_parameter_init(100, 2);
   }
   else{
@@ -1739,6 +1740,31 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   sp->sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, EEPROM_DAC_gain);
   delay(dly_time);
   sp->sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, EEPROM_Data_delay);
+
+  sp->sendCmd(myCmd_header, SF0_ADDR, myCmd_trailer, EEPROM_SF0);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF1_ADDR, myCmd_trailer, EEPROM_SF1);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF2_ADDR, myCmd_trailer, EEPROM_SF2);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF3_ADDR, myCmd_trailer, EEPROM_SF3);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF4_ADDR, myCmd_trailer, EEPROM_SF4);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF5_ADDR, myCmd_trailer, EEPROM_SF5);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF6_ADDR, myCmd_trailer, EEPROM_SF6);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF7_ADDR, myCmd_trailer, EEPROM_SF7);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF8_ADDR, myCmd_trailer, EEPROM_SF8);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SF9_ADDR, myCmd_trailer, EEPROM_SF9);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, TMIN_ADDR, myCmd_trailer, EEPROM_TMIN);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, TMAX_ADDR, myCmd_trailer, EEPROM_TMAX);
+  delay(dly_time);
   Serial.println("Setting SP parameters done");
 }
 

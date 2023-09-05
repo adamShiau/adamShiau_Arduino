@@ -36,7 +36,7 @@
 #define GAIN2_INIT 5
 #define FB_ON_INIT 1
 #define DAC_GAIN_INIT 325
-#define DATA_INT_DELAY_ADDR 2194
+#define DATA_INT_DELAY_INIT 2194
 
 /*** global var***/
 int pin_scl_mux = 17;
@@ -167,16 +167,10 @@ void setup() {
 	output_fn = temp_idle;
 	
 	/*** pwm ***/
-
+  #define PWM_FIX 0.981
 	/*** Set input clock divider and Turbo Mode (which uses a 96MHz instead of a 48Mhz input clock): ***/
-	pwm.setClockDivider(200, false); // Main clock 48MHz divided by 200 => 240KHz
-	
-	/*** Initialise timer x, with prescaler, with steps (resolution), 
-	with fast aka single-slope PWM (or not -> double-slope PWM): 
-	For the Arduino Nano 33 IoT, you need to initialise timer 1 for pins 4 and 7, timer 0 for pins 5, 6, 8, and 12, 
-	and timer 2 for pins 11 and 13;
-	***/
-	pwm.timer(2, 2, 240, false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
+	pwm.setClockDivider(2, false); // Main clock 48MHz divided by 200 => 240KHz
+	pwm.timer(2, 2, int(60000*PWM_FIX), false);   // Use timer 2 for pin 11, divide clock by 4, resolution 600, dual-slope PWM
 	pwm.analogWrite(11, 500);        // PWM frequency = 120000/step/2, dutycycle is 500 / 1000 * 100% = 50%
 	                                // current setup: 120000/240/2 = 250Hz
 	                                // step = 600 for 100Hz

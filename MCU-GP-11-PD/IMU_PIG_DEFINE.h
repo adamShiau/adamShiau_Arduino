@@ -150,6 +150,7 @@
 
 #define MINUS20 0xC1A00000
 #define PLUS60  0x42700000
+#define PLUS80  0x42A00000
 
 /***FOG INIT VALUE*/
 #define MOD_FREQ_INIT       104
