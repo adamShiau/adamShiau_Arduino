@@ -88,10 +88,11 @@ void SERCOM0_Handler()
 Adxl355_I2C adxl355_i2c(myWire);
 
 void setup() {
-  myWire.begin();
-  myWire.setClock(I2C_FAST_MODE_PLUS);
-  pinPeripheral(27, PIO_SERCOM);
-  pinPeripheral(20, PIO_SERCOM);
+	Serial.begin(230400);
+	myWire.begin();
+	myWire.setClock(I2C_FAST_MODE_PLUS);
+	pinPeripheral(27, PIO_SERCOM);
+	pinPeripheral(20, PIO_SERCOM);
 	adxl355_i2c.init();
 	pinMode(SYS_TRIG, INPUT);
 }

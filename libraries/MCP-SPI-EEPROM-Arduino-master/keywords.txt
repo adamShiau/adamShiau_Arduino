@@ -1,0 +1,20 @@
+# file generated using https://github.com/Harryman/Arduino-header-keyword-creator
+##################################
+# Class Name
+##################################
+SPIPRM	KEYWORD1
+
+##################################
+# Methods/Functions 
+##################################
+SPIset	KEYWORD2
+writeStart	KEYWORD2
+writeData	KEYWORD2
+endCmd	KEYWORD2
+write16	KEYWORD2
+readStart	KEYWORD2
+readData	KEYWORD2
+read16	KEYWORD2
+wren	KEYWORD2
+rdid	KEYWORD2
+rdsr	KEYWORD2
