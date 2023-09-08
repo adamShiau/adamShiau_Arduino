@@ -29,8 +29,8 @@ void Adxl357_I2C::init()
 	setRegVal(RST_ADDR, POR);
 	setRegVal(RANGE_ADDR, F_MODE | RANGE_10G);
 	setRegVal(FILTER_ADDR, ODR_500);
-	// setRegVal(SYNC_ADDR, EXT_SYNC); 
-	setRegVal(SYNC_ADDR, INT_SYNC); 
+	setRegVal(SYNC_ADDR, EXT_SYNC); 
+	// setRegVal(SYNC_ADDR, INT_SYNC); 
 	setRegVal(POWER_CTL_ADDR, TEMP_OFF_MSK| MEASURE_MODE);
 	p_scl_mux_disable();
 }
