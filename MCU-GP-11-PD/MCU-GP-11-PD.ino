@@ -164,7 +164,7 @@ void SERCOM3_Handler()
   Serial4.IrqHandler();
 }
 PIG sp13(Serial2); //SP13
-PIG sp14(Serial3); //SP14
+PIG sp14(Serial3, 14); //SP14
 PIG sp9(Serial4); //SP14
 
 
@@ -1603,7 +1603,7 @@ void disableWDT() {
 
 void parameter_init(void)
 {
-  delay(2000);
+  // delay(2000);
   eeprom.Parameter_Read(EEPROM_ADDR_PARAMETER_EXIST,my_f.bin_val);
   EEPROM_Parameter_exist = my_f.int_val;
   /***fog parameter is empty,  write initial fog data*/
@@ -1693,7 +1693,7 @@ void read_fog_parameter_from_eeprom(int& eeprom_var, unsigned int eeprom_addr)
   eeprom.Parameter_Read(eeprom_addr, my_f.bin_val);
   /**copy to eeprom variable*/
   eeprom_var = my_f.int_val;
-  Serial.println(eeprom_var);
+  // Serial.println(eeprom_var);
 }
 
 void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
