@@ -630,56 +630,56 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
       break;}
       case CMD_FOG_SF2: {
         if(value != EEPROM_SF2){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF2 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF2, EEPROM_ADDR_SF_2, value);
           sp->updateParameter(myCmd_header, SF2_ADDR, myCmd_trailer, EEPROM_SF2, 0xCC);
         }
       break;}
       case CMD_FOG_SF3: {
         if(value != EEPROM_SF3){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF3 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF3, EEPROM_ADDR_SF_3, value);
           sp->updateParameter(myCmd_header, SF3_ADDR, myCmd_trailer, EEPROM_SF3, 0xCC);
         }
       break;}
       case CMD_FOG_SF4: {
         if(value != EEPROM_SF4){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF4 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF4, EEPROM_ADDR_SF_4, value);
           sp->updateParameter(myCmd_header, SF4_ADDR, myCmd_trailer, EEPROM_SF4, 0xCC);
         }
       break;}
       case CMD_FOG_SF5: {
         if(value != EEPROM_SF5){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF5 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF5, EEPROM_ADDR_SF_5, value);
           sp->updateParameter(myCmd_header, SF5_ADDR, myCmd_trailer, EEPROM_SF5, 0xCC);
         }
       break;}
       case CMD_FOG_SF6: {
         if(value != EEPROM_SF6){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF6 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF6, EEPROM_ADDR_SF_6, value);
           sp->updateParameter(myCmd_header, SF6_ADDR, myCmd_trailer, EEPROM_SF6, 0xCC);
         }
       break;}
       case CMD_FOG_SF7: {
         if(value != EEPROM_SF7){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF7 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF7, EEPROM_ADDR_SF_7, value);
           sp->updateParameter(myCmd_header, SF7_ADDR, myCmd_trailer, EEPROM_SF7, 0xCC);
         }
       break;}
       case CMD_FOG_SF8: {
         if(value != EEPROM_SF8){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF8 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF8, EEPROM_ADDR_SF_8, value);
           sp->updateParameter(myCmd_header, SF8_ADDR, myCmd_trailer, EEPROM_SF8, 0xCC);
         }
       break;}
       case CMD_FOG_SF9: {
         if(value != EEPROM_SF9){
-          Serial.println("FOG_SF0 changed!");
+          Serial.println("FOG_SF9 changed!");
           write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, value);
           sp->updateParameter(myCmd_header, SF9_ADDR, myCmd_trailer, EEPROM_SF9, 0xCC);
         }
