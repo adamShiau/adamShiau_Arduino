@@ -302,6 +302,10 @@ void setup() {
   digitalWrite(nCONFIG, HIGH);
   delay(500);
 
+  byte FPGA_wakeup_flag = 0; 
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  Blink_MCU_LED();
+
   parameter_init();
    
 
@@ -702,8 +706,18 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
       break;}
 
       case CMD_FPGA_VERSION: {
+        String fpga_version;
         for(int i=0; i<255; i++) SER->read();//clear serial buffer
         sp->updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
+        while(!SER->available());
+        if(SER->available()) fpga_version = Serial3.readStringUntil('\n');
+        Serial.print(MCU_VERSION);
+        Serial1.print(MCU_VERSION);
+        Serial.print(',');
+        Serial1.print(',');
+        Serial.println(fpga_version);
+        Serial1.println(fpga_version);
+
         break;
       }
 
@@ -831,13 +845,10 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
     Serial.println(ch);
     Serial.println("select acq_fog2\n");
     CtrlReg = value;
+    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
 
-    if(!(CtrlReg==VERSION)) 
-    {
-      if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-      else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-      else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-    }
     
 
     switch(CtrlReg){
@@ -861,26 +872,6 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
-      break;
-
-      case VERSION:
-         
-         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-         disableWDT();
-         Serial.println("Enter VERSION mode");
-         /*** MCU Version*/
-         Serial.println("MCU_VERSION: ");
-         Serial.println(MCU_VERSION);
-         Serial1.print(MCU_VERSION);
-         Serial1.print(',');
-         /*** FPGA zversion*/
-         Serial.println("FPGA_VERSION: ");
-         if(Serial3.available())
-         {
-          fpga_version = Serial3.readStringUntil('\n');
-          Serial.println(fpga_version);
-          Serial1.println(fpga_version);
-         }  
       break;
 
       default:
@@ -1768,3 +1759,50 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   Serial.println("Setting SP parameters done");
 }
 
+void Blink_MCU_LED()
+{
+  bool A=0;
+  for(int i=0; i<10; i++){
+    digitalWrite(MCU_LED, A);
+    delay(500);
+    A = !A;
+  }
+   
+   delay(500);
+}
+
+void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
+{
+  PIG *sp;
+  Stream *SER;
+  byte times=0;
+
+  if(fog_ch==1){
+    sp = &sp13;
+    SER = &Serial2;
+  }
+  else if(fog_ch==2){
+    sp = &sp14;
+    SER = &Serial3;
+  } 
+  else if(fog_ch=3){
+    sp = &sp9;
+    SER = &Serial4;
+  } 
+
+  for(int i=0; i<255; i++) SER->read();//clear serial buffer
+  sp->updateParameter(myCmd_header, FPGA_WAKEUP_ADDR, myCmd_trailer, 5, 0xCC);
+  delay(10);
+  flag = (SER->readStringUntil('\n'))[0];
+  int t0=millis();
+  while(!flag){
+    if((millis()-t0)>500){
+      times++;
+      for(int i=0; i<255; i++) SER->read();//clear serial buffer
+      sp->updateParameter(myCmd_header, FPGA_WAKEUP_ADDR, myCmd_trailer, 5, 0xCC);
+      Serial.print("FPGA Sleeping: ");
+      Serial.println(times);
+      t0 = millis();
+    }
+  } 
+}

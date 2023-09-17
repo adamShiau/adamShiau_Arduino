@@ -1,5 +1,5 @@
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-11-PD"
+#define MCU_VERSION "MCU-GP-11-RD"
 
 /*** adxl355 conversion factor***/
 #define ADXL355_8G 0.0000156
@@ -103,6 +103,7 @@
 #define DAC_GAIN_ADDR  		50
 #define DATA_INT_DELAY_ADDR	98
 #define DATA_OUT_START_ADDR	99
+#define FPGA_WAKEUP_ADDR	100
 #define FPGA_VERSION_ADDR	101
 #define FPGA_DUMP_PARAMETERS_ADDR	102
 
