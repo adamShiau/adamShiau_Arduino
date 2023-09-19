@@ -303,7 +303,7 @@ void setup() {
   delay(500);
 
   byte FPGA_wakeup_flag = 0; 
-  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 1);
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
   parameter_init();
