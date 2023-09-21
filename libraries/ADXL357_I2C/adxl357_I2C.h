@@ -80,17 +80,27 @@ class Adxl357_I2C
 		void printRegVal(char [], unsigned char, unsigned char);
 		void printRegAll(void);
 		void readData(unsigned char []);
+		void readData_f(float []);
 		void readFakeData(unsigned char []);
 		void testI2C(void);
+		void print_Data_i2c(byte *);
+
+		/***get register value*/
+		char getRange(void);
+		void getSyncMode(void);
+		void getSensitivity(void);
+		void getDataODR_LPF(void);
+		float getTemperature(void);
 		
 	private:
-		int _scl_en;
 		int _ext_sync;
 		bool _sercom_mode;
+		float p_snesitivity;
 		void p_I2CWriteData(unsigned char, unsigned char);
 		unsigned char p_I2CReadData(unsigned char);
-		void p_scl_mux_enable(void);
-		void p_scl_mux_disable(void);
+		void p_I2CReadData(unsigned char, char, char *);
+
+	
 		TwoWire &myWire;
 		
 };

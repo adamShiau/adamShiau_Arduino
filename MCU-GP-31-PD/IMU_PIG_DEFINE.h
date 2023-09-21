@@ -224,6 +224,6 @@ int EEPROM_TMIN, EEPROM_TMAX;
 /*** ADC PIN***/
 #define ADC_CONV 3.3/4096.0
 #define ADC_VIN     18
-#define ADC_PD_DC   19
-#define ADC_ASE_TACT 6
+#define ADC_PD_DC   6
+#define ADC_ASE_TACT 19
 #define ADC_ASE_IACT 17
