@@ -28,6 +28,19 @@ void EEPROM_25LC512_SPI::Parameter_Read(unsigned int eeaddress, unsigned char* b
 	digitalWrite(_ss, HIGH);
 }
 
+void EEPROM_25LC512_SPI::Info_Read(unsigned int eeaddress, byte *buf, int num) {
+	// unsigned char i;
+	// eeaddress <<= 2;
+
+   digitalWrite(_ss, LOW);
+	mySPI.transfer(EEPROM_25LC512_READ);
+   mySPI.transfer(eeaddress>>8);
+   mySPI.transfer(eeaddress & 0xff);
+   for(int i=0; i<num; i++) buf[i] = mySPI.transfer(0x00);
+   
+	digitalWrite(_ss, HIGH);
+}
+
 void EEPROM_25LC512_SPI::Read(unsigned int eeaddress, unsigned char* buf) {
 	digitalWrite(_ss, LOW);
 	mySPI.transfer(EEPROM_25LC512_READ);
@@ -52,6 +65,27 @@ void EEPROM_25LC512_SPI::Parameter_Write(unsigned int eeaddress, int value) {
    mySPI.transfer(value>>8);
    mySPI.transfer(value>>16);
    mySPI.transfer(value>>24);
+	digitalWrite(_ss, HIGH);
+	delay(5);
+}
+
+void EEPROM_25LC512_SPI::Info_Write(unsigned int eeaddress, byte *buf, int num) {
+	// eeaddress <<= 2;
+
+   writeEN();
+	digitalWrite(_ss, LOW);
+	mySPI.transfer(EEPROM_25LC512_WRITE);
+   mySPI.transfer(eeaddress>>8);
+   mySPI.transfer(eeaddress & 0xff);
+   // mySPI.transfer(value);
+   // mySPI.transfer(value>>8);
+   // mySPI.transfer(value>>16);
+   // mySPI.transfer(value>>24);
+   for(int i=0;i<num;i++) mySPI.transfer(buf[i]);
+   // mySPI.transfer(1);
+   // mySPI.transfer(2);
+   // mySPI.transfer(3);
+   // mySPI.transfer(4);
 	digitalWrite(_ss, HIGH);
 	delay(5);
 }

@@ -28,6 +28,10 @@ class EEPROM_25LC512_SPI {
     void Write(unsigned int eeaddress, char data);
 		void Parameter_Read(unsigned int eeaddress, unsigned char* buf);
 		void Parameter_Write(unsigned int eeaddress, int value);
+    // void Info_Write(unsigned int eeaddress, byte buf[], int num);
+    // void Info_Read(unsigned int eeaddress, byte buf[], int num);
+    void Info_Write(unsigned int eeaddress, byte *buf, int num);
+    void Info_Read(unsigned int eeaddress, byte *buf, int num);
    	
     private:
 		SPIClass &mySPI;
