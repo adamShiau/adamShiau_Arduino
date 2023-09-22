@@ -62,10 +62,10 @@ void setup() {
   // p_SPIWriteData(EEPROM_25LC512_WRITE, 3, 0x03);
   // p_SPIWriteData(EEPROM_25LC512_WRITE, 4, 0x04);
 
-  eeprom.Write(1, 0x01);
-  eeprom.Write(2, 0x02);
-  eeprom.Write(3, 0x03);
-  eeprom.Write(4, 0x04);
+  eeprom.Write(0, 0x01);
+  eeprom.Write(1, 0x02);
+  eeprom.Write(2, 0x03);
+  eeprom.Write(3, 0x04);
   eeprom.Parameter_Write(1, 32769);
 }
 
@@ -77,10 +77,10 @@ void loop() {
   // p_SPIReadData(EEPROM_25LC512_READ, 2);
   // p_SPIReadData(EEPROM_25LC512_READ, 3);
   // p_SPIReadData(EEPROM_25LC512_READ, 4);
-  eeprom.Read(1, &data1);
-  eeprom.Read(2, &data2);
-  eeprom.Read(3, &data3);
-  eeprom.Read(4, &data4);
+  eeprom.Read(0, &data1);
+  eeprom.Read(1, &data2);
+  eeprom.Read(2, &data3);
+  eeprom.Read(3, &data4);
   eeprom.Parameter_Read(1,my_f.bin_val);
 
   Serial.print(data1);
