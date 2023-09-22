@@ -263,6 +263,7 @@ void setup() {
 
   //SPI
   mySPI.begin();
+  mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
