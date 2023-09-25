@@ -36,7 +36,7 @@ byte data_w1[EEPROM_ADDR_LOG_LEN], data_w2[EEPROM_ADDR_LOG_LEN];
 byte data_r[EEPROM_ADDR_LOG_LEN];
 
 void setup() {
-  analogReadResolution(12); //set resolution
+  // analogReadResolution(12); //set resolution
   Serial.begin(230400);
 
    //SPI
@@ -48,34 +48,30 @@ void setup() {
 
   eeprom.init();
 
-  for(int i=0;i<EEPROM_ADDR_LOG_LEN;i++) {
-    data_w1[i] = i+10;
-    // data_w2[i] = i+1;
-  }
+  // for(int i=0;i<EEPROM_ADDR_LOG_LEN;i++) {
+  //   data_w1[i] = i;
+  // }
   // eeprom.Info_Write(EEPROM_ADDR_LOG1, data_w1, EEPROM_ADDR_LOG_LEN);
+  // eeprom.Info_Write(EEPROM_ADDR_LOG2, data_w2, EEPROM_ADDR_LOG_LEN);
 }
 
 void loop() {
 
+  eeprom.Info_Read(EEPROM_ADDR_LOG1,data_r, EEPROM_ADDR_LOG_LEN);
 
 
-  // for(int i=0; i<EEPROM_ADDR_LOG_LEN; i++) {
-  //   Serial.print(data_r[i]);
-  //   Serial.print(", ");
-  // }
-  // Serial.println("");
-
-  if(readVin()<=11.0)  {
-    eeprom.Info_Write(EEPROM_ADDR_LOG1, data_w1, EEPROM_ADDR_LOG_LEN);
-    Serial.println(readVin());
+  for(int i=0; i<EEPROM_ADDR_LOG_LEN; i++) {
+    Serial.print(data_r[i]);
+    Serial.print(", ");
   }
-  // Serial.println(readVin());
+  Serial.println("");
+
+  delay(1000);
 
 }
 
-float readVin()
+void readVin()
 {
-  float adc_f;
-  adc_f = (float)analogRead(ADC_VIN)/338.205;
-  return adc_f;
+  my_f.int_val = analogRead(ADC_VIN);
+  Serial.println((float)my_f.int_val/338.205);
 }
