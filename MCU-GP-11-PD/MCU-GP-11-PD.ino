@@ -1764,11 +1764,11 @@ void Blink_MCU_LED()
   bool A=0;
   for(int i=0; i<10; i++){
     digitalWrite(MCU_LED, A);
-    delay(500);
+    delay(100);
     A = !A;
   }
    
-   delay(500);
+   delay(100);
 }
 
 void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
