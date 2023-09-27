@@ -968,7 +968,7 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        digitalWrite(PIG_SYNC, sync_status);
+        // digitalWrite(PIG_SYNC, sync_status);
         setupWDT(11);
         
       break;
