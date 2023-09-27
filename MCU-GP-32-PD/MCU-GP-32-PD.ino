@@ -970,6 +970,8 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
 
+    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+
     switch(CtrlReg){
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
