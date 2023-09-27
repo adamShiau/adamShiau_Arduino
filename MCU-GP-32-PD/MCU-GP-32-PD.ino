@@ -177,6 +177,10 @@ crcCal myCRC;
 //SYNC OUT
 bool sync_status = 0;
 
+//ISR_FLAG
+volatile bool ISR_Coming = false;
+volatile bool ISR_PEDGE;
+
 int t_adc = millis();
 
 /*** * Watch dog  * **/
@@ -190,6 +194,9 @@ unsigned int MCU_cnt = 0;
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
+
+//reg fog
+byte *reg_fog1, *reg_fog2, *reg_fog3;
 
 
 void setup() {
@@ -947,7 +954,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
 void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 {
-  byte *fog;
+  byte *fog1, *fog2, *fog3;
   my_acc_t my_ADXL357;
 	uint8_t CRC32[4];
   byte ADXL_Temp;
@@ -967,7 +974,6 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // digitalWrite(PIG_SYNC, sync_status);
         setupWDT(11);
         
       break;
@@ -994,17 +1000,32 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 	if(run_fog_flag) {
         t_new = micros();
 
-    fog = sp14.readData(header, sizeofheader, &try_cnt);
-    if(fog)
+    // fog = sp14.readData(header, sizeofheader, &try_cnt);
+    // if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
+    // else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
+    // else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
+
+    fog1 = sp13.readData(header, sizeofheader, &try_cnt);
+    fog2 = sp14.readData(header, sizeofheader, &try_cnt);
+    fog3 = sp9.readData(header, sizeofheader, &try_cnt);
+
+    if(fog1) reg_fog1 = fog1;
+    if(fog2) reg_fog2 = fog2;
+    if(fog3) reg_fog3 = fog3;
+
+    if(ISR_PEDGE)
     {
       uint8_t* imu_data = (uint8_t*)malloc(31); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+
+      ISR_PEDGE = false;
+
       adxl357_i2c.readData_f(my_ADXL357.float_val);
       ADXL_Temp = (byte)adxl357_i2c.getTemperature();
 
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_ADXL357.bin_val, 12);
       memcpy(imu_data+16, &ADXL_Temp, 1);
-      memcpy(imu_data+17, fog, 14);
+      memcpy(imu_data+17, reg_fog2, 14);
       myCRC.crc_32(imu_data, 31, CRC32);
 
       free(imu_data);
@@ -1013,7 +1034,7 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(KVH_HEADER, 4);
         Serial1.write(my_ADXL357.bin_val, 12);
         Serial1.write(&ADXL_Temp, 1);
-        Serial1.write(fog, 14);
+        Serial1.write(reg_fog2, 14);
         Serial1.write(CRC32, 4);
         
       #endif   
@@ -1318,7 +1339,8 @@ void ISR_EXTT()
   // Serial.println(millis());
   sync_status = !sync_status;
   digitalWrite(PIG_SYNC, sync_status);
-  // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+  ISR_Coming = !ISR_Coming;
+  if(ISR_Coming == true) ISR_PEDGE = true;
   }
 
 

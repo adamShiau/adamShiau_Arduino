@@ -1,13 +1,11 @@
 #include <ASM330LHHSensor.h>
 #include "pig_v2.h"
-#include "adxl357_I2C.h"
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
 #include "uartRT.h"
 #include <TinyGPSPlus.h>
-// #include <EEPROM_24AA32A_I2C.h>
-#include <EEPROM_25LC512_SPI.h>
+#include <EEPROM_24AA32A_I2C.h>
 
 // #define TESTMODE
 /***
@@ -25,18 +23,55 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define nCONFIG 12
 //MCU LED
 #define MCU_LED A2
-/***ADC MUX*/
-#define ADCMUX_S1 21
-#define ADCMUX_S0 15
+
+// #define G04
+// #SP init parameter
+
+// #ifdef G04
+// #define MOD_FREQ_INIT 103
+// #define WAIT_CNT_INIT 20
+// #define ERR_AVG_INIT 6
+// #define MOD_AMP_H_INIT 9100
+// #define MOD_AMP_L_INIT -9100
+// #define ERR_TH_INIT 54
+// #define ERR_OFFSET_INIT 0
+// #define POLARITY_INIT 1
+// #define CONST_STEP_INIT 16384
+// #define FPGA_Q_INIT 1
+// #define FPGA_R_INIT 6
+// #define GAIN1_INIT 5
+// #define GAIN2_INIT 7
+// #define FB_ON_INIT 1
+// #define DAC_GAIN_INIT 70
+// #define DATA_INT_DELAY_ADDR 1990
+// #endif
+
+// #ifdef G05
+// #define MOD_FREQ_INIT 104
+// #define WAIT_CNT_INIT 20
+// #define ERR_AVG_INIT 6
+// #define MOD_AMP_H_INIT 9100
+// #define MOD_AMP_L_INIT -9100
+// #define ERR_TH_INIT 54
+// #define ERR_OFFSET_INIT 0
+// #define POLARITY_INIT 1
+// #define CONST_STEP_INIT 16384
+// #define FPGA_Q_INIT 1
+// #define FPGA_R_INIT 6
+// #define GAIN1_INIT 5
+// #define GAIN2_INIT 7
+// #define FB_ON_INIT 1
+// #define DAC_GAIN_INIT 77
+// #define DATA_INT_DELAY_ADDR 2000
+// #endif
 
 //PWM
 #include <SAMD21turboPWM.h>
 #define PWM100 7
 #define PWM200 5
 #define PWM250 11
-/*** decrease the PWM_FIX  value to imcrease dataRate*/
-// #define PWM_FIX 0.972
-#define PWM_FIX 0.9725
+#define PWM_FIX 0.981
+// #define PWM_FIX 0.978
 TurboPWM  pwm;
 
 
@@ -55,7 +90,6 @@ void SERCOM0_Handler()
   myWire.onService();
 }
 // Adxl355_I2C adxl355_i2c(myWire); not use in IMU_V4 PCB
-Adxl357_I2C adxl357_i2c(myWire);
 
 /*** global var***/
 // int pin_scl_mux = 17;
@@ -67,7 +101,7 @@ unsigned int gps_date=0, gps_time=0;
 bool gps_valid = 0;
 
 // EEPROMM
-// EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
+EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
 
 typedef union
 {
@@ -78,15 +112,6 @@ typedef union
 my_float_t;
 
 my_float_t my_f;
-
-typedef union
-{
-  float float_val[3];
-  uint8_t bin_val[12];
-  int int_val[3];
-}
-my_acc_t;
-
 unsigned char fog_op_status;
 
 // SPI
@@ -96,13 +121,10 @@ unsigned char fog_op_status;
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
 // SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+
 #define CHIP_SELECT_PIN 2
-
-// EEPROMM
-EEPROM_25LC512_SPI eeprom = EEPROM_25LC512_SPI(mySPI, CHIP_SELECT_PIN);
-
 // ASM330LHHClass IMU(mySPI, CHIP_SELECT_PIN, SPI_CLOCK_8M);
-// ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
+ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
 
 // cmd read from GUI
 uint8_t myCmd_header[] = {0xAB, 0xBA};
@@ -177,6 +199,10 @@ crcCal myCRC;
 //SYNC OUT
 bool sync_status = 0;
 
+//ISR_FLAG
+volatile bool ISR_Coming = false;
+volatile bool ISR_PEDGE;
+
 int t_adc = millis();
 
 /*** * Watch dog  * **/
@@ -191,6 +217,20 @@ unsigned int MCU_cnt = 0;
 // The TinyGPSPlus object
 TinyGPSPlus gps;
 
+// Uart mySerial13 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+// void SERCOM1_Handler()
+// {
+//     mySerial13.IrqHandler();
+// }
+
+// #ifdef ENABLE_SRS200
+//     #define SRS200_SIZE 15
+// #endif
+
+// unsigned int tt1=0, tt2=0;
+
+//reg fog
+byte *reg_fog;
 
 void setup() {
   
@@ -226,10 +266,6 @@ void setup() {
   analogReadResolution(12); //set resolution
   pinMode(ADC_ASE_TACT, INPUT);
 
-  /***ADC MUX Setting*/
-  pinMode(ADCMUX_S1, OUTPUT);
-  pinMode(ADCMUX_S0, OUTPUT);
-
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, sync_status);
 
@@ -263,13 +299,9 @@ void setup() {
 
   //SPI
   mySPI.begin();
-  mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
-
-  /**EEPROM*/
-  eeprom.init();
 
   //Re-configure FPGA when system reset on MCU
   digitalWrite(nCONFIG, LOW);
@@ -277,16 +309,31 @@ void setup() {
   digitalWrite(nCONFIG, HIGH);
   delay(500);
 
-
   byte FPGA_wakeup_flag = 0; 
   Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
   parameter_init();
+   
 
-    /**ADXL357*/
-  adxl357_i2c.init();
+  //ADC
+  //  pinPeripheral(6, PIN_ATTR_ANALOG);
+	
+	// if (!IMU.begin()) {
+  //   Serial.println("Failed to initialize IMU!");
+  //   while (1);
+  // }
+  // IMU.begin();
+  // IMU.Enable_X();
+  // IMU.Enable_G();
+  // IMU.Set_X_ODR(416.0);
+  // IMU.Set_X_FS(4);  
+  // IMU.Set_G_ODR(416.0);
+  // IMU.Set_G_FS(250); 
 
+
+  
+    
 
 	/*** var initialization***/
 	cmd_complete = 0;
@@ -297,12 +344,12 @@ void setup() {
 	output_fn = temp_idle;
 
 
-  /***read eeprom current status*/
+      /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
   /***write EEPROM DVT test value*/
-  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
 	
 /*** pwm ***/
@@ -319,6 +366,7 @@ void setup() {
   // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
+    // delay(100);
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -340,7 +388,16 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  // readAdc();
+  
+  // tt2 = millis();
+  // if((tt2-tt1)>=500)
+  // {
+  //   Serial.print("\nfog status: ");
+  //   Serial.println(fog_op_status);
+  //   tt1 = tt2;
+  // }
+  
+  // readADC();
 }
 
 void printAdd(char name[], void* addr)
@@ -737,8 +794,26 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+      // Serial.print("output_mode_setting - select_fn: ");
+      // Serial.print(select_fn, HEX);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val, HEX);
+
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
+      // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+      // Serial.print("output_mode_setting - output_fn: ");
+      // Serial.print((int)output_fn, HEX);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val, HEX);
+
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+      // Serial.print("output_mode_setting - value: ");
+      // Serial.print((int)value);
+      // Serial.print(", ");
+      // Serial.println(my_f.int_val);
+
 	}
   
 }
@@ -820,18 +895,21 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
-      if(fog)
+      if(fog) reg_fog = fog;
+
+      if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
         
+        ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
-        memcpy(imu_data+4, fog, 14);
+        memcpy(imu_data+4, reg_fog, 14);
         myCRC.crc_32(imu_data, 18, CRC32);
         free(imu_data);
 
         #ifdef UART_RS422_CMD
         Serial1.write(KVH_HEADER, 4);
-        Serial1.write(fog, 14);
+        Serial1.write(reg_fog, 14);
         Serial1.write(CRC32, 4);
        #endif
         
@@ -947,10 +1025,11 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
 void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 {
+	byte nano33_w[6]={0,0,0,0,0,0};
+  byte  nano33_a[6]={0,0,0,0,0,0};;
   byte *fog;
-  my_acc_t my_ADXL357;
+  byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
 	uint8_t CRC32[4];
-  byte ADXL_Temp;
 
   if(select_fn&SEL_IMU)
 	{
@@ -967,13 +1046,13 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // digitalWrite(PIG_SYNC, sync_status);
         setupWDT(11);
         
       break;
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
-        Serial.println("Set EXTT to CHANGE");
+        Serial.println("Set EXTT to RISING");
+        Serial.println("Write SYNC to LOW\n");
 
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
@@ -997,27 +1076,27 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog)
     {
-      uint8_t* imu_data = (uint8_t*)malloc(31); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
-      adxl357_i2c.readData_f(my_ADXL357.float_val);
-      ADXL_Temp = (byte)adxl357_i2c.getTemperature();
+      uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
 
+      IMU.Get_X_AxesRaw(nano33_a);
+      IMU.Get_G_AxesRaw(nano33_w);
       memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+4, my_ADXL357.bin_val, 12);
-      memcpy(imu_data+16, &ADXL_Temp, 1);
-      memcpy(imu_data+17, fog, 14);
-      myCRC.crc_32(imu_data, 31, CRC32);
+      memcpy(imu_data+4, adxl355_a, 9);
+      memcpy(imu_data+13, nano33_w, 6);
+      memcpy(imu_data+19, nano33_a, 6);
+      memcpy(imu_data+25, fog, 14);
+      myCRC.crc_32(imu_data, 39, CRC32);
 
       free(imu_data);
 
       #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_ADXL357.bin_val, 12);
-        Serial1.write(&ADXL_Temp, 1);
-        Serial1.write(fog, 14);
-        Serial1.write(CRC32, 4);
-        
+              Serial1.write(KVH_HEADER, 4);
+              Serial1.write(adxl355_a, 9);
+              Serial1.write(nano33_w, 6);
+              Serial1.write(nano33_a, 6);
+              Serial1.write(fog, 14);
+              Serial1.write(CRC32, 4);
       #endif   
-      
     }
     t_old = t_new;    
     resetWDT();
@@ -1025,6 +1104,114 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);
 }
 
+void acq_imu(byte &select_fn, unsigned int value, byte ch)
+{
+	byte header[2], fog[14], nano33_w[6], nano33_a[6];
+  byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
+	uint8_t CRC32[4];
+
+
+	if(select_fn&&SEL_IMU) {
+    CtrlReg = value;
+		run_fog_flag = sp13.setSyncMode(CtrlReg);
+    Serial.print("acq_imu EN: ");
+    Serial.println(run_fog_flag);
+    switch(CtrlReg){
+      case INT_SYNC: //delay method
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      case EXT_SYNC:
+        digitalWrite(PIG_SYNC, HIGH); //trigger signal to PIG
+        EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+      break;
+      case STOP_SYNC:
+        digitalWrite(PIG_SYNC, LOW);
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+      break;
+      default:
+      break;
+    }
+	}
+	// trig_status[0] = digitalRead(SYS_TRIG);
+
+	if(run_fog_flag) {
+        t_new = micros();
+
+
+		uint8_t* imu_data = (uint8_t*)malloc(39); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+
+    sp13.readData(header, fog);
+		// adxl355.readData(adxl355_a);
+		IMU.readGyroscope(nano33_w);
+		IMU.readAcceleration(nano33_a);
+
+
+		    memcpy(imu_data, KVH_HEADER, 4);
+        memcpy(imu_data+4, adxl355_a, 9);
+        memcpy(imu_data+13, nano33_w, 6);
+        memcpy(imu_data+19, nano33_a, 6);
+        memcpy(imu_data+25, fog, 14);
+        myCRC.crc_32(imu_data, 39, CRC32);
+        free(imu_data);
+// 		print_adxl355Data(adxl355_a);
+
+		// #ifdef UART_SERIAL_5_CMD
+    //         mySerial5.write(KVH_HEADER, 4);
+    //         mySerial5.write(adxl355_a, 9);
+    //         mySerial5.write(nano33_w, 6);
+    //         mySerial5.write(nano33_a, 6);
+    //         mySerial5.write(fog, 14);
+    //         mySerial5.write(CRC32, 4);
+		// #endif
+        #ifdef UART_USB_CMD
+            Serial.write(KVH_HEADER, 4);
+            Serial.write(adxl355_a, 9);
+            Serial.write(nano33_w, 6);
+            Serial.write(nano33_a, 6);
+            Serial.write(fog, 14);
+            Serial.write(CRC32, 4);
+		#endif
+		#ifdef UART_RS422_CMD
+            Serial1.write(KVH_HEADER, 4);
+            Serial1.write(adxl355_a, 9);
+            Serial1.write(nano33_w, 6);
+            Serial1.write(nano33_a, 6);
+            Serial1.write(fog, 14);
+            Serial1.write(CRC32, 4);
+		#endif
+    // sp13.printData(fog);
+		// #ifdef ENABLE_SRS200
+		// 	Serial.write(srs200, SRS200_SIZE);
+		// #endif
+// 		Serial.println(t_new - t_old);
+    t_old = t_new;
+    // if(select_fn&&SEL_IMU) 
+    // {
+    //   Serial.print("done, ");
+    //   Serial.println(CC);      
+    // }
+        switch(CtrlReg){
+      case INT_SYNC: //delay method
+          break;
+      case EXT_SYNC:
+        digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
+        EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge
+      break;
+      case STOP_SYNC:
+          break;
+      default:
+        // Serial.println("default case");
+        digitalWrite(PIG_SYNC, LOW); //trigger signal to PIG
+        EIC->CONFIG[1].bit.SENSE7 = 1; //set interrupt condition to Rising-Edge      
+          break;
+        }
+       
+    
+	}
+	// trig_status[1] = trig_status[0];
+	clear_SEL_EN(select_fn);
+}
 
 void acq_imu_mems(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
@@ -1045,8 +1232,8 @@ void acq_imu_mems(byte &select_fn, unsigned int CTRLREG, byte ch)
 
         uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
         // adxl355.readData(adxl355_a);
-        // IMU.readGyroscope(nano33_w);
-        // IMU.readAcceleration(nano33_a);
+        IMU.readGyroscope(nano33_w);
+        IMU.readAcceleration(nano33_a);
 
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, adxl355_a, 9);
@@ -1101,8 +1288,8 @@ void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
 
         uint8_t* imu_data = (uint8_t*)malloc(32); // 9+4+6+6+9
         // adxl355.readData(adxl355_a);
-        // IMU.readGyroscope(nano33_w);
-        // IMU.readAcceleration(nano33_a);
+        IMU.readGyroscope(nano33_w);
+        IMU.readAcceleration(nano33_a);
 		    getGPStimeData(gps_data);
 
         memcpy(imu_data, KVH_HEADER, 4);
@@ -1318,6 +1505,9 @@ void ISR_EXTT()
   // Serial.println(millis());
   sync_status = !sync_status;
   digitalWrite(PIG_SYNC, sync_status);
+  ISR_Coming = !ISR_Coming;
+  if(ISR_Coming == true) ISR_PEDGE = true;
+
   // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
   }
 
@@ -1375,96 +1565,6 @@ void readADC(byte data[8])
   // Serial.print(" ");
   // Serial.println(my_f.bin_val[0], HEX);
   
-}
-
-void readAdc()
-{
-  readPd_dc(1);
-  readPd_dc(2);
-  readPd_dc(3);
-  Serial.println(" ");
-  readTact(1);
-  readTact(2);
-  readTact(3);
-  Serial.println(" ");
-  readIact(1);
-  readIact(2);
-  readIact(3);
-  Serial.println(" ");
-  delay(500);
-}
-
-void readVin()
-{
-  my_f.int_val = analogRead(ADC_VIN);
-  Serial.println((float)my_f.int_val/338.205);
-}
-
-void readTact(char ch)
-{
-  if(ch==1) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==2) {
-    digitalWrite(ADCMUX_S0, HIGH);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==3) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, HIGH);
-  }
-  
-  Serial.print("ch:");
-  Serial.print(int(ch));
-  Serial.print("Tact: ");
-  my_f.int_val = analogRead(ADC_ASE_TACT);
-  Serial.println((float)my_f.int_val*ADC_CONV);
-}
-
-void readIact(char ch)
-{
-  if(ch==1) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==2) {
-    digitalWrite(ADCMUX_S0, HIGH);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==3) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, HIGH);
-  }
-  Serial.print("ch:");
-  Serial.print(int(ch));
-  Serial.print("Iact: ");
-
-  my_f.int_val = analogRead(ADC_ASE_IACT);
-  Serial.println((float)my_f.int_val*ADC_CONV);
-}
-
-void readPd_dc(char ch)
-{
-  if(ch==1) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==2) {
-    digitalWrite(ADCMUX_S0, HIGH);
-    digitalWrite(ADCMUX_S1, LOW);
-  }
-  else if(ch==3) {
-    digitalWrite(ADCMUX_S0, LOW);
-    digitalWrite(ADCMUX_S1, HIGH);
-  }
-  
-  Serial.print("ch:");
-  Serial.print(int(ch));
-  Serial.print("Pd_dc: ");
-
-  my_f.int_val = analogRead(ADC_PD_DC);
-  Serial.println((float)my_f.int_val/744.727);
 }
 
 //============= resetWDT ===================================================== 
@@ -1677,11 +1777,11 @@ void Blink_MCU_LED()
   bool A=0;
   for(int i=0; i<10; i++){
     digitalWrite(MCU_LED, A);
-    delay(50);
+    delay(100);
     A = !A;
   }
    
-   delay(500);
+   delay(100);
 }
 
 void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
