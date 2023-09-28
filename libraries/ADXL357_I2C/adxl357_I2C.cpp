@@ -11,22 +11,7 @@ Adxl357_I2C::~Adxl357_I2C()
 {
 }
 
-void Adxl357_I2C::init() 
-{	
-	/*** set adxl357 parameters ***/
-	setRegVal(RST_ADDR, POR);
-	setRegVal(RANGE_ADDR, F_MODE | RANGE_40G);
-	setRegVal(FILTER_ADDR, ODR_500);
-	// setRegVal(SYNC_ADDR, EXT_SYNC); 
-	setRegVal(SYNC_ADDR, INT_SYNC); 
-	setRegVal(POWER_CTL_ADDR, MEASURE_MODE);
 
-	Serial.println("-------ADXL357 Parameters------");
-	getSensitivity();
-	getSyncMode();
-	getDataODR_LPF();
-	getTemperature();
-}
 
 void Adxl357_I2C::testI2C()
 {
@@ -124,8 +109,7 @@ void Adxl357_I2C::readFakeData(unsigned char temp_a[9])
 void Adxl357_I2C::setRegVal(unsigned char addr, unsigned char val)
 {
 	p_I2CWriteData(addr, val);
-	// Serial.print(123);
-	// delay(1);
+	delay(5);
 }
 
 void Adxl357_I2C::printRegVal(char name[], unsigned char addr, unsigned char rep)
@@ -220,11 +204,66 @@ void Adxl357_I2C::print_Data_i2c(byte *temp_a)
 	// t_old = t_new;
 }
 
+void Adxl357_I2C::init() 
+{	
+	int rt;
+	/*** set adxl357 parameters ***/
+	setRegVal(RST_ADDR, POR);
+	setRegVal(RANGE_ADDR, F_MODE | RANGE_40G);
+	setRegVal(FILTER_ADDR, ODR_500);
+	setRegVal(SYNC_ADDR, EXT_SYNC); 
+	// setRegVal(SYNC_ADDR, INT_SYNC); 
+	setRegVal(POWER_CTL_ADDR, MEASURE_MODE);
+
+	Serial.println("Validating SYNC_ADDR: ");
+	validateReg(SYNC_ADDR, EXT_SYNC);
+
+	Serial.println("Validating RANGE_ADDR: ");
+	validateReg(RANGE_ADDR, F_MODE | RANGE_40G);
+
+	Serial.println("Validating FILTER_ADDR: ");
+	validateReg(FILTER_ADDR, ODR_500);
+
+	Serial.println("-------ADXL357 Parameters------");
+	getSensitivity();
+	getSyncMode();
+	getDataODR_LPF();
+	getTemperature();
+}
+
+void Adxl357_I2C::validateReg(unsigned char ADDR, unsigned char val)
+{
+	unsigned char rt = p_I2CReadData(ADDR);
+	if(rt!=val) {
+		Serial.println("setRegVal Fail, send again!");
+		setRegVal(ADDR,val);
+		rt = p_I2CReadData(ADDR);
+		delay(5);
+	}
+	// return p_I2CReadData(ADDR) == val;
+}
+
+void Adxl357_I2C::getSensitivity()
+{
+	char rt = getRange();
+	
+	Serial.print("Snesitivity: ");
+	if(rt==0x01) p_snesitivity = SENS_10G;
+	else if(rt==0x02) p_snesitivity = SENS_20G;
+	else if(rt==0x03) p_snesitivity = SENS_40G;
+	Serial.println(p_snesitivity, 7);
+}
 
 char Adxl357_I2C::getRange()
 {
 	char rt;
-	rt = p_I2CReadData(RANGE_ADDR) & 0x03;
+	rt = p_I2CReadData(RANGE_ADDR)&0x03;
+
+	// Serial.print("rt:");
+	// Serial.println(rt, HEX);
+	// Serial.print("para:");
+	// Serial.println(para, HEX);
+
 	Serial.print("Range: ");
 	if(rt==0x01) Serial.println("10g");
 	else if(rt==0x02) Serial.println("20g");
@@ -241,16 +280,7 @@ void Adxl357_I2C::getSyncMode()
 	else if(rt==0x02) Serial.println("External Sync");
 }
 
-void Adxl357_I2C::getSensitivity()
-{
-	char rt = getRange();
-	
-	Serial.print("Snesitivity: ");
-	if(rt==0x01) p_snesitivity = SENS_10G;
-	else if(rt==0x02) p_snesitivity = SENS_20G;
-	else if(rt==0x03) p_snesitivity = SENS_40G;
-	Serial.println(p_snesitivity, 7);
-}
+
 
 void Adxl357_I2C::getDataODR_LPF()
 {

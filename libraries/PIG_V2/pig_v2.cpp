@@ -38,6 +38,7 @@ PIG::~PIG()
 	
 }
 
+
 void PIG::init()
 {
 	Serial.begin(230400);
@@ -215,6 +216,8 @@ unsigned char* PIG::readData()
 
 unsigned char* PIG::readData(uint8_t* expected_header, uint8_t header_size, uint16_t* try_cnt, uint8_t* expected_trailer, uint8_t trailer_size, uint8_t print)
 {
+// 	Serial.print("addr of myUart: ");
+//     Serial.println((unsigned long)&myUart, HEX);
 	return myUart.readData_3(expected_header, header_size, try_cnt, expected_trailer, trailer_size, print);
 }
 

@@ -141,9 +141,16 @@ void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
 }
-PIG sp13(Serial2); //SP13
+PIG sp13(Serial2, 14); //SP13
 PIG sp14(Serial3, 14); //SP14
-PIG sp9(Serial4); //SP14
+PIG sp9(Serial4, 14); //SP14
+
+uartRT SP13_Read(Serial2, 14);
+uartRT SP14_Read(Serial3, 14);
+uartRT SP9_Read(Serial4, 14);
+
+// bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
+byte reg_fog_sp9[14] = {0}, reg_fog_sp13[14] = {0}, reg_fog_sp14[14] = {0};
 
 
 /*** serial data from PC***/
@@ -194,9 +201,6 @@ unsigned int MCU_cnt = 0;
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
-
-//reg fog
-byte *reg_fog1, *reg_fog2, *reg_fog3;
 
 
 void setup() {
@@ -264,7 +268,8 @@ void setup() {
 
   //I2C
   myWire.begin();
-  myWire.setClock(I2C_FAST_MODE);
+  myWire.setClock(I2C_FAST_MODE); 
+  // myWire.setClock(I2C_STANDARD_MODE);
   pinPeripheral(27, PIO_SERCOM);
   pinPeripheral(20, PIO_SERCOM);
 
@@ -286,12 +291,16 @@ void setup() {
 
 
   byte FPGA_wakeup_flag = 0; 
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 1);
   Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 3);
   Blink_MCU_LED();
+
+ 
 
   parameter_init();
 
-    /**ADXL357*/
+  /**ADXL357*/
   adxl357_i2c.init();
 
 
@@ -966,11 +975,16 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     Serial.println("select acq_imu2\n");
     CtrlReg = value;
 
-    if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-    else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-    else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
+    // if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+    // else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+    // else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
 
-    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    delay(10);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+
+    Serial.print("run_fog_flag: ");
+    Serial.println(run_fog_flag);
 
     switch(CtrlReg){
       case INT_SYNC:
@@ -1007,17 +1021,45 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
     // else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
     // else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
 
-    fog1 = sp13.readData(header, sizeofheader, &try_cnt);
-    fog2 = sp14.readData(header, sizeofheader, &try_cnt);
-    fog3 = sp9.readData(header, sizeofheader, &try_cnt);
+    // Serial.print("\naddr of sp13: ");
+    // Serial.println((unsigned long)&sp13, HEX);
+    // fog1 = sp13.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+    fog1 = SP13_Read.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
 
-    if(fog1) reg_fog1 = fog1;
-    if(fog2) reg_fog2 = fog2;
-    if(fog3) reg_fog3 = fog3;
+    // Serial.print("\naddr of sp14: ");
+    // Serial.println((unsigned long)&sp14, HEX);
+    // fog2 = sp14.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+    fog2 = SP14_Read.readData_2(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+
+
+    // Serial.print("\naddr of sp9: ");
+    // Serial.println((unsigned long)&sp9, HEX);
+    // fog3 = sp9.readData(header, sizeofheader, &try_cnt);
+    fog3 = SP9_Read.readData_3(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+
+    if(fog1) {
+      // g_sp13_ready = true;
+      memcpy(reg_fog_sp13, fog1, sizeof(reg_fog_sp13));
+    }
+    if(fog2) {
+      // g_sp14_ready = true;
+      memcpy(reg_fog_sp14, fog2, sizeof(reg_fog_sp14));
+    }
+    if(fog3) {
+      // g_sp9_ready = true;
+      memcpy(reg_fog_sp9 , fog3, sizeof(reg_fog_sp9));
+    }
+
+    // if(fog1) reg_fog1 = fog1;
+    // if(fog2) reg_fog2 = fog2;
+    // if(fog3) reg_fog3 = fog3;
 
     if(ISR_PEDGE)
+    // if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
     {
-      uint8_t* imu_data = (uint8_t*)malloc(31); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+      // g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
+      // uint8_t* imu_data = (uint8_t*)malloc(31+14+14); // KVH_HEADER:4 + adxl357:12 + adxl357.T:1 + pig:14
+      uint8_t* imu_data = (uint8_t*)malloc(59); // KVH_HEADER:4 + adxl357:12 + adxl357.T:1 + pig:14
 
       ISR_PEDGE = false;
 
@@ -1027,8 +1069,11 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_ADXL357.bin_val, 12);
       memcpy(imu_data+16, &ADXL_Temp, 1);
-      memcpy(imu_data+17, reg_fog2, 14);
-      myCRC.crc_32(imu_data, 31, CRC32);
+      memcpy(imu_data+17, reg_fog_sp14, 14); //13 14 9
+      memcpy(imu_data+31, reg_fog_sp13, 14);
+      memcpy(imu_data+45, reg_fog_sp9, 14);
+      myCRC.crc_32(imu_data, 59, CRC32);
+
 
       free(imu_data);
 
@@ -1036,11 +1081,12 @@ void acq_imu2(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(KVH_HEADER, 4);
         Serial1.write(my_ADXL357.bin_val, 12);
         Serial1.write(&ADXL_Temp, 1);
-        Serial1.write(reg_fog2, 14);
+        Serial1.write(reg_fog_sp14, 14);
+        Serial1.write(reg_fog_sp13, 14);
+        Serial1.write(reg_fog_sp9, 14);
         Serial1.write(CRC32, 4);
         
       #endif   
-      
     }
     t_old = t_new;    
     resetWDT();
@@ -1601,8 +1647,9 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9);
     read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
     read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
-    
+    update_fpga_fog_parameter_init(100, 1);
     update_fpga_fog_parameter_init(100, 2);
+    update_fpga_fog_parameter_init(100, 3);
   }
 }
 
@@ -1626,7 +1673,8 @@ void read_fog_parameter_from_eeprom(int& eeprom_var, unsigned int eeprom_addr)
 
 void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
 {
-  Serial.println("Setting SP initail parameters!");
+  Serial.print("Setting SP initail parameters! fog_ch= ");
+  Serial.println(fog_ch);
 
   PIG *sp;
   if(fog_ch==1) sp=&sp13;
@@ -1693,7 +1741,8 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   delay(dly_time);
   sp->sendCmd(myCmd_header, TMAX_ADDR, myCmd_trailer, EEPROM_TMAX);
   delay(dly_time);
-  Serial.println("Setting SP parameters done");
+  Serial.print("Setting SP parameters done! fog_ch= ");
+  Serial.println(fog_ch);
 }
 
 void Blink_MCU_LED()

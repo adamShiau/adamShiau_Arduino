@@ -77,6 +77,7 @@ class Adxl357_I2C
 		~Adxl357_I2C();
 		void init(void);
 		void setRegVal(unsigned char, unsigned char);
+		void validateReg(unsigned char, unsigned char);
 		void printRegVal(char [], unsigned char, unsigned char);
 		void printRegAll(void);
 		void readData(unsigned char []);

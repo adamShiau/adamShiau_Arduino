@@ -33,6 +33,7 @@ class PIG
 		unsigned char* alignHeader_4B(unsigned char []);
 		unsigned char* alignHeader_2B(unsigned char []);
 		unsigned char* checkFakeHeader(unsigned char []);
+
 		
 		
 	private:		
