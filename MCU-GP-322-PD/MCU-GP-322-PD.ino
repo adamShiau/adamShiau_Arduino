@@ -35,8 +35,8 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define PWM200 5
 #define PWM250 11
 /*** decrease the PWM_FIX  value to imcrease dataRate*/
-// #define PWM_FIX 0.972
-#define PWM_FIX 0.9725
+#define PWM_FIX 1
+// #define PWM_FIX 0.975 //102.6 
 TurboPWM  pwm;
 
 
@@ -78,6 +78,16 @@ typedef union
 my_float_t;
 
 my_float_t my_f;
+
+typedef union
+{
+  float float_val;
+  uint8_t bin_val[4];
+  uint32_t ulong_val;
+}
+my_time_t;
+
+my_time_t mcu_time;
 
 typedef union
 {
@@ -152,19 +162,32 @@ uartRT SP9_Read(Serial4, 14);
 /** Move Serial1 definition from variant.cpp to here*/
 Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
 
+/*** serial data from PC***/
+volatile byte uart_cmd, fog_ch;
+volatile int uart_value;
+volatile bool cmd_complete=false;
+
 void SERCOM5_Handler()
 {
   Serial1.IrqHandler();
+
+  byte *cmd;
+
+  cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+
+  if(cmd){
+    uart_cmd = cmd[0];
+    uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+    fog_ch = cmd[5];
+    cmd_complete = 1;
+  }
 }
 
 // bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
 byte reg_fog_sp9[14] = {0}, reg_fog_sp13[14] = {0}, reg_fog_sp14[14] = {0};
 
 
-/*** serial data from PC***/
-byte rx_cnt = 0, cmd, fog_channel;
-int value;
-bool cmd_complete;
+
 
 /*** output mode flag***/
 byte mux_flag;
@@ -209,6 +232,9 @@ unsigned int MCU_cnt = 0;
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
+
+/**time counter*/
+unsigned long p_time = 0;
 
 
 void setup() {
@@ -310,7 +336,7 @@ void setup() {
 
   /**ADXL357*/
   adxl357_i2c.init();
-
+  Blink_MCU_LED();
 
 	/*** var initialization***/
 	cmd_complete = 0;
@@ -349,8 +375,8 @@ void setup() {
     eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
     output_fn = (fn_ptr)my_f.int_val; 
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    value = my_f.int_val;
-    fog_channel = 2;
+    uart_value = my_f.int_val;
+    fog_ch = 2;
     setupWDT(11);
   }
 
@@ -359,12 +385,19 @@ void setup() {
 
 void loop() {
 
-	getCmdValue(cmd, value, fog_channel, cmd_complete);
-	cmd_mux(cmd_complete, cmd, mux_flag);
-	parameter_setting(mux_flag, cmd, value, fog_channel);
-	output_mode_setting(mux_flag, cmd, select_fn);
-	output_fn(select_fn, value, fog_channel);
-  // readAdc();
+	// getCmdValue(cmd, value, fog_channel, cmd_complete);
+	cmd_mux(mux_flag);
+	parameter_setting(mux_flag);
+	output_mode_setting(mux_flag, select_fn);
+	output_fn(select_fn, uart_value, fog_ch);
+
+  analogRead(ADC_VIN);
+  // if(readVin()<=11.0)  {
+  //   Serial.println("hi");
+    // Serial.println(readVin());
+    // write_fog_parameter_to_eeprom(EEPROM_RUNTIME, EEPROM_ADDR_RUNTIME, EEPROM_RUNTIME);
+  // }
+
 }
 
 void printAdd(char name[], void* addr)
@@ -438,12 +471,20 @@ void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_compl
     }
 }
 
-void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
+// void cmd_mux(volatile bool &cmd_complete, volatile byte cmd, byte &mux_flag)
+void cmd_mux(byte &mux_flag)
 {
 	if(cmd_complete)
 	{
-		cmd_complete = 0;
-		if(cmd >7) mux_flag = MUX_PARAMETER; 
+    Serial.print("cmd, value, ch: ");
+    Serial.print(uart_cmd);
+    Serial.print(", ");
+    Serial.print(uart_value);
+    Serial.print(", ");
+    Serial.println(fog_ch);
+
+		cmd_complete = false;
+		if(uart_cmd >7) mux_flag = MUX_PARAMETER; 
 		else mux_flag = MUX_OUTPUT;
 	}
 }
@@ -451,10 +492,12 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 // PIG sp13(Serial2); //SP13
 // PIG sp14(Serial3); //SP14
 // PIG sp9(Serial4); //SP14
-void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch) 
+// void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch) 
+void parameter_setting(byte &mux_flag) 
 {
 	if(mux_flag == MUX_PARAMETER)
 	{
+    int value = uart_value;
     PIG *sp;
     Stream *SER;
 
@@ -472,7 +515,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
     } 
 
 		mux_flag = MUX_ESCAPE;
-		switch(cmd) {
+		switch(uart_cmd) {
       case CMD_FOG_MOD_FREQ: {
         if(value != EEPROM_Mod_freq){
           Serial.println("FOG_MOD_FREQ changed!");
@@ -716,10 +759,11 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
 	}
 }
 
-void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
+void output_mode_setting(byte &mux_flag, byte &select_fn)
 {
 	if(mux_flag == MUX_OUTPUT)
 	{
+    byte mode = uart_cmd;
 		mux_flag = MUX_ESCAPE;
 		switch(mode) {
 			case MODE_RST: {
@@ -762,7 +806,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
   
 }
@@ -846,16 +890,19 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
       
       if(fog)
       {
-        uint8_t* imu_data = (uint8_t*)malloc(18); // KVH_HEADER:4 + pig:14
+        uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
+        mcu_time.ulong_val = millis();
         
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, fog, 14);
-        myCRC.crc_32(imu_data, 18, CRC32);
+        memcpy(imu_data+18, mcu_time.bin_val, 4);
+        myCRC.crc_32(imu_data, 22, CRC32);
         free(imu_data);
 
         #ifdef UART_RS422_CMD
         Serial1.write(KVH_HEADER, 4);
         Serial1.write(fog, 14);
+        Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
        #endif
         
@@ -868,6 +915,112 @@ void acq_fog2(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);	
 }
 
+void acq_imu2(byte &select_fn, unsigned int value, byte ch)
+{
+  byte *fog1, *fog2, *fog3;
+  my_acc_t my_ADXL357;
+	uint8_t CRC32[4];
+  byte ADXL_Temp;
+
+  if(select_fn&SEL_IMU)
+	{
+    Serial.print("fog channel: ");
+    Serial.println(ch);
+    Serial.println("select acq_imu2\n");
+    CtrlReg = value;
+
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    delay(10);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+
+    Serial.print("run_fog_flag: ");
+    Serial.println(run_fog_flag);
+
+    switch(CtrlReg){
+      case INT_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        
+      break;
+      case EXT_SYNC:
+        Serial.println("Enter EXT_SYNC mode");
+        Serial.println("Set EXTT to CHANGE");
+        Serial.print("runtime: ");
+        request_runtime();
+
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+
+      break;
+      case STOP_SYNC:
+        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        disableWDT();
+      break;
+
+      default:
+      break;
+    }
+	}
+
+	if(run_fog_flag) {
+        t_new = micros();
+
+    fog1 = SP13_Read.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+
+    fog2 = SP14_Read.readData_2(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+
+    fog3 = SP9_Read.readData_3(header, sizeofheader, &try_cnt, nullptr, 1, 0);
+
+    if(fog1) {
+      memcpy(reg_fog_sp13, fog1, sizeof(reg_fog_sp13));
+    }
+    if(fog2) {
+      memcpy(reg_fog_sp14, fog2, sizeof(reg_fog_sp14));
+    }
+    if(fog3) {
+      memcpy(reg_fog_sp9 , fog3, sizeof(reg_fog_sp9));
+    }
+
+    if(ISR_PEDGE) 
+    {
+      
+      uint8_t* imu_data = (uint8_t*)malloc(59+4); // KVH_HEADER:4 + adxl357:12 + adxl357.T:1 + pig:14
+
+      ISR_PEDGE = false;
+      mcu_time.ulong_val = millis();
+      adxl357_i2c.readData_f(my_ADXL357.float_val);
+      ADXL_Temp = (byte)adxl357_i2c.getTemperature();
+
+      memcpy(imu_data, KVH_HEADER, 4);
+      memcpy(imu_data+4, my_ADXL357.bin_val, 12);
+      memcpy(imu_data+16, &ADXL_Temp, 1);
+      memcpy(imu_data+17, reg_fog_sp14, 14); //13 14 9
+      memcpy(imu_data+31, reg_fog_sp13, 14);
+      memcpy(imu_data+45, reg_fog_sp9, 14);
+      memcpy(imu_data+59, mcu_time.bin_val, 4);
+      myCRC.crc_32(imu_data, 63, CRC32);
+      free(imu_data);
+
+      #ifdef UART_RS422_CMD
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(my_ADXL357.bin_val, 12);
+        Serial1.write(&ADXL_Temp, 1);
+        Serial1.write(reg_fog_sp14, 14);
+        Serial1.write(reg_fog_sp13, 14);
+        Serial1.write(reg_fog_sp9, 14);
+        Serial1.write(mcu_time.bin_val, 4);
+        Serial1.write(CRC32, 4);
+        
+      #endif   
+    }
+    t_old = t_new;    
+    resetWDT();
+	}
+	clear_SEL_EN(select_fn);
+}
 
 void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 {
@@ -966,140 +1119,6 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         
 	}
 	clear_SEL_EN(select_fn);	
-}
-
-
-void acq_imu2(byte &select_fn, unsigned int value, byte ch)
-{
-  byte *fog1, *fog2, *fog3;
-  my_acc_t my_ADXL357;
-	uint8_t CRC32[4];
-  byte ADXL_Temp;
-
-  if(select_fn&SEL_IMU)
-	{
-    Serial.print("fog channel: ");
-    Serial.println(ch);
-    Serial.println("select acq_imu2\n");
-    CtrlReg = value;
-
-    // if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-    // else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-    // else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    delay(10);
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-
-    Serial.print("run_fog_flag: ");
-    Serial.println(run_fog_flag);
-
-    switch(CtrlReg){
-      case INT_SYNC:
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        setupWDT(11);
-        
-      break;
-      case EXT_SYNC:
-        Serial.println("Enter EXT_SYNC mode");
-        Serial.println("Set EXTT to CHANGE");
-
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
-        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        setupWDT(11);
-
-      break;
-      case STOP_SYNC:
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-        disableWDT();
-      break;
-
-      default:
-      break;
-    }
-	}
-
-	if(run_fog_flag) {
-        t_new = micros();
-
-    // fog = sp14.readData(header, sizeofheader, &try_cnt);
-    // if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
-    // else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
-    // else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
-
-    // Serial.print("\naddr of sp13: ");
-    // Serial.println((unsigned long)&sp13, HEX);
-    // fog1 = sp13.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
-    fog1 = SP13_Read.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
-
-    // Serial.print("\naddr of sp14: ");
-    // Serial.println((unsigned long)&sp14, HEX);
-    // fog2 = sp14.readData(header, sizeofheader, &try_cnt, nullptr, 1, 0);
-    fog2 = SP14_Read.readData_2(header, sizeofheader, &try_cnt, nullptr, 1, 0);
-
-
-    // Serial.print("\naddr of sp9: ");
-    // Serial.println((unsigned long)&sp9, HEX);
-    // fog3 = sp9.readData(header, sizeofheader, &try_cnt);
-    fog3 = SP9_Read.readData_3(header, sizeofheader, &try_cnt, nullptr, 1, 0);
-
-    if(fog1) {
-      // g_sp13_ready = true;
-      memcpy(reg_fog_sp13, fog1, sizeof(reg_fog_sp13));
-    }
-    if(fog2) {
-      // g_sp14_ready = true;
-      memcpy(reg_fog_sp14, fog2, sizeof(reg_fog_sp14));
-    }
-    if(fog3) {
-      // g_sp9_ready = true;
-      memcpy(reg_fog_sp9 , fog3, sizeof(reg_fog_sp9));
-    }
-
-    // if(fog1) reg_fog1 = fog1;
-    // if(fog2) reg_fog2 = fog2;
-    // if(fog3) reg_fog3 = fog3;
-
-    if(ISR_PEDGE)
-    // if(g_sp9_ready && g_sp13_ready && g_sp14_ready)
-    {
-      // g_sp9_ready = g_sp13_ready = g_sp14_ready = false;
-      // uint8_t* imu_data = (uint8_t*)malloc(31+14+14); // KVH_HEADER:4 + adxl357:12 + adxl357.T:1 + pig:14
-      uint8_t* imu_data = (uint8_t*)malloc(59); // KVH_HEADER:4 + adxl357:12 + adxl357.T:1 + pig:14
-
-      ISR_PEDGE = false;
-
-      adxl357_i2c.readData_f(my_ADXL357.float_val);
-      ADXL_Temp = (byte)adxl357_i2c.getTemperature();
-
-      memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+4, my_ADXL357.bin_val, 12);
-      memcpy(imu_data+16, &ADXL_Temp, 1);
-      memcpy(imu_data+17, reg_fog_sp14, 14); //13 14 9
-      memcpy(imu_data+31, reg_fog_sp13, 14);
-      memcpy(imu_data+45, reg_fog_sp9, 14);
-      myCRC.crc_32(imu_data, 59, CRC32);
-
-
-      free(imu_data);
-
-      #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_ADXL357.bin_val, 12);
-        Serial1.write(&ADXL_Temp, 1);
-        Serial1.write(reg_fog_sp14, 14);
-        Serial1.write(reg_fog_sp13, 14);
-        Serial1.write(reg_fog_sp9, 14);
-        Serial1.write(CRC32, 4);
-        
-      #endif   
-    }
-    t_old = t_new;    
-    resetWDT();
-	}
-	clear_SEL_EN(select_fn);
 }
 
 
@@ -1275,10 +1294,17 @@ void readAdc()
   delay(500);
 }
 
-void readVin()
+// void readVin()
+// {
+//   my_f.int_val = analogRead(ADC_VIN);
+//   Serial.println((float)my_f.int_val/338.205);
+// }
+
+float readVin()
 {
-  my_f.int_val = analogRead(ADC_VIN);
-  Serial.println((float)my_f.int_val/338.205);
+  float adc_f;
+  adc_f = (float)analogRead(ADC_VIN)/338.205;
+  return adc_f;
 }
 
 void readTact(char ch)
@@ -1425,6 +1451,7 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9, SF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
     write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS80);
+    write_fog_parameter_to_eeprom(EEPROM_RUNTIME, EEPROM_ADDR_RUNTIME, 0);
     update_fpga_fog_parameter_init(100, 2);
   }
   else{
@@ -1458,6 +1485,7 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_SF9, EEPROM_ADDR_SF_9);
     read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
     read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
+    read_fog_parameter_from_eeprom(EEPROM_RUNTIME, EEPROM_ADDR_RUNTIME);
     update_fpga_fog_parameter_init(100, 1);
     update_fpga_fog_parameter_init(100, 2);
     update_fpga_fog_parameter_init(100, 3);
@@ -1602,4 +1630,21 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
       t0 = millis();
     }
   } 
+}
+
+unsigned int time_counter()
+{
+  if( (millis() - p_time) >= 1000)
+  {
+    unsigned int t = millis()>>10;
+    // Serial.println(t);
+    p_time = millis();
+    return t;
+  }
+}
+
+unsigned int  request_runtime()
+{
+  Serial.println(EEPROM_RUNTIME + time_counter());
+  return (EEPROM_RUNTIME + time_counter());
 }
