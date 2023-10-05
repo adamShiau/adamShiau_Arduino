@@ -324,7 +324,7 @@ void setup() {
   Blink_MCU_LED();
 
   parameter_init();
-   
+  Blink_MCU_LED();
 
   //ADC
   //  pinPeripheral(6, PIN_ATTR_ANALOG);
