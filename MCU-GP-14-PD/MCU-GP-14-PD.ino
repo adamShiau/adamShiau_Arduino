@@ -24,47 +24,6 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
-// #define G04
-// #SP init parameter
-
-// #ifdef G04
-// #define MOD_FREQ_INIT 103
-// #define WAIT_CNT_INIT 20
-// #define ERR_AVG_INIT 6
-// #define MOD_AMP_H_INIT 9100
-// #define MOD_AMP_L_INIT -9100
-// #define ERR_TH_INIT 54
-// #define ERR_OFFSET_INIT 0
-// #define POLARITY_INIT 1
-// #define CONST_STEP_INIT 16384
-// #define FPGA_Q_INIT 1
-// #define FPGA_R_INIT 6
-// #define GAIN1_INIT 5
-// #define GAIN2_INIT 7
-// #define FB_ON_INIT 1
-// #define DAC_GAIN_INIT 70
-// #define DATA_INT_DELAY_ADDR 1990
-// #endif
-
-// #ifdef G05
-// #define MOD_FREQ_INIT 104
-// #define WAIT_CNT_INIT 20
-// #define ERR_AVG_INIT 6
-// #define MOD_AMP_H_INIT 9100
-// #define MOD_AMP_L_INIT -9100
-// #define ERR_TH_INIT 54
-// #define ERR_OFFSET_INIT 0
-// #define POLARITY_INIT 1
-// #define CONST_STEP_INIT 16384
-// #define FPGA_Q_INIT 1
-// #define FPGA_R_INIT 6
-// #define GAIN1_INIT 5
-// #define GAIN2_INIT 7
-// #define FB_ON_INIT 1
-// #define DAC_GAIN_INIT 77
-// #define DATA_INT_DELAY_ADDR 2000
-// #endif
-
 //PWM
 #include <SAMD21turboPWM.h>
 #define PWM100 7

@@ -114,6 +114,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_G_Axes(int32_t *AngularRate);
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
+    ASM330LHHStatusTypeDef Get_Temperature(float *temp);
 	ASM330LHHStatusTypeDef readGyroscope(unsigned char []);
     
     ASM330LHHStatusTypeDef Read_Reg(uint8_t reg, uint8_t *Data);

@@ -52,14 +52,18 @@ void setup() {
 void loop() {
   
   byte nano33_w[6]={0,0,0,0,0,0};
-  byte  nano33_a[6]={0,0,0,0,0,0};;
+  byte  nano33_a[6]={0,0,0,0,0,0};
+  float temp[1];
 
-  IMU.Get_X_AxesRaw(nano33_a);
-  IMU.Get_G_AxesRaw(nano33_w);
+  // IMU.Get_X_AxesRaw(nano33_a);
+  // IMU.Get_G_AxesRaw(nano33_w);
 
-  Serial.print(nano33_a[0], HEX);
-  Serial.print(nano33_a[1], HEX);
-  Serial.println();
+  // Serial.print(nano33_a[0], HEX);
+  // Serial.print(nano33_a[1], HEX);
+  // Serial.println();
+
+   IMU.Get_Temperature(temp);
+   Serial.println(temp[0]);
 
   delay(10);
 

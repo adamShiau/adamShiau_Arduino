@@ -969,6 +969,23 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_FS(int32_t FullScale)
   }
 
   return ASM330LHH_OK;
+} 
+
+ASM330LHHStatusTypeDef ASM330LHHSensor::Get_Temperature(float *temp)
+{
+  axis1bit16_t sensor_temp;
+
+  if (asm330lhh_temperature_raw_get(&reg_ctx, sensor_temp.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+  // Serial.print("Get_Temperature:");
+  // Serial.println((float)sensor_temp.i16bit/256.0);
+  *temp = (float)sensor_temp.i16bit/256.0;
+
+  return ASM330LHH_OK;
+
+
 }
 
 /**
