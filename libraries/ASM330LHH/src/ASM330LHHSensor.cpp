@@ -74,6 +74,32 @@ ASM330LHHSensor::ASM330LHHSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed) 
   gyro_is_enabled = 0U;
 }
 
+void ASM330LHHSensor::init()
+{
+  float var_f;
+  int32_t var_d;
+  begin();
+  Enable_X();
+  Enable_G();
+  Set_X_ODR(416.0);
+  Set_X_FS(4);  
+  Set_G_ODR(416.0);
+  Set_G_FS(500);
+
+  Get_X_ODR(&var_f);
+  Serial.print("XLM ODR: ");
+  Serial.println(var_f);
+  Get_X_FS(&var_d);
+  Serial.print("XLM FS: ");
+  Serial.println(var_d);
+  Get_G_ODR(&var_f);
+  Serial.print("GYRO ODR: ");
+  Serial.println(var_f);
+  Get_G_FS(&var_d);
+  Serial.print("GYRO FS: ");
+  Serial.println(var_d);
+}
+
 /**
  * @brief  Configure the sensor in order to be used
  * @retval 0 in case of success, an error code otherwise
@@ -465,8 +491,8 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_FS(int32_t *FullScale)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("X FS: ");
-  Serial.println(*FullScale);
+  // Serial.print("X FS: ");
+  // Serial.println(*FullScale);
 
   return ret;
 }
@@ -577,6 +603,40 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes(int32_t *Acceleration)
   // Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
 
+
+  return ASM330LHH_OK;
+}
+
+ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes_f(float Acceleration[3])
+{
+  axis3bit16_t data_raw;
+  float sensitivity = 0.0f;
+
+  /* Read raw data values. */
+  if (asm330lhh_acceleration_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Get ASM330LHH actual sensitivity. */
+  if (Get_X_Sensitivity(&sensitivity) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Calculate the data. */
+  Acceleration[0] = (float)data_raw.i16bit[0] * sensitivity;
+  Acceleration[1] = (float)data_raw.i16bit[1] * sensitivity;
+  Acceleration[2] = (float)data_raw.i16bit[2] * sensitivity;
+
+  Serial.print("X: ");
+  // Serial1.print(millis());
+  // Serial1.print(", ");
+  Serial.print(Acceleration[0]);
+  Serial.print(", ");
+  Serial.print(Acceleration[1]);
+  Serial.print(", ");
+  Serial.println(Acceleration[2]);
 
   return ASM330LHH_OK;
 }
@@ -941,8 +1001,8 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_FS(int32_t  *FullScale)
       ret = ASM330LHH_ERROR;
       break;
   }
-  Serial.print("G FS: ");
-  Serial.println(*FullScale);
+  // Serial.print("G FS: ");
+  // Serial.println(*FullScale);
 
   return ret;
 }
@@ -1063,15 +1123,47 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes(int32_t *AngularRate)
   // Serial.print("Gyro: ");
   // Serial1.print(millis());
   // Serial1.print(", ");
-  Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
-  Serial1.print(", ");
-  Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
-  Serial1.print(", ");
-  Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
+  // Serial1.print(((float)((float)data_raw.i16bit[0] * sensitivity)));
+  // Serial1.print(", ");
+  // Serial1.print(((float)((float)data_raw.i16bit[1] * sensitivity)));
+  // Serial1.print(", ");
+  // Serial1.println(((float)((float)data_raw.i16bit[2] * sensitivity)));
 
   return ASM330LHH_OK;
 }
 
+
+ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes_f(float AngularRate[3])
+{
+  axis3bit16_t data_raw;
+  float sensitivity;
+
+  /* Read raw data values. */
+  if (asm330lhh_angular_rate_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Get ASM330LHH actual sensitivity. */
+  if (Get_G_Sensitivity(&sensitivity) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Calculate the data. */
+  AngularRate[0] = (float)data_raw.i16bit[0] * sensitivity;
+  AngularRate[1] = (float)data_raw.i16bit[1] * sensitivity;
+  AngularRate[2] = (float)data_raw.i16bit[2] * sensitivity;
+
+  Serial.print("Gyro: ");
+  Serial.print(AngularRate[0]);
+  Serial.print(", ");
+  Serial.print(AngularRate[1]);
+  Serial.print(", ");
+  Serial.println(AngularRate[2]);
+
+  return ASM330LHH_OK;
+}
 
 ASM330LHHStatusTypeDef ASM330LHHSensor::readGyroscope(unsigned char data[6])  
 {

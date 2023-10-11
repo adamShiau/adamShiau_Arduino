@@ -85,6 +85,7 @@ class ASM330LHHSensor
   public:
     ASM330LHHSensor(TwoWire *i2c, uint8_t address=ASM330LHH_I2C_ADD_H);
     ASM330LHHSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed=2000000);
+    void init();
     ASM330LHHStatusTypeDef begin();
     ASM330LHHStatusTypeDef end();
     ASM330LHHStatusTypeDef ReadID(uint8_t *Id);
@@ -98,6 +99,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_X_AxesRaw(int16_t *Value);
     ASM330LHHStatusTypeDef Get_X_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_X_Axes(int32_t *Acceleration);
+    ASM330LHHStatusTypeDef Get_X_Axes_f(float Acceleration[3]);
     ASM330LHHStatusTypeDef Get_X_DRDY_Status(uint8_t *Status);
 	ASM330LHHStatusTypeDef readAcceleration(unsigned char *);
 	void print_AccelerationData(unsigned char *, unsigned int, unsigned int&);
@@ -113,6 +115,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_AxesRaw(int16_t *Value);
     ASM330LHHStatusTypeDef Get_G_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_G_Axes(int32_t *AngularRate);
+    ASM330LHHStatusTypeDef Get_G_Axes_f(float AngularRate[3]);
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
     ASM330LHHStatusTypeDef Get_Temperature(float *temp);
 	ASM330LHHStatusTypeDef readGyroscope(unsigned char []);
