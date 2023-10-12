@@ -145,7 +145,7 @@
 #define VERSION     5
 #define HP_TEST     3
 
-#define EEPROM_PARAMETER_EXIST 0xAB
+#define EEPROM_PARAMETER_EXIST 0xAA
 
 #define FLOAT_1 0x3f800000  
 #define FLOAT_2 0x40000000  
@@ -175,7 +175,7 @@
 #define DAC_GAIN_INIT       77
 #define DATA_INT_DELAY_INIT 2000
 #define SF_INIT             FLOAT_1   
-#define SFB_INIT            0
+#define SFB_INIT            FLOAT_1
 #define CUTOFF_INIT         FLOAT_650
 
 

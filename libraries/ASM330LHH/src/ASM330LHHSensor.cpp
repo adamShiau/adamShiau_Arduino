@@ -629,14 +629,12 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes_f(float Acceleration[3])
   Acceleration[1] = (float)data_raw.i16bit[1] * sensitivity;
   Acceleration[2] = (float)data_raw.i16bit[2] * sensitivity;
 
-  Serial.print("X: ");
-  // Serial1.print(millis());
-  // Serial1.print(", ");
-  Serial.print(Acceleration[0]);
-  Serial.print(", ");
-  Serial.print(Acceleration[1]);
-  Serial.print(", ");
-  Serial.println(Acceleration[2]);
+  // Serial.print("X: ");
+  // Serial.print(Acceleration[0]);
+  // Serial.print(", ");
+  // Serial.print(Acceleration[1]);
+  // Serial.print(", ");
+  // Serial.println(Acceleration[2]);
 
   return ASM330LHH_OK;
 }
@@ -1155,12 +1153,12 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes_f(float AngularRate[3])
   AngularRate[1] = (float)data_raw.i16bit[1] * sensitivity;
   AngularRate[2] = (float)data_raw.i16bit[2] * sensitivity;
 
-  Serial.print("Gyro: ");
-  Serial.print(AngularRate[0]);
-  Serial.print(", ");
-  Serial.print(AngularRate[1]);
-  Serial.print(", ");
-  Serial.println(AngularRate[2]);
+  // Serial.print("Gyro: ");
+  // Serial.print(AngularRate[0]);
+  // Serial.print(", ");
+  // Serial.print(AngularRate[1]);
+  // Serial.print(", ");
+  // Serial.println(AngularRate[2]);
 
   return ASM330LHH_OK;
 }

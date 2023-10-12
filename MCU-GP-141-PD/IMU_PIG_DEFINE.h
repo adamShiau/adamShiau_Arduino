@@ -33,7 +33,7 @@
 #define MODE_EQ		        4
 #define MODE_FOG_HP_TEST	3
 #define MODE_IMU_MEMS		5
-#define MODE_VERSION_TEST   6
+#define MODE_FOG_PARAMETER  6
 #define MODE_IMU_MEMS_GPS   7
 
 #define CMD_FOG_MOD_FREQ	8
@@ -132,7 +132,7 @@
 #define SEL_FOG_3 		    4
 #define SEL_IMU 		    5
 #define SEL_EQ	 		    6
-#define SEL_IMU_MEMS	    7
+#define SEL_FOG_PARA	    7
 #define SEL_HP_TEST 	    8
 #define SEL_VERSION_TEST 	8
 
