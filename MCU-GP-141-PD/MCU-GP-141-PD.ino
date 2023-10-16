@@ -941,8 +941,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
       if(fog) reg_fog = fog;
-      pd_temp.float_val = (float)reg_fog[12] + (float)(reg_fog[13]>>7)*0.5 ;
-
+      pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
       if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
@@ -1025,7 +1024,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) reg_fog = fog;
-    pd_temp.float_val = (float)reg_fog[12] + (float)(reg_fog[13]>>7)*0.5 ;
+    pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
     if(ISR_PEDGE)
     {
@@ -1163,124 +1162,13 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 }
 
 
-// void acq_imu_mems(byte &select_fn, unsigned int CTRLREG, byte ch)
-// {
-// 	byte nano33_w[6], nano33_a[6];
-//     byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
-//     uint8_t CRC8, CRC32[4];
+// pd_temp.float_val = (float)reg_fog[12] + (float)(reg_fog[13]>>7)*0.5 ;
+//       pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
-  
-//     if(select_fn&SEL_IMU_MEMS)
-//     {
-//         if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
-//         else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
-//     }
-  
-// 	// trig_status[0] = digitalRead(SYS_TRIG);
-// 	if(run_fog_flag)
-// 	{
-
-//         uint8_t* imu_data = (uint8_t*)malloc(25); // 9+4+6+6
-//         // adxl355.readData(adxl355_a);
-//         IMU.readGyroscope(nano33_w);
-//         IMU.readAcceleration(nano33_a);
-
-//         memcpy(imu_data, KVH_HEADER, 4);
-//         memcpy(imu_data+4, adxl355_a, 9);
-//         memcpy(imu_data+13, nano33_w, 6);
-//         memcpy(imu_data+19, nano33_a, 6);
-//         myCRC.crc_32(imu_data, 25, CRC32);
-//         free(imu_data);
-
-//         // #ifdef UART_SERIAL_5_CMD
-//         //     mySerial5.write(KVH_HEADER, 4);
-//         //     mySerial5.write(adxl355_a, 9);
-//         //     mySerial5.write(nano33_w, 6);
-//         //     mySerial5.write(nano33_a, 6);
-//         //      mySerial5.write(CRC32, 4);
-//         // #endif
-//         #ifdef UART_USB_CMD
-//             Serial.write(KVH_HEADER, 4);
-//             Serial.write(adxl355_a, 9);
-//             Serial.write(nano33_w, 6);
-//             Serial.write(nano33_a, 6);
-//             Serial.write(CRC32, 4);
-//         #endif
-//         #ifdef UART_RS422_CMD
-//             Serial1.write(KVH_HEADER, 4);
-//             Serial1.write(adxl355_a, 9);
-//             Serial1.write(nano33_w, 6);
-//             Serial1.write(nano33_a, 6);
-//             Serial1.write(CRC32, 4);
-//         #endif
-// 	}
-//     /*--end of if-condition--*/
-// 	// trig_status[1] = trig_status[0];
-// 	clear_SEL_EN(select_fn);
-// }
-
-// void acq_imu_mems_gps(byte &select_fn, unsigned int CTRLREG, byte ch)
-// {
-// 	byte nano33_w[6], nano33_a[6];
-//     byte adxl355_a[9]={0,0,0,0,0,0,0,0,0};
-// 	byte gps_data[9];
-//     uint8_t CRC32[4];
-
-//     if(select_fn&SEL_IMU_MEMS)
-//     {
-//         if(CTRLREG == INT_SYNC || CTRLREG == EXT_SYNC) run_fog_flag = 1;
-//         else if(CTRLREG == STOP_SYNC) run_fog_flag = 0;
-//     }
-  
-// 	// trig_status[0] = digitalRead(SYS_TRIG);
-// 	if(run_fog_flag)
-// 	{
-
-//         uint8_t* imu_data = (uint8_t*)malloc(32); // 9+4+6+6+9
-//         // adxl355.readData(adxl355_a);
-//         IMU.readGyroscope(nano33_w);
-//         IMU.readAcceleration(nano33_a);
-// 		    getGPStimeData(gps_data);
-
-//         memcpy(imu_data, KVH_HEADER, 4);
-//         memcpy(imu_data+4, adxl355_a, 9);
-//         memcpy(imu_data+13, nano33_w, 6);
-//         memcpy(imu_data+19, nano33_a, 6);
-// 		    memcpy(imu_data+25, gps_data, 9);
-//         myCRC.crc_32(imu_data, 34, CRC32);
-//         free(imu_data);
-
-//         // #ifdef UART_SERIAL_5_CMD
-//         //     mySerial5.write(KVH_HEADER, 4);
-//         //     mySerial5.write(adxl355_a, 9);
-//         //     mySerial5.write(nano33_w, 6);
-//         //     mySerial5.write(nano33_a, 6);
-//         //      mySerial5.write(CRC32, 4);
-//         // #endif
-//         #ifdef UART_USB_CMD
-//             Serial.write(KVH_HEADER, 4);
-//             Serial.write(adxl355_a, 9);
-//             Serial.write(nano33_w, 6);
-//             Serial.write(nano33_a, 6);
-//             Serial.write(CRC32, 4);
-//         #endif
-//         #ifdef UART_RS422_CMD
-//             Serial1.write(KVH_HEADER, 4);
-//             Serial1.write(adxl355_a, 9);
-//             Serial1.write(nano33_w, 6);
-//             Serial1.write(nano33_a, 6);
-// 			Serial1.write(gps_data, 9);
-//             Serial1.write(CRC32, 4);
-//         #endif
-//         if (gps_valid == 1) gps_valid = 0;
-// 	}
-//     /*--end of if-condition--*/
-	
-// 	// trig_status[1] = trig_status[0];
-// 	clear_SEL_EN(select_fn);
-// }
-
-
+float convert_PDtemp(byte dataH, byte dataL)
+{
+  return (int8_t)dataH + (dataL>>7)*0.5;
+}
 
 void convertGyro(byte data[6])
 {
