@@ -17,6 +17,8 @@ SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss, miso, mosi, sck]
 SERCOM5: serial1 (PB23, PB22) [rx, tx]
   
 ***/
+// #define DEBUG
+
 // interrupt for EXT_SYNC to FPGA
 #define PIG_SYNC 29 //PA22
 // RST to FPGA nConfig
@@ -203,13 +205,25 @@ byte *reg_fog;
 unsigned int t_previous = 0;
 
 void setup() {
+
+  /*** pwm ***/
+
+  pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
+  // pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
+  pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+  // pwm.timer(0, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
   
+  pwm.analogWrite(PWM100, 500);  
+  // pwm.analogWrite(PWM200, 500);  
+  // pwm.analogWrite(PWM250, 500);
+
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
   attachInterrupt(26, ISR_EXTT, CHANGE);
 
+  // software WDT
   disableWDT();
 
   // EXT WDT
@@ -307,25 +321,14 @@ void setup() {
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
   /***write EEPROM DVT test value*/
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
-	
-/*** pwm ***/
 
-  pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
-  // pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
-  pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
-  // pwm.timer(0, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
-  
-  pwm.analogWrite(PWM100, 500);  
-  // pwm.analogWrite(PWM200, 500);  
-  // pwm.analogWrite(PWM250, 500);
 
   // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    disableWDT();
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -334,8 +337,9 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    setupWDT(11);
-    enable_EXT_WDT(EXT_WDT_EN);
+
+    // setupWDT(11);
+    // enable_EXT_WDT(EXT_WDT_EN);
   }
 
 
@@ -348,7 +352,7 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  
+  printDEBUG("hi");
   // tt2 = millis();
   // if((tt2-tt1)>=500)
   // {
@@ -810,6 +814,8 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 		}
 		
 	}
+  Serial.println("Enter fn_rst mode!");
+  resetWDT();
 	clear_SEL_EN(select_fn);
 }
 
@@ -1007,6 +1013,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -1017,6 +1024,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1039,12 +1047,14 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     if(fog) reg_fog = fog;
     pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
-    if(ISR_PEDGE)
+    if(ISR_PEDGE) 
     {
       uint8_t* imu_data = (uint8_t*)malloc(36); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
       mcu_time.ulong_val = millis() - t_previous;
 
       ISR_PEDGE = false;
+
+      if(mcu_time.ulong_val > 5000) output_fn = fn_rst;
 
       IMU.Get_X_Axes_f(my_memsXLM.float_val);
       IMU.Get_G_Axes_f(my_memsGYRO.float_val);
@@ -1692,4 +1702,11 @@ void disable_EXT_WDT(char en_pin){
 void enable_EXT_WDT(char en_pin){
   Serial.println("enable_EXT_WDT");
   digitalWrite(en_pin, LOW);
+}
+
+void printDEBUG(const char* s){
+
+  #ifdef DEBUG
+    Serial.println(s);
+  #endif
 }
