@@ -216,7 +216,7 @@ void setup() {
 
   //SPI
   SPI.begin();
-  SPI.beginTransaction(SPISettings(SPI_CLOCK_1M, MSBFIRST, SPI_MODE0));
+  // SPI.beginTransaction(SPISettings(SPI_CLOCK_1M, MSBFIRST, SPI_MODE0));
   
   // mySPI.begin();
   // pinPeripheral(3, PIO_SERCOM_ALT);
@@ -452,6 +452,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     {
       uint8_t* imu_data = (uint8_t*)malloc(32); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
       mcu_time.ulong_val = millis() - t_previous;
+      // uint8_t tt[8] = {0xFE, 0x81, 0xFF, 0x55, 0x01, 0x02 ,0x03, 0x04};
+      uint8_t tt[4] = {0x1, 0x02 ,0x03, 0x4};
 
       ISR_PEDGE = false;
 
@@ -464,7 +466,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       memcpy(imu_data+28, mcu_time.bin_val, 4);
       myCRC.crc_32(imu_data, 32, CRC32);
 
-      free(imu_data);
+      
       #ifdef UART_RS422_CMD
         Serial1.write(KVH_HEADER, 4);
         Serial1.write(my_memsGYRO.bin_val, 12);
@@ -473,9 +475,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(CRC32, 4);
       #endif   
       digitalWrite(CHIP_SELECT_PIN, LOW);
-      SPI.transfer(mcu_time.ulong_val);
-      Serial.println(SPI.transfer(0x0));
+      SPI.transfer(imu_data, 32);
+      SPI.transfer(CRC32, 4);
+      // Serial.println(SPI.transfer(0x0));
       digitalWrite(CHIP_SELECT_PIN, HIGH);
+      free(imu_data);
     }
     t_old = t_new;    
     // resetWDT();
