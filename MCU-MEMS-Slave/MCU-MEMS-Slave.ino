@@ -35,8 +35,8 @@ void setup()
 
 void loop()
 {
-  // att += 1;
-  // delay(100);
+  att += 1;
+  delay(100);
   if(cnt==99) {
     for(int i=0; i<100; i++){
       Serial.print(i);
@@ -147,7 +147,7 @@ Reference: Atmel-42181G-SAM-D21_Datasheet section 26.8.6 on page 503
     #ifdef DEBUG
       Serial.println("SPI Data Register Empty interrupt");
     #endif
-    SERCOM1->SPI.DATA.reg = 0xAA;
+    SERCOM1->SPI.DATA.reg = att;
   }
   
   #ifdef INTERRUPT2BUFFER

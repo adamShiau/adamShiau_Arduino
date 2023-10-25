@@ -475,9 +475,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(CRC32, 4);
       #endif   
       digitalWrite(CHIP_SELECT_PIN, LOW);
-      SPI.transfer(imu_data, 32);
-      SPI.transfer(CRC32, 4);
-      // Serial.println(SPI.transfer(0x0));
+      // SPI.transfer(imu_data, 32);
+      // SPI.transfer(CRC32, 4);
+      SPI.transfer(tt, 4);
+      Serial.println(SPI.transfer(0x0));
       digitalWrite(CHIP_SELECT_PIN, HIGH);
       free(imu_data);
     }
