@@ -27,6 +27,7 @@
 #define EXT_SYNC 	1<<1
 #define STOP_SYNC 	1<<2
 #define HP_TEST 	3
+#define NMEA_MODE	5
 
 // 
 PIG::PIG(Stream &p, byte l) : port(p), myUart(p, l) 
@@ -124,6 +125,11 @@ char PIG::setSyncMode(unsigned int CTRLREG)
 		}
 		case HP_TEST: {
 			sendCmd(DATA_OUT_START_ADDR, 3);
+			run_fog_flag = 1;
+			break;
+		}
+		case NMEA_MODE: {
+			sendCmd(DATA_OUT_START_ADDR, 4);
 			run_fog_flag = 1;
 			break;
 		}
