@@ -188,6 +188,7 @@ static void   WDTsync() {
 }
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
+unsigned long data_cnt = 0;
 
 unsigned int MCU_cnt = 0;
 
@@ -197,6 +198,7 @@ TinyGPSPlus gps;
 byte *reg_fog;
 
 unsigned int t_previous = 0;
+
 
 void setup() {
   /*** pwm ***/
@@ -286,7 +288,7 @@ void setup() {
   delay(500);
 
   byte FPGA_wakeup_flag = 0; 
-  // Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
   parameter_init();
@@ -323,7 +325,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    setupWDT(11);
+    // setupWDT(11);
   }
 
 
@@ -336,14 +338,6 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  
-  // tt2 = millis();
-  // if((tt2-tt1)>=500)
-  // {
-  //   Serial.print("\nfog status: ");
-  //   Serial.println(fog_op_status);
-  //   tt1 = tt2;
-  // }
   
   // readADC();
 }
@@ -674,6 +668,22 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         }
       break;}
 
+      case CMD_CONFI_BAUDRATE: {
+        if(value != EEPROM_BAUDRATE){
+          Serial.println("Baudrate changed!");
+          write_fog_parameter_to_eeprom(EEPROM_BAUDRATE, EEPROM_ADDR_BAUDRATE, value);
+          update_baudrate(EEPROM_BAUDRATE);
+        }
+      break;}
+
+      case CMD_CONFI_DATARATE: {
+        if(value != EEPROM_DATARATE){
+          Serial.println("Datarate changed!");
+          write_fog_parameter_to_eeprom(EEPROM_DATARATE, EEPROM_ADDR_DATARATE, value);
+          update_datarate(EEPROM_DATARATE);
+        }
+      break;}
+
       case CMD_FPGA_VERSION: {
         String fpga_version;
         for(int i=0; i<255; i++) SER->read();//clear serial buffer
@@ -694,8 +704,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         String fog_parameter;
         for(int i=0; i<255; i++) SER->read();//clear serial buffer
         sp->updateParameter(myCmd_header, FPGA_DUMP_PARAMETERS_ADDR, myCmd_trailer, value, 0xCC);
-
-        while(!SER->available());
+        while(!SER->available()){delay(1);};
         if(SER->available())
          {
           fog_parameter = SER->readStringUntil('\n');
@@ -747,27 +756,13 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
           select_fn = SEL_FOG_PARA;
           break;
       }
-      // case MODE_IMU_MEMS_GPS: {
-      //     output_fn = acq_imu_mems_gps;
-      //     select_fn = SEL_IMU_MEMS;
-      //     break;
-      // }
+
       default: break;
       }
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
-      // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-      // Serial.print("output_mode_setting - select_fn: ");
-      // Serial.print(select_fn, HEX);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val, HEX);
 
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
-      // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-      // Serial.print("output_mode_setting - output_fn: ");
-      // Serial.print((int)output_fn, HEX);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val, HEX);
 
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
       // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
@@ -800,6 +795,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 	}
 	clear_SEL_EN(select_fn);
 }
+
 
 void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
@@ -1097,7 +1093,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       case NMEA_MODE:
         Serial.println("Enter EXT_SYNC NMEA_MODE mode");
         Serial.println("Set EXTT to RISING");
-
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
@@ -1106,6 +1102,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       case STOP_SYNC:
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        data_cnt = 0;
         disableWDT();
       break;
 
@@ -1116,6 +1113,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 	}
   if(run_fog_flag) {
 	    t_new = micros();
+      data_cnt++;
       
            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
@@ -1125,29 +1123,17 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 
       if(ISR_PEDGE)
       {
-        uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
-        mcu_time.ulong_val = millis() - t_previous;
-        
         ISR_PEDGE = false;
-        memcpy(imu_data, KVH_HEADER, 4);
-        memcpy(imu_data+4, reg_fog, 14);
-        memcpy(imu_data+18, mcu_time.bin_val, 4);
-        myCRC.crc_32(imu_data, 22, CRC32);
-        free(imu_data);
 
         #ifdef UART_RS422_CMD
-        // Serial1.write(KVH_HEADER, 4);
-        Serial1.write(reg_fog, 14);
-        Serial1.println("");
-        // Serial1.write(mcu_time.bin_val, 4);
-        // Serial1.write(CRC32, 4);
-       #endif
+        if(data_cnt >= 2){
+          Serial1.write(reg_fog, 14);
+          Serial1.println("");
+        }
         
+       #endif 
       }
-	    
-      t_old = t_new;
       resetWDT();
-        
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -1302,130 +1288,9 @@ void print_nano33XlmData(byte *data)
 void clear_SEL_EN(byte &select_fn)
 {
 	select_fn = SEL_DEFAULT;
-  // digitalWrite(PIG_SYNC, LOW);
 }
 
-#ifdef ENABLE_SRS200
-void readSRS200Data(unsigned char header[2], unsigned char data[SRS200_SIZE])
-{
-	// checkHeader(header);
-	mySerial5.readBytes(data, SRS200_SIZE);
-	// printSRSdata(data);
-}
 
-void printSRSdata(unsigned char data[10])
-{
-	long omega;
-
-	omega = (long)(data[3]<<24|data[2]<<16|data[1]<<8|data[0]);
-	t_new = micros();
-	// Serial.print(t_new - t_old);
-	// Serial.print('\t');
-	// Serial.print(data[3]);
-	// Serial.print('\t');
-	// Serial.print(data[2]);
-	// Serial.print('\t');
-	// Serial.print(data[1]);
-	// Serial.print('\t');
-	// Serial.print(data[0]);
-	// Serial.print('\t');
-	if((data[3]>>7) == 1)
-		omega = omega - (long)(1<<32);
-	Serial.println(omega);
-	t_old = t_new;
-}
-#endif
-
-
-
-void sendCmd(unsigned char addr, unsigned int value)
-{
-	Serial1.write(addr);
-	Serial1.write(value>>24 & 0xFF);
-	Serial1.write(value>>16 & 0xFF);
-	Serial1.write(value>>8 & 0xFF);
-	Serial1.write(value & 0xFF);
-	delay(1);
-}
-
-void updateGPS(unsigned int ms)
-{
-  if(( millis()-gps_init_time ) >= ms)
-  {
-    gps_init_time = millis();
-
-    displayGPSInfo();
-	// Serial.print(gps_date);
-	// Serial.print(", ");
-	// Serial.println(gps_time);
-  }
-}
-
-void getGPStimeData(byte data[9])
-{
-	// gps_valid = 1;
-	data[0] = gps_date>>24;
-  data[1] = gps_date>>16;
-  data[2] = gps_date>>8;
-	data[3] = gps_date;
-	data[4] = gps_time >> 24;
-	data[5] = gps_time >> 16;
-	data[6] = gps_time >> 8;
-	data[7] = gps_time;
-	data[8] = gps_valid;
-}
-
-void displayGPSInfo()
-{
-  Serial.print(F("Location: ")); 
-  if (gps.location.isValid())
-  {
-    Serial.print(gps.location.lat(), 6);
-    Serial.print(F(","));
-    Serial.print(gps.location.lng(), 6);
-  }
-  else
-  {
-    Serial.print(F("INVALID"));
-  }
-
-  Serial.print(F("  Date/Time: "));
-  if (gps.date.isValid())
-  {
-    Serial.print(gps.date.month());
-    Serial.print(F("/"));
-    Serial.print(gps.date.day());
-    Serial.print(F("/"));
-    Serial.print(gps.date.year());
-  }
-  else
-  {
-    Serial.print(F("INVALID"));
-  }
-
-  Serial.print(F(" "));
-  if (gps.time.isValid())
-  {
-    if (gps.time.hour() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.hour());
-    Serial.print(F(":"));
-    if (gps.time.minute() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.minute());
-    Serial.print(F(":"));
-    if (gps.time.second() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.second());
-    Serial.print(F("."));
-    if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.centisecond());
-  }
-  else
-  {
-    Serial.print(F("INVALID"));
-  }
-  Serial.print(" ");
-  Serial.print(gps_valid);
-  Serial.println();
-}
 
 
 void ISR_EXTT()
@@ -1542,6 +1407,14 @@ void parameter_init(void)
   if(EEPROM_Parameter_exist != EEPROM_PARAMETER_EXIST){
     eeprom.Parameter_Write(EEPROM_ADDR_PARAMETER_EXIST, EEPROM_PARAMETER_EXIST);
     Serial.println("EEPROM FOG parameter not exist!");
+    /***output configuration*/
+    Serial.println("Start setting output configuration.");
+    write_fog_parameter_to_eeprom(EEPROM_BAUDRATE, EEPROM_ADDR_BAUDRATE, BAUDRATE_INIT);
+    write_fog_parameter_to_eeprom(EEPROM_DATARATE, EEPROM_ADDR_DATARATE, DATARATE_INIT);
+    set_output_configuration_init();
+    /***end of output configuration*/
+
+    /***fog parameters*/
     Serial.println("Start writing initial fog data.");
     eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
     write_fog_parameter_to_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ, MOD_FREQ_INIT);
@@ -1575,9 +1448,12 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
     write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS80);
     update_fpga_fog_parameter_init(100, 2);
+    /***end of fog parameters*/
+
   }
   else{
     Serial.println("EEPROM FOG parameter exist!");
+    /***fog parameters*/
     Serial.println("Start reading fog parameter from eeprom.");
     read_fog_parameter_from_eeprom(EEPROM_Mod_freq, EEPROM_ADDR_MOD_FREQ);
     read_fog_parameter_from_eeprom(EEPROM_Wait_cnt, EEPROM_ADDR_WAIT_CNT);
@@ -1609,9 +1485,60 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_CUTOFF, EEPROM_ADDR_CUTOFF);
     read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
     read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
-    
     update_fpga_fog_parameter_init(100, 2);
+    /***end of fog parameters*/
+
+    /***output configuration*/
+    Serial.println("Start reading output configuration from eeprom.");
+    read_fog_parameter_from_eeprom(EEPROM_BAUDRATE, EEPROM_ADDR_BAUDRATE);
+    read_fog_parameter_from_eeprom(EEPROM_DATARATE, EEPROM_ADDR_DATARATE);
+    report_current_output_configuration();
+    set_output_configuration_init();
+    /***end of output configuration*/
   }
+}
+
+void report_current_output_configuration()
+{
+  Serial1.begin(9600);
+  switch(EEPROM_BAUDRATE)
+  {
+    case SET_BAUDRATE_230400: {
+      Serial1.println("Baudrate set to 230400");
+      Serial.println("Baudrate set to 230400");
+      break;
+    }
+    case SET_BAUDRATE_115200: {
+      Serial1.println("Baudrate set to 115200");
+      Serial.println("Baudrate set to 115200");
+      break;
+    }
+    case SET_BAUDRATE_9600: {
+      Serial1.println("Baudrate set to 9600");
+      Serial.println("Baudrate set to 9600");
+      break;
+    }
+    case SET_BAUDRATE_4800: {
+      Serial1.println("Baudrate set to 4800");
+      Serial.println("Baudrate set to 4800");
+      break;
+    }
+  }
+
+  switch(EEPROM_DATARATE)
+  {
+    case SET_DATARATE_100: {
+      Serial1.println("Data rate set to 100 Hz");
+      Serial.println("Data rate set to 100 Hz");
+      break;
+    }
+    case SET_DATARATE_10: {
+      Serial1.println("Data rate set to 10 Hz");
+      Serial.println("Data rate set to 10 Hz");
+      break;
+    }
+  }
+  delay(100);
 }
 
 void write_fog_parameter_to_eeprom(int& eeprom_var, unsigned int eeprom_addr, int value)
@@ -1624,12 +1551,76 @@ void write_fog_parameter_to_eeprom(int& eeprom_var, unsigned int eeprom_addr, in
 
 void read_fog_parameter_from_eeprom(int& eeprom_var, unsigned int eeprom_addr)
 {
-  
   /**read from eeprom address*/
   eeprom.Parameter_Read(eeprom_addr, my_f.bin_val);
   /**copy to eeprom variable*/
   eeprom_var = my_f.int_val;
   // Serial.println(eeprom_var);
+}
+
+void update_baudrate(byte eeprom_var)
+{
+  switch(eeprom_var)
+  {
+    case SET_BAUDRATE_230400: {
+      Serial1.println("Baudrate set to 230400");
+      Serial.println("Baudrate set to 230400");
+      delay(100);
+      Serial1.begin(230400);
+      break;
+    }
+    case SET_BAUDRATE_115200: {
+      Serial1.println("Baudrate set to 115200");
+      Serial.println("Baudrate set to 115200");
+      delay(100);
+      Serial1.begin(115200);
+      break;
+    }
+    case SET_BAUDRATE_9600: {
+      Serial1.println("Baudrate set to 9600");
+      Serial.println("Baudrate set to 9600");
+      delay(100);
+      Serial1.begin(9600);
+      break;
+    }
+    case SET_BAUDRATE_4800: {
+      Serial1.println("Baudrate set to 4800");
+      Serial.println("Baudrate set to 4800");
+      delay(100);
+      Serial1.begin(4800);
+      break;
+    }
+    
+  }
+}
+
+void update_datarate(byte eeprom_var)
+{
+  switch(eeprom_var)
+  {
+    case SET_DATARATE_100: {
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_10: {
+      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      Serial.println("Data rate set to 10 Hz");
+      Serial1.println("Data rate set to 10 Hz");
+      delay(100);
+      break;
+    }
+  }
+}
+
+void set_output_configuration_init()
+{
+  Serial.println("Setting output configuration!");
+  update_baudrate(EEPROM_BAUDRATE);
+  update_datarate(EEPROM_DATARATE);
+  Serial.println("Setting output configuration done");
 }
 
 void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)

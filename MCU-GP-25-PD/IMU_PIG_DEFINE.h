@@ -30,11 +30,9 @@
 #define MODE_RST 	        0
 #define MODE_FOG	        1
 #define MODE_IMU	        2
-#define MODE_NMEA		    5
 #define MODE_FOG_HP_TEST	3
-#define MODE_IMU_MEMS		5
+#define MODE_NMEA		    4
 #define MODE_FOG_PARAMETER  6
-#define MODE_IMU_MEMS_GPS   7
 
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9
@@ -70,6 +68,8 @@
 #define CMD_FOG_CUTOFF     	39
 #define CMD_FPGA_VERSION	101
 #define CMD_DUMP_PARAMETERS	102
+#define CMD_CONFI_BAUDRATE  103
+#define CMD_CONFI_DATARATE  104
 
 #define MUX_OUTPUT		    0
 #define MUX_PARAMETER	    1
@@ -134,7 +134,7 @@
 #define SEL_NMEA	 		6
 #define SEL_FOG_PARA	    7
 #define SEL_HP_TEST 	    8
-#define SEL_VERSION_TEST 	8
+// #define SEL_OUTPUT_PARA 	9
 
 /*** MODE_RST CTRL REG***/
 #define REFILL_SERIAL1 1
@@ -144,6 +144,14 @@
 #define STOP_SYNC 	1<<2
 #define NMEA_MODE   5
 #define HP_TEST     3
+
+/*** setting output parameter ***/
+#define SET_BAUDRATE_230400 0
+#define SET_BAUDRATE_115200 1
+#define SET_BAUDRATE_9600   2
+#define SET_BAUDRATE_4800   3
+#define SET_DATARATE_100    0
+#define SET_DATARATE_10     1
 
 #define EEPROM_PARAMETER_EXIST 0xAB
 
@@ -178,6 +186,9 @@
 #define SFB_INIT            0
 #define CUTOFF_INIT         FLOAT_650
 
+/*** OUTPUT PARAMETER*/
+#define BAUDRATE_INIT SET_BAUDRATE_230400
+#define DATARATE_INIT SET_DATARATE_100
 
 /*** EEPROM ADDR*/
 #define EEPROM_ADDR_FOG_STATUS 4095
@@ -219,6 +230,9 @@
 #define EEPROM_ADDR_TMAX            29
 #define EEPROM_ADDR_SFB             30
 #define EEPROM_ADDR_CUTOFF          31
+/** data output parameter**/
+#define EEPROM_ADDR_BAUDRATE        51
+#define EEPROM_ADDR_DATARATE        52
 
 
 /**Global Variable for EEPROM*/
@@ -229,6 +243,8 @@ int EEPROM_Amp_H, EEPROM_Amp_L, EEPROM_Err_offset, EEPROM_Err_th, EEPROM_Const_s
 int EEPROM_SF0, EEPROM_SF1, EEPROM_SF2, EEPROM_SF3, EEPROM_SF4;
 int EEPROM_SF5, EEPROM_SF6, EEPROM_SF7, EEPROM_SF8, EEPROM_SF9; 
 int EEPROM_TMIN, EEPROM_TMAX, EEPROM_SFB, EEPROM_CUTOFF;
+int EEPROM_BAUDRATE, EEPROM_DATARATE;
+
 
 /*** ADC PIN***/
 #define ADC_CONV 3.3/4096.0
