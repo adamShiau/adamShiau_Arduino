@@ -461,7 +461,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       IMU.Get_G_Axes_f(my_memsGYRO.float_val);
 
       memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+4, my_memsGYRO.bin_val, 12);//wx, wy
+      memcpy(imu_data+4, my_memsGYRO.bin_val, 12);//wx, wy, wz
       memcpy(imu_data+16, my_memsXLM.bin_val, 12);//ax, ay, az
       memcpy(imu_data+28, mcu_time.bin_val, 4);
       myCRC.crc_32(imu_data, 32, CRC32);
