@@ -1523,6 +1523,11 @@ void report_current_output_configuration()
       Serial.println("Baudrate set to 4800");
       break;
     }
+    default: {
+      Serial1.println("Baudrate set to 230400");
+      Serial.println("Baudrate set to 230400");
+      break;
+    }
   }
 
   switch(EEPROM_DATARATE)
@@ -1535,6 +1540,11 @@ void report_current_output_configuration()
     case SET_DATARATE_10: {
       Serial1.println("Data rate set to 10 Hz");
       Serial.println("Data rate set to 10 Hz");
+      break;
+    }
+    default: {
+      Serial1.println("Data rate set to 100 Hz");
+      Serial.println("Data rate set to 100 Hz");
       break;
     }
   }
@@ -1590,7 +1600,13 @@ void update_baudrate(byte eeprom_var)
       Serial1.begin(4800);
       break;
     }
-    
+    default:{
+      Serial1.println("Baudrate set to 230400");
+      Serial.println("Baudrate set to 230400");
+      delay(100);
+      Serial1.begin(230400);
+      break;
+    }
   }
 }
 
@@ -1609,6 +1625,13 @@ void update_datarate(byte eeprom_var)
       pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
+      delay(100);
+      break;
+    }
+    default:{
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
       delay(100);
       break;
     }
