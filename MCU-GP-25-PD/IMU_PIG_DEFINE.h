@@ -115,7 +115,7 @@
 // #define UART_SERIAL_5_CMD
 // #define UART_USB_CMD
 #define UART_RS422_CMD
-
+#define DELAY_CNT 5
 /*** ENABLE SRS200***/
 // #define ENABLE_SRS200
 

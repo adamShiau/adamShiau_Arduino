@@ -816,6 +816,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
+        data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
@@ -823,6 +824,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case EXT_SYNC:
+        data_cnt = 0;
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
 
@@ -832,6 +834,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case STOP_SYNC:
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
@@ -854,6 +857,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
+        data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
@@ -864,10 +868,13 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
         free(imu_data);
 
         #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(reg_fog, 14);
-        Serial1.write(mcu_time.bin_val, 4);
-        Serial1.write(CRC32, 4);
+        if(data_cnt >= DELAY_CNT)
+        {
+          Serial1.write(KVH_HEADER, 4);
+          Serial1.write(reg_fog, 14);
+          Serial1.write(mcu_time.bin_val, 4);
+          Serial1.write(CRC32, 4);
+        }
        #endif
         
       }
@@ -899,6 +906,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
+        data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
@@ -908,13 +916,14 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
-
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
 
       case STOP_SYNC:
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
@@ -939,6 +948,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
+        data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
@@ -950,12 +960,15 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         free(imu_data);
 
         #ifdef UART_RS422_CMD
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(reg_fog+8, 4);
-        Serial1.write(pd_temp.bin_val, 4);
-        Serial1.write(mcu_time.bin_val, 4);
-        Serial1.write(CRC32, 4);
-       #endif
+        if(data_cnt >= DELAY_CNT)
+        {
+          Serial1.write(KVH_HEADER, 4);
+          Serial1.write(reg_fog+8, 4);
+          Serial1.write(pd_temp.bin_val, 4);
+          Serial1.write(mcu_time.bin_val, 4);
+          Serial1.write(CRC32, 4);
+        #endif
+        }
         
       }
 	    
@@ -987,12 +1000,14 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         
       break;
       case EXT_SYNC:
+        data_cnt = 0;
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to CHANGE");
 
@@ -1002,6 +1017,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
@@ -1023,6 +1039,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     if(ISR_PEDGE)
     {
       uint8_t* imu_data = (uint8_t*)malloc(36); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+
+      data_cnt++;
+
       mcu_time.ulong_val = millis() - t_previous;
 
       ISR_PEDGE = false;
@@ -1039,15 +1058,18 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       myCRC.crc_32(imu_data, 36, CRC32);
 
       free(imu_data);
-
+      
       #ifdef UART_RS422_CMD
-              Serial1.write(KVH_HEADER, 4);
-              Serial1.write(my_memsGYRO.bin_val, 8);
-              Serial1.write(reg_fog+8, 4);
-              Serial1.write(my_memsXLM.bin_val, 12);
-              Serial1.write(pd_temp.bin_val, 4);
-              Serial1.write(mcu_time.bin_val, 4);
-              Serial1.write(CRC32, 4);
+      if(data_cnt >= DELAY_CNT)
+      {
+        Serial1.write(KVH_HEADER, 4);
+        Serial1.write(my_memsGYRO.bin_val, 8);
+        Serial1.write(reg_fog+8, 4);
+        Serial1.write(my_memsXLM.bin_val, 12);
+        Serial1.write(pd_temp.bin_val, 4);
+        Serial1.write(mcu_time.bin_val, 4);
+        Serial1.write(CRC32, 4);
+      }
       #endif   
     }
     t_old = t_new;    
@@ -1075,6 +1097,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
+        data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
@@ -1084,7 +1107,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
-
+        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
@@ -1113,7 +1136,6 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 	}
   if(run_fog_flag) {
 	    t_new = micros();
-      data_cnt++;
       
            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
@@ -1123,10 +1145,11 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 
       if(ISR_PEDGE)
       {
-        ISR_PEDGE = false;
 
+        ISR_PEDGE = false;
+        data_cnt++;
         #ifdef UART_RS422_CMD
-        if(data_cnt >= 2){
+        if(data_cnt >= DELAY_CNT){
           Serial1.write(reg_fog, 14);
           Serial1.println("");
         }
