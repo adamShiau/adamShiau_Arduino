@@ -47,6 +47,48 @@ void loop()
 }
 
 void SERCOM1_Handler()
+{
+  uint8_t data = 0;
+
+  #ifdef DEBUG
+    Serial.println("In SPI Interrupt");
+  #endif
+  uint8_t interrupts = SERCOM1->SPI.INTFLAG.reg; // Read SPI interrupt register
+  Serial.print(interrupts, BIN);
+
+  // Data Register Empty interrupt
+  if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
+  {
+    #ifdef DEBUG
+      Serial.println("SPI Data Register Empty interrupt");
+    #endif
+    SERCOM1->SPI.DATA.reg = 0;
+  }
+
+      // Slave Select Low interrupt
+  if (interrupts & (1 << 3)) // 1000 = bit 3 = SSL // page 503
+  {
+    #ifdef DEBUG
+      Serial.println("SPI Slave Select Low interupt");
+    #endif
+    SERCOM1->SPI.INTFLAG.bit.SSL = 1; // Clear Slave Select Low interrupt
+  }
+
+  // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
+  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
+  {
+    #ifdef DEBUG
+      Serial.println("SPI Data Received Complete interrupt");
+    #endif
+    data = (uint8_t)SERCOM1->SPI.DATA.reg;
+    SERCOM1->SPI.INTFLAG.bit.RXC = 1; // Clear Receive Complete interrupt
+  }
+  Serial.print(",");
+  Serial.println(SERCOM1->SPI.INTFLAG.reg, BIN);
+
+}
+
+void SERCOM11_Handler()
 /*
 Reference: Atmel-42181G-SAM-D21_Datasheet section 26.8.6 on page 503
 */
