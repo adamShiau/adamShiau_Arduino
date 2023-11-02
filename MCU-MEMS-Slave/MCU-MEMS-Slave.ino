@@ -25,6 +25,31 @@ enum {
   EXPECTING_WRITE
 	} state = EXPECTING_HEADER;
 
+
+// The receive buffer size
+#define	RX_BUF_SIZE			256				// Must be an even power of two
+#define	RX_BUF_SIZE_MASK	RX_BUF_SIZE - 1
+
+typedef struct
+{
+	// The receive buffer and indices
+	alt_u8 rxBuf[RX_BUF_SIZE];
+
+	volatile int rxBufCount;
+	int rxBufPut;
+	int rxBufTake;
+
+	// The transmit buffer and indices
+	alt_u8 txBuf[TX_BUF_SIZE];
+
+	volatile int txBufCount;
+	int txBufPut;
+	int txBufTake;
+} UartBuffer_t;
+
+// The UART working memory
+static UartBuffer_t gUartBuffer;
+
 void setup()
 {
   Serial.begin(115200);
@@ -59,28 +84,53 @@ void SERCOM1_Handler()
   // Data Register Empty interrupt
   if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
   {
-    #ifdef DEBUG
-      Serial.println("SPI Data Register Empty interrupt");
-    #endif
-    SERCOM1->SPI.DATA.reg = 0;
+    switch(FSM)
+    {
+      case EXPECTING_WRITE:{
+        
+        break;
+      }
+      default:{
+        SERCOM1->SPI.DATA.reg = 0;
+        break;
+      }
+    } 
+    
+  }
+
+    // Data Transmit Complete interrupt
+  if (interrupts & (1 << 1)) // 0010 = bit 1 = TXC // page 503
+  {
+    SERCOM1->SPI.INTFLAG.bit.TXC = 1; // Clear Transmit Complete interrupt
   }
 
       // Slave Select Low interrupt
   if (interrupts & (1 << 3)) // 1000 = bit 3 = SSL // page 503
   {
-    #ifdef DEBUG
-      Serial.println("SPI Slave Select Low interupt");
-    #endif
     SERCOM1->SPI.INTFLAG.bit.SSL = 1; // Clear Slave Select Low interrupt
   }
 
   // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
   if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
   {
-    #ifdef DEBUG
-      Serial.println("SPI Data Received Complete interrupt");
-    #endif
     data = (uint8_t)SERCOM1->SPI.DATA.reg;
+
+    switch(FSM)
+    {
+      case EXPECTING_HEADER:{
+        
+        break;
+      }
+      case EXPECTING_PAYLOAD:{
+
+        break;
+      }
+      default:{
+
+        break;
+      }
+    } 
+
     SERCOM1->SPI.INTFLAG.bit.RXC = 1; // Clear Receive Complete interrupt
   }
   Serial.print(",");
@@ -129,46 +179,53 @@ Reference: Atmel-42181G-SAM-D21_Datasheet section 26.8.6 on page 503
     // Serial.println(data);
     // interrupts();
     
-// /***
-// switch(state) 
-//     {
-//       case EXPECTING_HEADER:{
 
-//         Serial.print("EXPECTING_HEADER: ");
-//         Serial.print(state);
-//         Serial.print(", ");
-//         Serial.println(data);
+switch(state) 
+{
+  uint8_t data;
+  case EXPECTING_HEADER:{
 
-//         rcv_complete = 0;
-//         if (data != expected_header[bytes_received++])
-//         {
-//           state = EXPECTING_HEADER;
-//           bytes_received = 0;
+    if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
+    {
+      data = (uint8_t)SERCOM1->SPI.DATA.reg;
 
-//         }
+      if (data != expected_header[bytes_received++])
+      {
+        state = EXPECTING_HEADER;
+        bytes_received = 0;
 
-//         if(bytes_received >= header_size)
-//         {
-//           Serial.println("EXPECTING_PAYLOAD: ");
-//           state = EXPECTING_PAYLOAD;
-//           bytes_received = 0;
-//         }
-//         break;
-//       }
-      
-//       case EXPECTING_PAYLOAD:{ 
+      }
 
-//         buffer[bytes_received++] = data;
+      if(bytes_received >= header_size)
+      {
+        state = EXPECTING_PAYLOAD;
+        bytes_received = 0;
+      }
 
-//         if(bytes_received >= data_size_expected)
-//         {
-//           rcv_complete = 1;
-//           bytes_received = 0;
-//           state = EXPECTING_WRITE;
-//         }
-//         break;
-//       }
-//     }
+    }
+
+    
+    break;
+  }
+  
+  case EXPECTING_PAYLOAD:{ 
+
+    buffer[bytes_received++] = (uint8_t)SERCOM1->SPI.DATA.reg;
+
+    if(bytes_received >= data_size_expected)
+    {
+      bytes_received = 0;
+      state = EXPECTING_WRITE;
+    }
+    break;
+  }
+
+  case EXPECTING_WRITE:{ 
+
+    break;
+  }
+
+}
 
     
 
@@ -205,3 +262,46 @@ Reference: Atmel-42181G-SAM-D21_Datasheet section 26.8.6 on page 503
   #endif
 
 }
+
+/*-----------------------------------------------------------------------------
+--------------------------------------------------------------- uartISR
+-------------------------------------------------------------------------------
+DESCRIPTION:
+	The UART interrupt work function.  It runs in the interrupt execution
+	context.
+
+PARAMETERS:
+	None.
+
+RETURNS:
+	Nothing.
+-----------------------------------------------------------------------------*/
+void input2Buf(UartBuffer_t *pUartBuffer, uint8_t flag)
+{
+	uint8_t data;
+
+	/**
+	 * 若有新的rx數據進來，將數據存入rxBuf[rxBufPut]，然後將 rxBufPut 與 rxBufCount 加1。
+	 * rxBufPut:目前rx的數據到buffer哪個位置了，會一直在0~RX_BUF_SIZE_MASK之間循環
+	 * rxBufCount: 目前rx數據量，最大到RX_BUF_SIZE就不會增加了
+	 */
+	if(flag)
+	{
+		// Get the byte
+    data = (uint8_t)SERCOM1->SPI.DATA.reg;
+
+		// Store the byte
+		pUartBuffer->rxBuf[pUartBuffer->rxBufPut] = data;
+
+		// Increment the put index
+		pUartBuffer->rxBufPut++;
+		pUartBuffer->rxBufPut &= RX_BUF_SIZE_MASK;
+
+		// Increment the count while preventing buffer overrun
+		if(pUartBuffer->rxBufCount < RX_BUF_SIZE) pUartBuffer->rxBufCount++;
+	}
+}
+
+
+
+
