@@ -24,6 +24,7 @@
 // #define PWM_FIX 0.978
 TurboPWM  pwm;
 
+#define SPI_SLAVE_DATA_SIZE 16
 
 unsigned int t_new, t_old=0;
 
@@ -45,6 +46,14 @@ typedef union
   int int_val[3];
 }
 my_acc_t;
+
+typedef union
+{
+  float float_val[4];
+  uint8_t bin_val[16];
+  unsigned long ulong_val[4];
+}
+my_att_t;
 
 typedef union
 {
@@ -474,11 +483,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
       #endif   
+      // getImuData(imu_data + 4);
       digitalWrite(CHIP_SELECT_PIN, LOW);
-      // SPI.transfer(imu_data, 32);
-      // SPI.transfer(CRC32, 4);
-      SPI.transfer(tt, 4);
-      Serial.println(SPI.transfer(0x0));
+      SPI.transfer(imu_data, 32); // send imu data to slave
+      getSlaveData(10); // get attitude data from slave
       digitalWrite(CHIP_SELECT_PIN, HIGH);
       free(imu_data);
     }
@@ -486,6 +494,45 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     // resetWDT();
 	}
 	clear_SEL_EN(select_fn);
+}
+
+void getSlaveData(uint8_t dly)
+{
+  my_att_t my_altitude;
+
+  delayMicroseconds(dly);
+  SPI.transfer(98);
+  for(int i=0; i<SPI_SLAVE_DATA_SIZE; i++)
+  {
+    delayMicroseconds(dly);
+    my_altitude.bin_val[i] = SPI.transfer(0);
+  }
+
+  for(int i=0; i<3; i++){
+    Serial.print(my_altitude.float_val[i]);
+    Serial.print(", ");
+  }
+  Serial.println(my_altitude.ulong_val[3]);
+}
+
+void getImuData(uint8_t *data)
+{
+  my_acc_t my_memsXLM, my_memsGYRO;
+  my_time_t my_time;
+
+  memcpy(&my_memsGYRO, data, sizeof(my_memsGYRO));
+  memcpy(&my_memsXLM, data + 12, sizeof(my_memsXLM));
+  memcpy(&my_time, data + 24, sizeof(my_time));
+
+  for(int i=0; i<3; i++){
+    Serial.print(my_memsGYRO.float_val[i]);
+    Serial.print(", ");
+  }
+  for(int i=0; i<3; i++){
+    Serial.print(my_memsXLM.float_val[i]);
+    Serial.print(", ");
+  }
+  Serial.println(my_time.ulong_val);
 }
 
 

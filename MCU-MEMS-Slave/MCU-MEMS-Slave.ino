@@ -6,49 +6,54 @@ Sercom1SPISlave SPISlave; // to use a different SERCOM, change this line and fin
 #define INTERRUPT2BUFFER // uncomment this line to copy the data received in the Data Received Complete interrupt to a buffer to be used in the main loop
 //#define INTERRUPT2SERIAL // uncomment this line to print the data to the serial bus whenever the Data Received Complete interrupt is triggered
 
+#define SPI_SLAVE_DATA_SIZE 16
+
 // initialize variables
 byte buf[100]; // initialize a buffer of 1 byte
 
-int att=0;
+volatile int att=0;
 int cnt=0;
 
 
-const uint8_t data_size_expected = 32, header_size = 4;
+const uint8_t data_size_expected = 28, header_size = 4;
 uint8_t bytes_received = 0;
-uint8_t buffer[64]={0};
+uint8_t imu_buffer[data_size_expected]={0}, imu_buffer_out[data_size_expected] = {0};
 uint8_t expected_header[] = {0xFE, 0x81, 0xFF, 0x55};
-bool rcv_complete = 0;
+// volatile bool  payload_complete = 0;
+bool rcv_complete, payload_complete = 0;
+volatile uint8_t bytes_output=0;
+unsigned long t_pre = 0;
 
 enum {
   EXPECTING_HEADER, 
   EXPECTING_PAYLOAD,
   EXPECTING_WRITE
-	} state = EXPECTING_HEADER;
+	} FSM = EXPECTING_HEADER;
 
-
-// The receive buffer size
-#define	RX_BUF_SIZE			256				// Must be an even power of two
-#define	RX_BUF_SIZE_MASK	RX_BUF_SIZE - 1
-
-typedef struct
+typedef union
 {
-	// The receive buffer and indices
-	alt_u8 rxBuf[RX_BUF_SIZE];
+  float float_val;
+  uint8_t bin_val[4];
+  uint32_t ulong_val;
+} my_time_t;
 
-	volatile int rxBufCount;
-	int rxBufPut;
-	int rxBufTake;
 
-	// The transmit buffer and indices
-	alt_u8 txBuf[TX_BUF_SIZE];
+typedef union
+{
+  float float_val[3];
+  uint8_t bin_val[12];
+  unsigned long ulong_val[3];
+}my_att_t;
 
-	volatile int txBufCount;
-	int txBufPut;
-	int txBufTake;
-} UartBuffer_t;
 
-// The UART working memory
-static UartBuffer_t gUartBuffer;
+
+typedef struct 
+{
+  my_att_t my_attitude;
+  my_time_t my_time;
+}att_struc_t;
+
+att_struc_t my_att_data;
 
 void setup()
 {
@@ -56,45 +61,117 @@ void setup()
   Serial.println("Serial started");
   SPISlave.SercomInit(SPISlave.MOSI_Pins::PA16, SPISlave.SCK_Pins::PA17, SPISlave.SS_Pins::PA18, SPISlave.MISO_Pins::PA19);
   Serial.println("SERCOM1 SPI slave initialized");
+  my_att_data.my_attitude.float_val[0] = 123.45;
+  my_att_data.my_attitude.float_val[1] = 130.56;
+  my_att_data.my_attitude.float_val[2] = 20.89;
+  my_att_data.my_time.ulong_val = 0;
+  t_pre = millis();
 }
 
 void loop()
 {
-  att += 1;
-  delay(100);
-  if(cnt==99) {
-    for(int i=0; i<100; i++){
-      Serial.print(i);
-      Serial.print(", ");
-      Serial.println(buf[i], HEX);
-    }
+  //obtain latest imu data, imu_buffer_out, when rcv_complete == 1
+  if(rcv_complete){
+    rcv_complete = 0;
+    getImuData(imu_buffer_out);
   }
+  delay(100); //assume the attitude algorithm takes 100ms to compute
+  update_attitude_data_here();
+}
+
+void update_attitude_data_here()
+{
+  my_att_data.my_time.ulong_val = millis() - t_pre;
+}
+
+void getImuData(uint8_t *data)
+{
+  my_att_t my_memsXLM, my_memsGYRO;
+  my_time_t my_time;
+
+  memcpy(&my_memsGYRO, data, sizeof(my_memsGYRO));
+  memcpy(&my_memsXLM, data + 12, sizeof(my_memsXLM));
+  memcpy(&my_time, data + 24, sizeof(my_time));
+
+  for(int i=0; i<3; i++){
+    Serial.print(my_memsGYRO.float_val[i]);
+    Serial.print(", ");
+  }
+  for(int i=0; i<3; i++){
+    Serial.print(my_memsXLM.float_val[i]);
+    Serial.print(", ");
+  }
+  Serial.println(my_time.ulong_val);
 }
 
 void SERCOM1_Handler()
 {
   uint8_t data = 0;
 
-  #ifdef DEBUG
-    Serial.println("In SPI Interrupt");
-  #endif
   uint8_t interrupts = SERCOM1->SPI.INTFLAG.reg; // Read SPI interrupt register
-  Serial.print(interrupts, BIN);
+
+  // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
+  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
+  {
+    data = (uint8_t)SERCOM1->SPI.DATA.reg;
+
+    switch(FSM)
+    {
+      case EXPECTING_HEADER:{
+
+        if (data != expected_header[bytes_received++])
+        {
+          FSM = EXPECTING_HEADER;
+          bytes_received = 0;
+        }
+
+        if(bytes_received >= header_size)
+        {
+          FSM = EXPECTING_PAYLOAD;
+          bytes_received = 0;
+        }
+        break;
+      }
+
+      case EXPECTING_PAYLOAD:{
+
+        imu_buffer[bytes_received++] = data;
+
+        if(bytes_received >= data_size_expected)
+        {
+          bytes_received = 0;
+          FSM = EXPECTING_HEADER;
+          for (int i = 0; i < data_size_expected; i++) {
+            imu_buffer_out[i] = imu_buffer[i];
+          }
+          rcv_complete = 1;
+          payload_complete = 1;
+        }
+        break;
+      }
+      default:{
+
+        break;
+      }
+    } 
+    SERCOM1->SPI.INTFLAG.bit.RXC = 1; // Clear Receive Complete interrupt
+  }
 
   // Data Register Empty interrupt
   if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
   {
-    switch(FSM)
-    {
-      case EXPECTING_WRITE:{
-        
-        break;
+    if(payload_complete){
+      // SERCOM1->SPI.DATA.reg = my_attitude.bin_val[bytes_output++];
+      if(bytes_output < 12) SERCOM1->SPI.DATA.reg = my_att_data.my_attitude.bin_val[bytes_output++];
+      else SERCOM1->SPI.DATA.reg = my_att_data.my_time.bin_val[bytes_output++ -12];
+      if(bytes_output >=SPI_SLAVE_DATA_SIZE) {
+        payload_complete = 0;
+        bytes_output = 0;
       }
-      default:{
-        SERCOM1->SPI.DATA.reg = 0;
-        break;
-      }
-    } 
+    }
+    else{
+      SERCOM1->SPI.DATA.reg = 99;
+    }
     
   }
 
@@ -109,199 +186,6 @@ void SERCOM1_Handler()
   {
     SERCOM1->SPI.INTFLAG.bit.SSL = 1; // Clear Slave Select Low interrupt
   }
-
-  // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
-  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
-  {
-    data = (uint8_t)SERCOM1->SPI.DATA.reg;
-
-    switch(FSM)
-    {
-      case EXPECTING_HEADER:{
-        
-        break;
-      }
-      case EXPECTING_PAYLOAD:{
-
-        break;
-      }
-      default:{
-
-        break;
-      }
-    } 
-
-    SERCOM1->SPI.INTFLAG.bit.RXC = 1; // Clear Receive Complete interrupt
-  }
-  Serial.print(",");
-  Serial.println(SERCOM1->SPI.INTFLAG.reg, BIN);
-
 }
-
-void SERCOM11_Handler()
-/*
-Reference: Atmel-42181G-SAM-D21_Datasheet section 26.8.6 on page 503
-*/
-{
-  #ifdef DEBUG
-    Serial.println("In SPI Interrupt");
-  #endif
-  uint8_t data = 0;
-  // data = (uint8_t)SERCOM1->SPI.DATA.reg;
-  uint8_t interrupts = SERCOM1->SPI.INTFLAG.reg; // Read SPI interrupt register
-  #ifdef DEBUG
-    Serial.print("Interrupt: "); Serial.println(interrupts);
-  #endif
-  
-
-    // Slave Select Low interrupt
-  if (interrupts & (1 << 3)) // 1000 = bit 3 = SSL // page 503
-  {
-    #ifdef DEBUG
-      Serial.println("SPI Slave Select Low interupt");
-    #endif
-    SERCOM1->SPI.INTFLAG.bit.SSL = 1; // Clear Slave Select Low interrupt
-  }
-
-  // /***
-  // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
-  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
-  {
-    // noInterrupts();
-    #ifdef DEBUG
-      Serial.println("SPI Data Received Complete interrupt");
-    #endif
-    // data = SERCOM1->SPI.DATA.reg; // Read data register
-    data = (uint8_t)SERCOM1->SPI.DATA.reg;
-    SERCOM1->SPI.INTFLAG.bit.RXC = 1; // Clear Receive Complete interrupt
-    buf[cnt++] = data;
-    if(cnt==100) cnt=0;
-    // Serial.println(data);
-    // interrupts();
-    
-
-switch(state) 
-{
-  uint8_t data;
-  case EXPECTING_HEADER:{
-
-    if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
-    {
-      data = (uint8_t)SERCOM1->SPI.DATA.reg;
-
-      if (data != expected_header[bytes_received++])
-      {
-        state = EXPECTING_HEADER;
-        bytes_received = 0;
-
-      }
-
-      if(bytes_received >= header_size)
-      {
-        state = EXPECTING_PAYLOAD;
-        bytes_received = 0;
-      }
-
-    }
-
-    
-    break;
-  }
-  
-  case EXPECTING_PAYLOAD:{ 
-
-    buffer[bytes_received++] = (uint8_t)SERCOM1->SPI.DATA.reg;
-
-    if(bytes_received >= data_size_expected)
-    {
-      bytes_received = 0;
-      state = EXPECTING_WRITE;
-    }
-    break;
-  }
-
-  case EXPECTING_WRITE:{ 
-
-    break;
-  }
-
-}
-
-    
-
-  }
-  
-  // Data Transmit Complete interrupt
-  if (interrupts & (1 << 1)) // 0010 = bit 1 = TXC // page 503
-  {
-    #ifdef DEBUG
-      Serial.println("SPI Data Transmit Complete interrupt");
-    #endif
-    SERCOM1->SPI.INTFLAG.bit.TXC = 1; // Clear Transmit Complete interrupt
-  }
-  
-  // Data Register Empty interrupt
-  if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
-  {
-    #ifdef DEBUG
-      Serial.println("SPI Data Register Empty interrupt");
-    #endif
-    SERCOM1->SPI.DATA.reg = att;
-  }
-  
-  #ifdef INTERRUPT2BUFFER
-    // Write data to buffer, to be used in main loop
-    // buf[cnt++] = data;
-    // if(cnt==100) cnt=0;
-  #endif
-  #ifdef INTERRUPT2SERIAL
-    // Print data received during the Data Receive Complete interrupt
-    char _data = data;
-    Serial.print("DATA: ");
-    Serial.println(_data); // Print received data
-  #endif
-
-}
-
-/*-----------------------------------------------------------------------------
---------------------------------------------------------------- uartISR
--------------------------------------------------------------------------------
-DESCRIPTION:
-	The UART interrupt work function.  It runs in the interrupt execution
-	context.
-
-PARAMETERS:
-	None.
-
-RETURNS:
-	Nothing.
------------------------------------------------------------------------------*/
-void input2Buf(UartBuffer_t *pUartBuffer, uint8_t flag)
-{
-	uint8_t data;
-
-	/**
-	 * 若有新的rx數據進來，將數據存入rxBuf[rxBufPut]，然後將 rxBufPut 與 rxBufCount 加1。
-	 * rxBufPut:目前rx的數據到buffer哪個位置了，會一直在0~RX_BUF_SIZE_MASK之間循環
-	 * rxBufCount: 目前rx數據量，最大到RX_BUF_SIZE就不會增加了
-	 */
-	if(flag)
-	{
-		// Get the byte
-    data = (uint8_t)SERCOM1->SPI.DATA.reg;
-
-		// Store the byte
-		pUartBuffer->rxBuf[pUartBuffer->rxBufPut] = data;
-
-		// Increment the put index
-		pUartBuffer->rxBufPut++;
-		pUartBuffer->rxBufPut &= RX_BUF_SIZE_MASK;
-
-		// Increment the count while preventing buffer overrun
-		if(pUartBuffer->rxBufCount < RX_BUF_SIZE) pUartBuffer->rxBufCount++;
-	}
-}
-
-
 
 
