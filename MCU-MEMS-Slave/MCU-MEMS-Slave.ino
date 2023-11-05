@@ -161,7 +161,6 @@ void SERCOM1_Handler()
   if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
   {
     if(payload_complete){
-      // SERCOM1->SPI.DATA.reg = my_attitude.bin_val[bytes_output++];
       if(bytes_output < 12) SERCOM1->SPI.DATA.reg = my_att_data.my_attitude.bin_val[bytes_output++];
       else SERCOM1->SPI.DATA.reg = my_att_data.my_time.bin_val[bytes_output++ -12];
       if(bytes_output >=SPI_SLAVE_DATA_SIZE) {
