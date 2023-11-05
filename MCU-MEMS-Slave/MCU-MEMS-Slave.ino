@@ -110,9 +110,10 @@ void SERCOM1_Handler()
 
   uint8_t interrupts = SERCOM1->SPI.INTFLAG.reg; // Read SPI interrupt register
 
-  // Data Received Complete interrupt: this is where the data is received, which is used in the main loop
-  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC // page 503
+  // Data Received Complete interrupt
+  if (interrupts & (1 << 2)) // 0100 = bit 2 = RXC
   {
+    // read DATA register as RXC = 1
     data = (uint8_t)SERCOM1->SPI.DATA.reg;
 
     switch(FSM)
@@ -141,16 +142,18 @@ void SERCOM1_Handler()
         {
           bytes_received = 0;
           FSM = EXPECTING_HEADER;
-          for (int i = 0; i < data_size_expected; i++) {
-            imu_buffer_out[i] = imu_buffer[i];
-          }
+          for (int i = 0; i < data_size_expected; i++) imu_buffer_out[i] = imu_buffer[i];
+          /***try*****
+             * memcpy(imu_buffer_out, imu_buffer, sizeof(imu_buffer));
+            */
+          // Indicate the latest imu data is complete that can be used to compute.
           rcv_complete = 1;
+          // Indicate the FSM: EXPECTING_PAYLOAD is complete and can output Slave data to Master.
           payload_complete = 1;
         }
         break;
       }
       default:{
-
         break;
       }
     } 
@@ -158,9 +161,10 @@ void SERCOM1_Handler()
   }
 
   // Data Register Empty interrupt
-  if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE // page 503
+  if (interrupts & (1 << 0)) // 0001 = bit 0 = DRE
   {
     if(payload_complete){
+      //output data according to the defined data structure
       if(bytes_output < 12) SERCOM1->SPI.DATA.reg = my_att_data.my_attitude.bin_val[bytes_output++];
       else SERCOM1->SPI.DATA.reg = my_att_data.my_time.bin_val[bytes_output++ -12];
       if(bytes_output >=SPI_SLAVE_DATA_SIZE) {
