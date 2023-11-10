@@ -1,11 +1,13 @@
 #include <ASM330LHHSensor.h>
 #include "pig_v2.h"
+#include "adxl357_I2C.h"
 #include "IMU_PIG_DEFINE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
 #include "uartRT.h"
 #include <TinyGPSPlus.h>
-#include <EEPROM_24AA32A_I2C.h>
+// #include <EEPROM_24AA32A_I2C.h>
+#include <EEPROM_25LC512_SPI.h>
 
 // #define TESTMODE
 /***
@@ -23,6 +25,9 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define nCONFIG 12
 //MCU LED
 #define MCU_LED A2
+/***ADC MUX*/
+#define ADCMUX_S1 21
+#define ADCMUX_S0 15
 
 //PWM
 #include <SAMD21turboPWM.h>
@@ -30,7 +35,6 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define PWM200 5
 #define PWM250 11
 #define PWM_FIX 1
-// #define PWM_FIX 0.978
 TurboPWM  pwm;
 
 
@@ -49,6 +53,7 @@ void SERCOM0_Handler()
   myWire.onService();
 }
 // Adxl355_I2C adxl355_i2c(myWire); not use in IMU_V4 PCB
+Adxl357_I2C adxl357_i2c(myWire);
 
 /*** global var***/
 // int pin_scl_mux = 17;
@@ -58,9 +63,6 @@ unsigned int t_new, t_old=0;
 unsigned long gps_init_time = 0;
 unsigned int gps_date=0, gps_time=0;
 bool gps_valid = 0;
-
-// EEPROMM
-EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
 
 typedef union
 {
@@ -90,6 +92,7 @@ my_float_t;
 
 my_float_t my_f;
 
+
 unsigned char fog_op_status;
 
 // SPI
@@ -99,8 +102,11 @@ unsigned char fog_op_status;
 /*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
 // SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
-
 #define CHIP_SELECT_PIN 2
+
+// EEPROMM
+EEPROM_25LC512_SPI eeprom = EEPROM_25LC512_SPI(mySPI, CHIP_SELECT_PIN);
+
 // ASM330LHHClass IMU(mySPI, CHIP_SELECT_PIN, SPI_CLOCK_8M);
 ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
 
@@ -141,9 +147,25 @@ void SERCOM3_Handler()
 {
   Serial4.IrqHandler();
 }
-PIG sp13(Serial2); //SP13
-PIG sp14(Serial3, 14); //SP14
-PIG sp9(Serial4); //SP14
+PIG sp13(Serial2, 14); //ch1
+PIG sp14(Serial3, 14); //ch2
+PIG sp9(Serial4, 14);  //ch3
+
+uartRT SP13_Read(Serial2, 14);
+uartRT SP14_Read(Serial3, 14);
+uartRT SP9_Read(Serial4, 14);
+
+/** Move Serial1 definition from variant.cpp to here*/
+// Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
+
+// void SERCOM5_Handler()
+// {
+//   Serial1.IrqHandler();
+// }
+
+// bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
+byte reg_fog_sp9[14] = {0}, reg_fog_sp13[14] = {0}, reg_fog_sp14[14] = {0};
+byte *reg_fog;
 
 
 /*** serial data from PC***/
@@ -194,14 +216,11 @@ unsigned long data_cnt = 0;
 unsigned int MCU_cnt = 0;
 
 // The TinyGPSPlus object
-TinyGPSPlus gps;
-
-byte *reg_fog;
-
+// TinyGPSPlus gps;
 unsigned int t_previous = 0;
 
-
 void setup() {
+
   /*** pwm ***/
 
   pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
@@ -245,6 +264,10 @@ void setup() {
   analogReadResolution(12); //set resolution
   pinMode(ADC_ASE_TACT, INPUT);
 
+  /***ADC MUX Setting*/
+  pinMode(ADCMUX_S1, OUTPUT);
+  pinMode(ADCMUX_S0, OUTPUT);
+
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, sync_status);
 
@@ -272,15 +295,20 @@ void setup() {
 
   //I2C
   myWire.begin();
-  myWire.setClock(I2C_FAST_MODE);
+  myWire.setClock(I2C_FAST_MODE); 
+  // myWire.setClock(I2C_STANDARD_MODE);
   pinPeripheral(27, PIO_SERCOM);
   pinPeripheral(20, PIO_SERCOM);
 
   //SPI
   mySPI.begin();
+  mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
   pinPeripheral(3, PIO_SERCOM_ALT);
   pinPeripheral(22, PIO_SERCOM_ALT);
   pinPeripheral(23, PIO_SERCOM_ALT);
+
+  /**EEPROM*/
+  eeprom.init();
 
   //Re-configure FPGA when system reset on MCU
   digitalWrite(nCONFIG, LOW);
@@ -288,16 +316,20 @@ void setup() {
   digitalWrite(nCONFIG, HIGH);
   delay(500);
 
+
   byte FPGA_wakeup_flag = 0; 
-  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 1);
+  // Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  // Wait_FPGA_Wakeup(FPGA_wakeup_flag, 3);
   Blink_MCU_LED();
 
   parameter_init();
   Blink_MCU_LED();
-	
-  IMU.init(); //setting MEMS IMU parameters 
-  
-    
+
+  /**ADXL357*/
+  adxl357_i2c.init();
+
+
 	/*** var initialization***/
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
@@ -307,17 +339,19 @@ void setup() {
 	output_fn = temp_idle;
 
 
-      /***read eeprom current status*/
+  /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
   /***write EEPROM DVT test value*/
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+
+	
+
 
   // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // delay(100);
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -326,7 +360,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    // setupWDT(11);
+    setupWDT(11);
   }
 
 
@@ -339,8 +373,7 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  
-  // readADC();
+  // readAdc();
 }
 
 void printAdd(char name[], void* addr)
@@ -424,9 +457,6 @@ void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 	}
 }
 
-// PIG sp13(Serial2); //SP13
-// PIG sp14(Serial3); //SP14
-// PIG sp9(Serial4); //SP14
 void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch) 
 {
 	if(mux_flag == MUX_PARAMETER)
@@ -1471,7 +1501,7 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_CUTOFF, EEPROM_ADDR_CUTOFF, CUTOFF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
     write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS80);
-    update_fpga_fog_parameter_init(100, 2);
+    update_fpga_fog_parameter_init(100, 1);
     /***end of fog parameters*/
 
   }
@@ -1509,7 +1539,7 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_CUTOFF, EEPROM_ADDR_CUTOFF);
     read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
     read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
-    update_fpga_fog_parameter_init(100, 2);
+    update_fpga_fog_parameter_init(100, 1);
     /***end of fog parameters*/
 
     /***output configuration*/
