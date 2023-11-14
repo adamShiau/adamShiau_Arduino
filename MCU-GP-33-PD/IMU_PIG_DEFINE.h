@@ -1,6 +1,9 @@
 /*** VERSION */
 #define MCU_VERSION "MCU-GP-33-RD"
 
+// #define GP1Z
+#define AFI
+
 /*** adxl355 conversion factor***/
 #define ADXL355_8G 0.0000156
 #define ADXL355_4G 0.0000078
@@ -34,6 +37,7 @@
 #define MODE_NMEA		    4
 #define MODE_FOG_PARAMETER  6
 
+// MCU Parameters CMD Address
 #define CMD_FOG_MOD_FREQ	8
 #define CMD_FOG_MOD_AMP_H	9
 #define CMD_FOG_MOD_AMP_L	10
@@ -75,6 +79,7 @@
 #define MUX_PARAMETER	    1
 #define MUX_ESCAPE		    2
 
+// FPGA Parameters CMD Address
 #define MOD_FREQ_ADDR		0
 #define MOD_AMP_H_ADDR  	1
 #define MOD_AMP_L_ADDR  	2
@@ -153,7 +158,7 @@
 #define SET_DATARATE_100    0
 #define SET_DATARATE_10     1
 
-#define EEPROM_PARAMETER_EXIST 0xAB
+#define EEPROM_PARAMETER_EXIST 0xAA
 
 #define FLOAT_1 0x3f800000  
 #define FLOAT_2 0x40000000  
@@ -190,60 +195,32 @@
 #define BAUDRATE_INIT SET_BAUDRATE_230400
 #define DATARATE_INIT SET_DATARATE_100
 
-/*** EEPROM ADDR*/
-#define EEPROM_ADDR_FOG_STATUS 4095
-#define EEPROM_ADDR_DVT_TEST_1 4092
-#define EEPROM_ADDR_DVT_TEST_2 4093
-#define EEPROM_ADDR_DVT_TEST_3 4094
-#define EEPROM_ADDR_OUTPUT_FN  4090 
-#define EEPROM_ADDR_SELECT_FN  4091
-#define EEPROM_ADDR_REG_VALUE  4089
-/** for fog parameter**/
-#define EEPROM_ADDR_PARAMETER_EXIST 1
-#define EEPROM_ADDR_MOD_FREQ        2
-#define EEPROM_ADDR_WAIT_CNT        3
-#define EEPROM_ADDR_ERR_AVG         4
-#define EEPROM_ADDR_MOD_AMP_H       5
-#define EEPROM_ADDR_MOD_AMP_L       6
-#define EEPROM_ADDR_ERR_TH          7
-#define EEPROM_ADDR_ERR_OFFSET      8
-#define EEPROM_ADDR_POLARITY        9
-#define EEPROM_ADDR_CONST_STEP      10
-#define EEPROM_ADDR_FPGA_Q          11
-#define EEPROM_ADDR_FPGA_R          12
-#define EEPROM_ADDR_GAIN1           13
-#define EEPROM_ADDR_GAIN2           14
-#define EEPROM_ADDR_FB_ON           15
-#define EEPROM_ADDR_DAC_GAIN        16
-#define EEPROM_ADDR_DATA_DELAY      17
-#define EEPROM_ADDR_SF_0            18
-#define EEPROM_ADDR_SF_1            19
-#define EEPROM_ADDR_SF_2            20
-#define EEPROM_ADDR_SF_3            21
-#define EEPROM_ADDR_SF_4            22
-#define EEPROM_ADDR_SF_5            23
-#define EEPROM_ADDR_SF_6            24
-#define EEPROM_ADDR_SF_7            25
-#define EEPROM_ADDR_SF_8            26
-#define EEPROM_ADDR_SF_9            27
-#define EEPROM_ADDR_TMIN            28
-#define EEPROM_ADDR_TMAX            29
-#define EEPROM_ADDR_SFB             30
-#define EEPROM_ADDR_CUTOFF          31
-/** data output parameter**/
-#define EEPROM_ADDR_BAUDRATE        51
-#define EEPROM_ADDR_DATARATE        52
 
-
-/**Global Variable for EEPROM*/
-int EEPROM_Parameter_exist=0; 
-int EEPROM_Gain1, EEPROM_Gain2, EEPROM_FB_ON, EEPROM_DAC_gain, EEPROM_Data_delay;
-int EEPROM_Mod_freq, EEPROM_Wait_cnt, EEPROM_Err_avg, EEPROM_Polarity, EEPROM_Fpga_Q, EEPROM_Fpga_R;
-int EEPROM_Amp_H, EEPROM_Amp_L, EEPROM_Err_offset, EEPROM_Err_th, EEPROM_Const_step;
-int EEPROM_SF0, EEPROM_SF1, EEPROM_SF2, EEPROM_SF3, EEPROM_SF4;
-int EEPROM_SF5, EEPROM_SF6, EEPROM_SF7, EEPROM_SF8, EEPROM_SF9; 
-int EEPROM_TMIN, EEPROM_TMAX, EEPROM_SFB, EEPROM_CUTOFF;
-int EEPROM_BAUDRATE, EEPROM_DATARATE;
+// /**Global Variable for EEPROM*/
+// int EEPROM_Parameter_exist=0; 
+// //Z axis
+// int EEPROM_Gain1, EEPROM_Gain2, EEPROM_FB_ON, EEPROM_DAC_gain, EEPROM_Data_delay;
+// int EEPROM_Mod_freq, EEPROM_Wait_cnt, EEPROM_Err_avg, EEPROM_Polarity, EEPROM_Fpga_Q, EEPROM_Fpga_R;
+// int EEPROM_Amp_H, EEPROM_Amp_L, EEPROM_Err_offset, EEPROM_Err_th, EEPROM_Const_step;
+// int EEPROM_SF0, EEPROM_SF1, EEPROM_SF2, EEPROM_SF3, EEPROM_SF4;
+// int EEPROM_SF5, EEPROM_SF6, EEPROM_SF7, EEPROM_SF8, EEPROM_SF9; 
+// int EEPROM_TMIN, EEPROM_TMAX, EEPROM_SFB, EEPROM_CUTOFF;
+// //X axis
+// int EEPROM_Gain1_X, EEPROM_Gain2_X, EEPROM_FB_ON_X, EEPROM_DAC_gain_X, EEPROM_Data_delay_X;
+// int EEPROM_Mod_freq_X, EEPROM_Wait_cnt_X, EEPROM_Err_avg_X, EEPROM_Polarity_X, EEPROM_Fpga_Q_X, EEPROM_Fpga_R_X;
+// int EEPROM_Amp_H_X, EEPROM_Amp_L_X, EEPROM_Err_offset_X, EEPROM_Err_th_X, EEPROM_Const_step_X;
+// int EEPROM_SF0_X, EEPROM_SF1_X, EEPROM_SF2_X, EEPROM_SF3_X, EEPROM_SF4_X;
+// int EEPROM_SF5_X, EEPROM_SF6_X, EEPROM_SF7_X, EEPROM_SF8_X, EEPROM_SF9_X; 
+// int EEPROM_TMIN_X, EEPROM_TMAX_X, EEPROM_SFB_X, EEPROM_CUTOFF_X;
+// //Y axis
+// int EEPROM_Gain1_Y, EEPROM_Gain2_Y, EEPROM_FB_ON_Y, EEPROM_DAC_gain_Y, EEPROM_Data_delay_Y;
+// int EEPROM_Mod_freq_Y, EEPROM_Wait_cnt_Y, EEPROM_Err_avg_Y, EEPROM_Polarity_Y, EEPROM_Fpga_Q_Y, EEPROM_Fpga_R_Y;
+// int EEPROM_Amp_H_Y, EEPROM_Amp_L_Y, EEPROM_Err_offset_Y, EEPROM_Err_th_Y, EEPROM_Const_step_Y;
+// int EEPROM_SF0_Y, EEPROM_SF1_Y, EEPROM_SF2_Y, EEPROM_SF3_Y, EEPROM_SF4_Y;
+// int EEPROM_SF5_Y, EEPROM_SF6_Y, EEPROM_SF7_Y, EEPROM_SF8_Y, EEPROM_SF9_Y; 
+// int EEPROM_TMIN_Y, EEPROM_TMAX_Y, EEPROM_SFB_Y, EEPROM_CUTOFF_Y;
+// //Output configuration
+// int EEPROM_BAUDRATE, EEPROM_DATARATE;
 
 
 /*** ADC PIN***/

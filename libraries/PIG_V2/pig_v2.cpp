@@ -72,6 +72,10 @@ void PIG::sendCmd(unsigned char* header, unsigned char addr, unsigned char* trai
 	port.write(trailer[0]);
 	port.write(trailer[1]);
 	delay(1);
+	// Serial.print("pig_v2 sendCmd: ");
+	// Serial.print(addr);
+	// Serial.print(", ");
+	// Serial.println(value);
 }
 
 void PIG::updateParameter(unsigned char* header, unsigned char addr, unsigned char* trailer, unsigned int value, unsigned char ack)

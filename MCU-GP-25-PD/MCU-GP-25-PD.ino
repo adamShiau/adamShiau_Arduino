@@ -1714,6 +1714,7 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   sp->sendCmd(myCmd_header, DAC_GAIN_ADDR, myCmd_trailer, EEPROM_DAC_gain);
   delay(dly_time);
   sp->sendCmd(myCmd_header, DATA_INT_DELAY_ADDR, myCmd_trailer, EEPROM_Data_delay);
+  delay(dly_time);
   sp->sendCmd(myCmd_header, SF0_ADDR, myCmd_trailer, EEPROM_SF0);
   delay(dly_time);
   sp->sendCmd(myCmd_header, SF1_ADDR, myCmd_trailer, EEPROM_SF1);
