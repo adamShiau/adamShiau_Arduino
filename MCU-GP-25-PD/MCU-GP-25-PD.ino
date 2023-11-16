@@ -315,6 +315,8 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
 eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
   // tt1 = millis();
+  Serial.print("fog_op_status: ");
+  Serial.println(fog_op_status);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
     // delay(100);
