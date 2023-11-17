@@ -1,5 +1,5 @@
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-33-RD"
+#define MCU_VERSION "MCU-GP-34-RD"
 
 // #define GP1Z
 #define AFI
@@ -35,6 +35,7 @@
 #define MODE_IMU	        2
 #define MODE_FOG_HP_TEST	3
 #define MODE_NMEA		    4
+#define MODE_AFI		    5
 #define MODE_FOG_PARAMETER  6
 
 // MCU Parameters CMD Address
@@ -139,7 +140,7 @@
 #define SEL_NMEA	 		6
 #define SEL_FOG_PARA	    7
 #define SEL_HP_TEST 	    8
-// #define SEL_OUTPUT_PARA 	9
+#define SEL_AFI          	9
 
 /*** MODE_RST CTRL REG***/
 #define REFILL_SERIAL1 1
