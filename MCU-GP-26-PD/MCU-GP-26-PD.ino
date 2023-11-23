@@ -33,32 +33,9 @@ bool gps_valid = 0;
 // EEPROMM
 // EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
 
-typedef union
-{
-  float float_val;
-  uint8_t bin_val[4];
-  uint32_t ulong_val;
-}
-my_time_t;
+
 
 my_time_t mcu_time;
-
-typedef union
-{
-  float float_val[3];
-  uint8_t bin_val[12];
-  int int_val[3];
-}
-my_acc_t;
-
-typedef union
-{
-  float float_val;
-  uint8_t bin_val[4];
-  int int_val;
-}
-my_float_t;
-
 my_float_t my_f;
 
 unsigned char fog_op_status;
