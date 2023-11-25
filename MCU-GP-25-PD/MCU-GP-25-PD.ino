@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <ASM330LHHSensor.h>
 #include "pig_v2.h"
 #include "IMU_PIG_DEFINE.h"
@@ -444,7 +445,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
       sp = &sp14;
       SER = &Serial3;
     } 
-    else if(fog_ch=3){
+    else if(fog_ch==3){
       sp = &sp9;
       SER = &Serial4;
     } 
