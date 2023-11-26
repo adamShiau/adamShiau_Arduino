@@ -292,7 +292,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
       sp = &sp14;
       SER = &Serial3;
     } 
-    else if(fog_ch=3){
+    else if(fog_ch==3){
       sp = &sp9;
       SER = &Serial4;
     } 
@@ -1527,7 +1527,7 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   PIG *sp;
   if(fog_ch==1) sp=&sp13;
   else if(fog_ch==2) sp=&sp14;
-  else if(fog_ch=3) sp=&sp9;
+  else if(fog_ch==3) sp=&sp9;
 
   sp->sendCmd(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, EEPROM_Mod_freq);
   delay(dly_time);
@@ -1622,7 +1622,7 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
     sp = &sp14;
     SER = &Serial3;
   } 
-  else if(fog_ch=3){
+  else if(fog_ch==3){
     sp = &sp9;
     SER = &Serial4;
   } 
