@@ -1,7 +1,7 @@
 #ifndef MYSTREAM_H
 #define MYSTREAM_H
 
-// #include <Arduino.h>
+#include <Arduino.h>
 #include <stdint.h>
 
 /* Typedefs ------------------------------------------------------------------*/
