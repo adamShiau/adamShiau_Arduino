@@ -18,6 +18,22 @@ typedef enum {
     EXPECTING_TRAILER
 } MYSTREAM_SM;
 
+/*** Input Buffer Section*/
+
+// The receive buffer size
+#define	RX_BUF_SIZE			256				// Must be an even power of two
+#define	RX_BUF_SIZE_MASK	RX_BUF_SIZE - 1
+
+typedef struct
+{
+	uint8_t rxBuf[RX_BUF_SIZE];
+
+	uint32_t rxBufCount;
+	uint32_t rxBufPut;
+	uint32_t rxBufTake;
+} UartBuffer_t;
+
+
 class myStream
 {
     public:
@@ -26,6 +42,10 @@ class myStream
         ~myStream(void);
 
         MYSTREAMStatusTypeDef ReadUartStream(uint8_t* buf, uint8_t buf_size);
+
+        MYSTREAMStatusTypeDef PutToBuffer(uint8_t en, uint8_t data);
+        MYSTREAMStatusTypeDef GetByteData(uint8_t* data);
+        uint32_t DataAvailable(void);
 
     private:
         uint8_t _bytes_received, _trailer_empty;
@@ -38,6 +58,9 @@ class myStream
 
         //uart class obj
         Stream &dev_serial; 
+
+        //buffer structure
+        UartBuffer_t _myBuf;
 };
 
 #endif

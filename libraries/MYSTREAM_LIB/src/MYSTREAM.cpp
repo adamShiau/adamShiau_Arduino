@@ -1,7 +1,5 @@
 #include "MYSTREAM.h"
 
-
-
 myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size): dev_serial(p)
 {
     // initialize the state machine to EXPECTING_HEADER
@@ -15,6 +13,10 @@ myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size): dev_
 
     _trailer_empty = 1;
     _trailer_size = 0;
+
+    _myBuf.rxBufCount = 0;
+    _myBuf.rxBufPut = 0;
+    _myBuf.rxBufTake = 0;
 }
 
 myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size, const uint8_t trailer[], uint8_t trailer_size): dev_serial(p)
@@ -33,8 +35,13 @@ myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size, const
     for(int i=0; i<_trailer_size; i++) {
         _trailer[i] = trailer[i];
     }
+
+    _myBuf.rxBufCount = 0;
+    _myBuf.rxBufPut = 0;
+    _myBuf.rxBufTake = 0;
     
 }
+
 
 myStream::~myStream() {}
 
@@ -95,4 +102,42 @@ MYSTREAMStatusTypeDef myStream::ReadUartStream(uint8_t* buf, uint8_t buf_size)
         break;
     }
     return MYSTREAM_ERROR;
+}
+
+MYSTREAMStatusTypeDef myStream::PutToBuffer(uint8_t en, uint8_t data)
+{
+    if(en) {
+        // Serial.print(_myBuf.rxBufPut);
+        // Serial.print(", ");
+        // Serial.println(data, HEX);
+        _myBuf.rxBuf[_myBuf.rxBufPut] = data; // put new data to buffer
+
+        _myBuf.rxBufPut++; // increament the rxBufPut index
+        _myBuf.rxBufPut &= RX_BUF_SIZE_MASK; //wrap rxBufPut between 0 and RX_BUF_SIZE
+
+        if(_myBuf.rxBufCount<RX_BUF_SIZE) _myBuf.rxBufCount++; // Increment the rxBufCount while preventing buffer overrun
+
+        return MYSTREAM_OK;
+    }
+    else return MYSTREAM_ERROR;
+}
+
+MYSTREAMStatusTypeDef myStream::GetByteData(uint8_t* data)
+{
+    if(DataAvailable()==0) return MYSTREAM_ERROR;
+    else {
+        *data = _myBuf.rxBuf[_myBuf.rxBufTake];
+
+        _myBuf.rxBufTake++;
+        _myBuf.rxBufTake &= RX_BUF_SIZE_MASK;
+
+         _myBuf.rxBufCount--;
+
+         return MYSTREAM_OK;
+    }
+}
+
+uint32_t myStream::DataAvailable()
+{
+    return _myBuf.rxBufCount;
 }
