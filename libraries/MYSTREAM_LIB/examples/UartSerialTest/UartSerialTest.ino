@@ -16,9 +16,10 @@ void setup()
 
 void loop()
 {
+  // if(Serial1.available()) Serial.print(Serial1.read(), HEX);
     if(!streamObj.ReadStream(buf, 5, Serial1.available(), Serial1.read())) {
         for(int i=0; i<5; i++) {
-            Serial.print(buf[i]);
+            Serial.print(buf[i], HEX);
             Serial.print(" ");
         }
         Serial.println("");

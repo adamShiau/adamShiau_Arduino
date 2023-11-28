@@ -38,14 +38,20 @@ myStream::~myStream() {}
 
 MYSTREAMStatusTypeDef myStream::ReadStream(uint8_t* buf, uint8_t buf_size, uint8_t data_ava, uint8_t data)
 {
+    
 
-    if(!data_ava) return MYSTREAM_ERROR;
-
+    // if(!data_ava) return MYSTREAM_ERROR;
+    if(data_ava) Serial.print(data, HEX);
+    else return MYSTREAM_ERROR;
+    // Serial.println(_state);
+    // Serial.print(data, HEX);
+    // delayMicroseconds(100);
     switch (_state)
     {
     case EXPECTING_HEADER:
         if (data != _header[_bytes_received++])
         {
+            
             _state = EXPECTING_HEADER;
             _bytes_received = 0;
         }
