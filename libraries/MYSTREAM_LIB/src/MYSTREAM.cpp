@@ -1,6 +1,8 @@
 #include "MYSTREAM.h"
 
-myStream::myStream(const uint8_t header[], uint8_t header_size)
+
+
+myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size): dev_serial(p)
 {
     // initialize the state machine to EXPECTING_HEADER
     _state = EXPECTING_HEADER;
@@ -15,7 +17,7 @@ myStream::myStream(const uint8_t header[], uint8_t header_size)
     _trailer_size = 0;
 }
 
-myStream::myStream(const uint8_t header[], uint8_t header_size, const uint8_t trailer[], uint8_t trailer_size)
+myStream::myStream(Stream &p, const uint8_t header[], uint8_t header_size, const uint8_t trailer[], uint8_t trailer_size): dev_serial(p)
 {
     // initialize the state machine to EXPECTING_HEADER
     _state = EXPECTING_HEADER;
@@ -36,16 +38,13 @@ myStream::myStream(const uint8_t header[], uint8_t header_size, const uint8_t tr
 
 myStream::~myStream() {}
 
-MYSTREAMStatusTypeDef myStream::ReadStream(uint8_t* buf, uint8_t buf_size, uint8_t data_ava, uint8_t data)
-{
-    
 
-    // if(!data_ava) return MYSTREAM_ERROR;
-    if(data_ava) Serial.print(data, HEX);
-    else return MYSTREAM_ERROR;
-    // Serial.println(_state);
-    // Serial.print(data, HEX);
-    // delayMicroseconds(100);
+MYSTREAMStatusTypeDef myStream::ReadUartStream(uint8_t* buf, uint8_t buf_size)
+{
+    uint8_t data;
+
+    if(!dev_serial.available()) return MYSTREAM_ERROR;
+    data = dev_serial.read();
     switch (_state)
     {
     case EXPECTING_HEADER:

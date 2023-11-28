@@ -21,11 +21,11 @@ typedef enum {
 class myStream
 {
     public:
-        myStream(const uint8_t header[], uint8_t header_size);
-        myStream(const uint8_t header[], uint8_t header_size, const uint8_t trailer[], uint8_t trailer_size);
+        myStream(Stream &p, const uint8_t header[], uint8_t header_size);
+        myStream(Stream &p, const uint8_t header[], uint8_t header_size, const uint8_t trailer[], uint8_t trailer_size);
         ~myStream(void);
 
-        MYSTREAMStatusTypeDef ReadStream(uint8_t* buf, uint8_t buf_size, uint8_t data_ava, uint8_t data);
+        MYSTREAMStatusTypeDef ReadUartStream(uint8_t* buf, uint8_t buf_size);
 
     private:
         uint8_t _bytes_received, _trailer_empty;
@@ -34,7 +34,10 @@ class myStream
         uint8_t _trailer[4]; //assume max _trailer lenth is 4 
         uint8_t _trailer_size;
 
-        MYSTREAM_SM _state;
+        MYSTREAM_SM _state; //data stream state machine 
+
+        //uart class obj
+        Stream &dev_serial; 
 };
 
 #endif
