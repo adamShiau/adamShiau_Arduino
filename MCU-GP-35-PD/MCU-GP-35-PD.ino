@@ -37,6 +37,11 @@ my_float_t my_f;
 
 unsigned char fog_op_status;
 
+//EXT WDT
+#define WDI 5
+#define EXT_WDT_EN 4
+bool wdi_status = 0;
+
 
 /** Move Serial1 definition from variant.cpp to here*/
 // Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
@@ -115,6 +120,11 @@ void setup() {
   attachInterrupt(EXTT, ISR_EXTT, CHANGE);
 
   disableWDT();
+
+    // EXT WDT
+  pinMode(WDI, OUTPUT);
+  pinMode(EXT_WDT_EN, OUTPUT);
+  disable_EXT_WDT(EXT_WDT_EN);
 
 /*** see datasheet p353. 
  *  SENSEn register table:
@@ -991,6 +1001,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -1000,6 +1012,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1007,6 +1021,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
+        disable_EXT_WDT(EXT_WDT_EN);
       break;
 
       default:
@@ -1070,7 +1085,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
 	    
       t_old = t_new;
       resetWDT();
-        
+      reset_EXT_WDI(WDI);
 	}
 	clear_SEL_EN(select_fn);	
 }

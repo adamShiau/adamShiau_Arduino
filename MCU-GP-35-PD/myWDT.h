@@ -1,7 +1,7 @@
 #ifndef MYWDT_H
 #define MYWDT_H
 
-/*** * Watch dog  * **/
+/*** * SW Watch dog  * **/
 static void   WDTsync() {
   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
 }
@@ -42,6 +42,22 @@ void disableWDT() {
   WDT->CTRL.reg = 0; // disable watchdog
   WDTsync(); // sync is required
   Serial.println("disableWDT");
+}
+
+/*** * EXT Watch dog  * **/
+void reset_EXT_WDI(char wdi_pin){
+  wdi_status = !wdi_status;
+  digitalWrite(wdi_pin, wdi_status);
+}
+
+void disable_EXT_WDT(char en_pin){
+  Serial.println("disable_EXT_WDT");
+  digitalWrite(en_pin, HIGH);
+}
+
+void enable_EXT_WDT(char en_pin){
+  Serial.println("enable_EXT_WDT");
+  digitalWrite(en_pin, LOW);
 }
 
 #endif
