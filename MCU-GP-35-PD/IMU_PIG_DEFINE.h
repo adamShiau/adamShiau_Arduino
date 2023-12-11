@@ -1,5 +1,5 @@
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-34-RD"
+#define MCU_VERSION "MCU-GP-35-RD"
 
 // #define GP1Z
 #define AFI

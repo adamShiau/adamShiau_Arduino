@@ -322,9 +322,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(1);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
