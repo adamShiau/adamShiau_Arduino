@@ -1,4 +1,14 @@
-#include "afi.h"
+#include <ASM330LHHSensor.h>
+#include "EEPROM_MANAGE.h"
+#include "pig_v2.h"
+#include "adxl357_I2C.h"
+#include "IMU_PIG_DEFINE.h"
+#include "wiring_private.h"
+#include "crcCalculator.h"
+#include "uartRT.h"
+#include <TinyGPSPlus.h>
+// #include <EEPROM_24AA32A_I2C.h>
+#include <EEPROM_25LC512_SPI.h>
 
 // #define TESTMODE
 /***
@@ -21,6 +31,32 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define ADCMUX_S1 21
 #define ADCMUX_S0 15
 
+//PWM
+#include <SAMD21turboPWM.h>
+#define PWM100 7
+// #define PWM200 5
+// #define PWM250 11
+#define PWM_FIX 1
+TurboPWM  pwm;
+
+
+// I2C
+#include <Wire.h>
+// #define ADXL355_ADDR     0x1D  //Adxl355 I2C address
+// #define I2C_STANDARD_MODE   100000
+// #define I2C_FAST_MODE     400000
+// #define I2C_FAST_MODE_PLUS     1000000
+//#define I2C_HIGH_SPEED_MODE    3400000 //can not work
+// #define TEST_ADDR      0xAB
+/*** TwoWire Wire(&sercom, PIN_WIRE_SDA, PIN_WIRE_SCL);***/
+TwoWire myWire(&sercom0, 27, 20);
+void SERCOM0_Handler()
+{
+  myWire.onService();
+}
+// Adxl355_I2C adxl355_i2c(myWire); not use in IMU_V4 PCB
+Adxl357_I2C adxl357_i2c(myWire);
+
 /*** global var***/
 // int pin_scl_mux = 17;
 // bool trig_status[2] = {0, 0};
@@ -30,18 +66,96 @@ unsigned long gps_init_time = 0;
 unsigned int gps_date=0, gps_time=0;
 bool gps_valid = 0;
 
+typedef union
+{
+  float float_val;
+  uint8_t bin_val[4];
+  uint32_t ulong_val;
+}
+my_time_t;
 
 my_time_t mcu_time;
+
+typedef union
+{
+  float float_val[3];
+  uint8_t bin_val[12];
+  int int_val[3];
+}
+my_acc_t;
+
+typedef union
+{
+  float float_val;
+  uint8_t bin_val[4];
+  int int_val;
+}
+my_float_t;
+
 my_float_t my_f;
 
 
 unsigned char fog_op_status;
 
-//EXT WDT
-// #define WDI 5
-// #define EXT_WDT_EN 4
-// bool wdi_status = 0;
+// SPI
+#include <SPI.h>
+#define SPI_CLOCK_8M 8000000
+#define SPI_CLOCK_1M 1000000
+/*** SPIClass SPI (sercom, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);***/
+// SPIClass mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
+#define CHIP_SELECT_PIN 2
 
+// EEPROMM
+EEPROM_25LC512_SPI eeprom = EEPROM_25LC512_SPI(mySPI, CHIP_SELECT_PIN);
+
+// ASM330LHHClass IMU(mySPI, CHIP_SELECT_PIN, SPI_CLOCK_8M);
+ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
+
+// cmd read from GUI
+uint8_t myCmd_header[] = {0xAB, 0xBA};
+uint8_t myCmd_trailer[] = {0x55, 0x56};
+uint16_t myCmd_try_cnt;
+const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
+const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
+uartRT myCmd(Serial1, 6);
+
+
+// UART
+//SERCOM2: serial2 (PA14, PA15) [tx,  rx]
+Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
+void SERCOM2_Handler()
+{
+    Serial2.IrqHandler();
+}
+// PIG pig_ser2(Serial2);
+uint8_t header[] = {0xAB, 0xBA};
+uint8_t trailer[] = {0x55};
+uint16_t try_cnt;
+const uint8_t sizeofheader = sizeof(header);
+const uint8_t sizeoftrailer = sizeof(trailer);
+
+//SERCOM1: serial3 (PA17, PA18) [rx, tx]
+Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+    Serial3.IrqHandler();
+}
+// PIG pig_ser3(Serial3);
+
+//SERCOM3: serial4 (PA21, PA20) [rx, tx]
+Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
+void SERCOM3_Handler()
+{
+  Serial4.IrqHandler();
+}
+PIG sp13(Serial2, 14); //ch1, z
+PIG sp14(Serial3, 14); //ch2, x
+PIG sp9(Serial4, 14);  //ch3, y
+
+uartRT SP13_Read(Serial2, 14);
+uartRT SP14_Read(Serial3, 14);
+uartRT SP9_Read(Serial4, 14);
 
 /** Move Serial1 definition from variant.cpp to here*/
 // Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
@@ -94,10 +208,9 @@ volatile bool ISR_PEDGE;
 int t_adc = millis();
 
 /*** * Watch dog  * **/
-// static void   WDTsync() {
-//   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
-// }
-
+static void   WDTsync() {
+  while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
+}
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
 unsigned long data_cnt = 0;
@@ -109,24 +222,25 @@ unsigned int MCU_cnt = 0;
 unsigned int t_previous = 0;
 
 void setup() {
-  pwm_init();
-  myWDT_init();
+
+  /*** pwm ***/
+
+  pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
+  // pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
+  pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+  // pwm.timer(0, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
   
-
-
+  pwm.analogWrite(PWM100, 500);  
+  // pwm.analogWrite(PWM200, 500);  
+  // pwm.analogWrite(PWM250, 500);
+  
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
   attachInterrupt(EXTT, ISR_EXTT, CHANGE);
 
-  // disableWDT();
-
-    // EXT WDT
-  // pinMode(WDI, OUTPUT);
-  // pinMode(EXT_WDT_EN, OUTPUT);
-  // disable_EXT_WDT(EXT_WDT_EN);
-  
+  disableWDT();
 
 /*** see datasheet p353. 
  *  SENSEn register table:
@@ -164,9 +278,38 @@ void setup() {
   
   pinMode(nCONFIG, OUTPUT);
   
-  myUART_init();
-  myI2C_init();
-  mySPI_init();
+
+  
+	Serial.begin(230400); //debug
+	Serial1.begin(230400); //to PC
+  Serial2.begin(115200); //fog
+  Serial3.begin(115200);
+  Serial4.begin(115200);
+
+  pinPeripheral(24, PIO_SERCOM);
+  pinPeripheral(25, PIO_SERCOM);
+
+  pinPeripheral(8, PIO_SERCOM);
+  pinPeripheral(13, PIO_SERCOM);
+  //
+  pinPeripheral(10, PIO_SERCOM_ALT);
+  pinPeripheral(9, PIO_SERCOM_ALT);
+
+  //I2C
+  myWire.begin();
+  myWire.setClock(I2C_FAST_MODE); 
+  pinPeripheral(27, PIO_SERCOM);
+  pinPeripheral(20, PIO_SERCOM);
+
+  //SPI
+  mySPI.begin();
+  mySPI.beginTransaction(SPISettings(SPI_CLOCK_8M, MSBFIRST, SPI_MODE0));
+  pinPeripheral(3, PIO_SERCOM_ALT);
+  pinPeripheral(22, PIO_SERCOM_ALT);
+  pinPeripheral(23, PIO_SERCOM_ALT);
+
+  /**EEPROM*/
+  eeprom.init();
 
   //Re-configure FPGA when system reset on MCU
   digitalWrite(nCONFIG, LOW);
@@ -180,13 +323,17 @@ void setup() {
 
   #ifdef AFI 
     // Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
-  // parameter_init();
+  parameter_init();
   Blink_MCU_LED();
+
+  /**ADXL357*/
+  adxl357_i2c.init();
+
 
 	/*** var initialization***/
 	cmd_complete = 0;
@@ -207,6 +354,7 @@ void setup() {
 	
 
 
+  // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
     Serial.println("AUTO RST");
@@ -217,7 +365,7 @@ void setup() {
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    // setupWDT(11);
+    setupWDT(11);
   }
 
 
@@ -819,8 +967,6 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
-        enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -982,9 +1128,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 void acq_afi(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog_x, *fog_y, *fog_z;
-  my_acc_t my_ADXL357;
+  my_acc_t my_ADXL357, ADXL357_cali;
 	uint8_t CRC32[4];
   my_float_t pd_temp_x, pd_temp_y, pd_temp_z;
+  my_float_t cali_ax, fow_wy, fog_wz;
 	
 	if(select_fn&SEL_AFI)
 	{
@@ -1005,8 +1152,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
-        enable_EXT_WDT(EXT_WDT_EN);
-        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -1016,8 +1161,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
-        enable_EXT_WDT(EXT_WDT_EN);
-        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1025,7 +1168,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
-        disable_EXT_WDT(EXT_WDT_EN);
       break;
 
       default:
@@ -1052,6 +1194,20 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         adxl357_i2c.readData_f(my_ADXL357.float_val);
+        
+        acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val, 
+        0.0319047207 , -0.0269119427 , -0.0184817397 , 
+        10.0065433640, 0.0300893472, -0.1246310491,
+        -0.0381931213, 9.9662041628, 0.0484708152,
+        0.1252251130, -0.0445694464, 10.2653349881
+        );
+
+        // Serial.print(ADXL357_cali.float_val[0]);
+        // Serial.print(", ");
+        // Serial.print(ADXL357_cali.float_val[1]);
+        // Serial.print(", ");
+        // Serial.println(ADXL357_cali.float_val[2]);
+
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
@@ -1061,7 +1217,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+ 4, reg_fog_x+8, 4); //fog_x
         memcpy(imu_data+ 8, reg_fog_y+8, 4); //fog_y
         memcpy(imu_data+12, reg_fog_z+8, 4); //fog_z
-        memcpy(imu_data+16, my_ADXL357.bin_val, 12); //ax, ay, az
+        memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
         memcpy(imu_data+28, pd_temp_x.bin_val, 4); //Temp_x
         memcpy(imu_data+32, pd_temp_y.bin_val, 4); //Temp_y
         memcpy(imu_data+36, pd_temp_z.bin_val, 4); //Temp_z
@@ -1076,7 +1232,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_x+8, 4);
           Serial1.write(reg_fog_y+8, 4);
           Serial1.write(reg_fog_z+8, 4);
-          Serial1.write(my_ADXL357.bin_val, 12);
+          Serial1.write(ADXL357_cali.bin_val, 12);
           Serial1.write(pd_temp_x.bin_val, 4);
           Serial1.write(pd_temp_y.bin_val, 4);
           Serial1.write(pd_temp_z.bin_val, 4);
@@ -1089,7 +1245,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
 	    
       t_old = t_new;
       resetWDT();
-      reset_EXT_WDI(WDI);
+        
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -1399,7 +1555,43 @@ void readADC(byte data[8])
   
 }
 
+//============= resetWDT ===================================================== 
+void resetWDT() {
+  // reset the WDT watchdog timer.
+  // this must be called before the WDT resets the system
+  WDT->CLEAR.reg= 0xA5; // reset the WDT
+  WDTsync(); 
+  // Serial.println("resetWDT");
+}
 
+//============= systemReset ================================================== 
+void systemReset() {
+  // use the WDT watchdog timer to force a system reset.
+  // WDT MUST be running for this to work
+  WDT->CLEAR.reg= 0x00; // system reset via WDT
+  WDTsync(); 
+}
+
+//============= setupWDT =====================================================
+void setupWDT( uint8_t period) {
+  // initialize the WDT watchdog timer
+
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+
+  WDT->CONFIG.reg = min(period,11); // see Table 17-5 Timeout Period (valid values 0-11)
+
+  WDT->CTRL.reg = WDT_CTRL_ENABLE; //enable watchdog
+  WDTsync(); 
+  Serial.println("setupWDT");
+}
+
+//============= disable WDT =====================================================
+void disableWDT() {
+  WDT->CTRL.reg = 0; // disable watchdog
+  WDTsync(); // sync is required
+  Serial.println("disableWDT");
+}
 
 void parameter_init(void)
 {
@@ -1837,45 +2029,11 @@ void Wait_FPGA_Wakeup(byte fog_ch)
   Serial.print(fog_ch);
   Serial.println(", FPGA Wakeup! ");
 }
-/***
- * 
- * 
 
-//============= resetWDT ===================================================== 
-void resetWDT() {
-  // reset the WDT watchdog timer.
-  // this must be called before the WDT resets the system
-  WDT->CLEAR.reg= 0xA5; // reset the WDT
-  WDTsync(); 
-  // Serial.println("resetWDT");
-}
 
-//============= systemReset ================================================== 
-void systemReset() {
-  // use the WDT watchdog timer to force a system reset.
-  // WDT MUST be running for this to work
-  WDT->CLEAR.reg= 0x00; // system reset via WDT
-  WDTsync(); 
-}
-
-//============= setupWDT =====================================================
-void setupWDT( uint8_t period) {
-  // initialize the WDT watchdog timer
-
-  WDT->CTRL.reg = 0; // disable watchdog
-  WDTsync(); // sync is required
-
-  WDT->CONFIG.reg = min(period,11); // see Table 17-5 Timeout Period (valid values 0-11)
-
-  WDT->CTRL.reg = WDT_CTRL_ENABLE; //enable watchdog
-  WDTsync(); 
-  Serial.println("setupWDT");
-}
-
-//============= disable WDT =====================================================
-void disableWDT() {
-  WDT->CTRL.reg = 0; // disable watchdog
-  WDTsync(); // sync is required
-  Serial.println("disableWDT");
-}
-*/
+void acc_cali(float acc_cli[3], float acc[3], float cali_x, float cali_y, float cali_z, float c11, float c12, float c13, float c21, float c22, float c23, float c31, float c32, float c33)
+{
+  acc_cli[0] = c11*(cali_x + acc[0]) + c12*(cali_y + acc[1]) + c13*(cali_z + acc[2]);
+  acc_cli[1] = c21*(cali_x + acc[0]) + c22*(cali_y + acc[1]) + c23*(cali_z + acc[2]);
+  acc_cli[2] = c31*(cali_x + acc[0]) + c32*(cali_y + acc[1]) + c33*(cali_z + acc[2]);
+} 

@@ -17,7 +17,9 @@ void loop()
   uint8_t data;
   
     if(Serial1.available()){
-        if(!streamObj.PutToBuffer(true, Serial1.read()));
+        if(!streamObj.PutToBuffer(true, Serial1.read())){
+          Serial.println("PutToBuffer Error!");
+        };
     }
 
     if(streamObj.DataAvailable()==10){

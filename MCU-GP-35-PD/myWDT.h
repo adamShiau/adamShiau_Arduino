@@ -75,6 +75,12 @@ void myWDT_init()
 {
   pinMode(WDI, OUTPUT);
   pinMode(EXT_WDT_EN, OUTPUT);
+  // digitalWrite(EXT_WDT_EN, HIGH);
+  // delay(500);
+  // digitalWrite(EXT_WDT_EN, LOW);
+  // delay(500);
+  // digitalWrite(EXT_WDT_EN, HIGH);
+  // delay(500);
   disableWDT();
   disable_EXT_WDT(EXT_WDT_EN);
 }
