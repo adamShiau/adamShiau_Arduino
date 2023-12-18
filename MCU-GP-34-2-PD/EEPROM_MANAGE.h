@@ -105,13 +105,49 @@
 #define EEPROM_ADDR_SFB_Y             90
 #define EEPROM_ADDR_CUTOFF_Y          91
 /** data output parameter**/
-#define EEPROM_ADDR_BAUDRATE        92
-#define EEPROM_ADDR_DATARATE        93
+#define EEPROM_ADDR_BAUDRATE          92
+#define EEPROM_ADDR_DATARATE          93
+/** IMU Misalignment calibration*/
+/**XLM*/
+#define EEPROM_ADDR_CALI_AX           94
+#define EEPROM_ADDR_CALI_AY           95
+#define EEPROM_ADDR_CALI_AZ           96
+#define EEPROM_ADDR_CALI_A11          97
+#define EEPROM_ADDR_CALI_A12          98
+#define EEPROM_ADDR_CALI_A13          99
+#define EEPROM_ADDR_CALI_A21          100
+#define EEPROM_ADDR_CALI_A22          101
+#define EEPROM_ADDR_CALI_A23          102
+#define EEPROM_ADDR_CALI_A31          103
+#define EEPROM_ADDR_CALI_A32          104
+#define EEPROM_ADDR_CALI_A33          105
+/*** GYRO*/
+#define EEPROM_ADDR_CALI_GX           106
+#define EEPROM_ADDR_CALI_GY           107
+#define EEPROM_ADDR_CALI_GZ           108
+#define EEPROM_ADDR_CALI_G11          109
+#define EEPROM_ADDR_CALI_G12          110
+#define EEPROM_ADDR_CALI_G13          111
+#define EEPROM_ADDR_CALI_G21          112
+#define EEPROM_ADDR_CALI_G22          113
+#define EEPROM_ADDR_CALI_G23          114
+#define EEPROM_ADDR_CALI_G31          115
+#define EEPROM_ADDR_CALI_G32          116
+#define EEPROM_ADDR_CALI_G33          117
 
 /**Global Variable for EEPROM*/
 int EEPROM_Parameter_exist=0; 
 //Output configuration
 int EEPROM_BAUDRATE, EEPROM_DATARATE;
+//Misalignment calibration
+int EEPROM_CALI_AX, EEPROM_CALI_AY, EEPROM_CALI_AZ;
+int EEPROM_CALI_A11, EEPROM_CALI_A12, EEPROM_CALI_A13;
+int EEPROM_CALI_A21, EEPROM_CALI_A22, EEPROM_CALI_A23;
+int EEPROM_CALI_A31, EEPROM_CALI_A32, EEPROM_CALI_A33;
+int EEPROM_CALI_GX, EEPROM_CALI_GY, EEPROM_CALI_GZ;
+int EEPROM_CALI_G11, EEPROM_CALI_G12, EEPROM_CALI_G13;
+int EEPROM_CALI_G21, EEPROM_CALI_G22, EEPROM_CALI_G23;
+int EEPROM_CALI_G31, EEPROM_CALI_G32, EEPROM_CALI_G33;
 
 struct eeprom_obj{
     const uint32_t EEPROM_ADDR_MOD_FREQ        ;

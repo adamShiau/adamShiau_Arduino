@@ -600,12 +600,14 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         for(int i=0; i<255; i++) SER->read();//clear serial buffer
         sp->updateParameter(myCmd_header, FPGA_DUMP_PARAMETERS_ADDR, myCmd_trailer, value, 0xCC);
         while(!SER->available()){delay(1);};
-        if(SER->available())
-         {
-          fog_parameter = SER->readStringUntil('\n');
-          Serial.println(fog_parameter);
-          Serial1.println(fog_parameter);
-         }  
+        if(SER->available()) fog_parameter = SER->readStringUntil('\n');
+        Serial.println(fog_parameter);
+        Serial1.println(fog_parameter);
+        //  {
+        //   fog_parameter = SER->readStringUntil('\n');
+        //   Serial.println(fog_parameter);
+        //   Serial1.println(fog_parameter);
+        //  }  
 
         break;
       }

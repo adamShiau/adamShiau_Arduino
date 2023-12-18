@@ -75,6 +75,31 @@
 #define CMD_DUMP_PARAMETERS	102
 #define CMD_CONFI_BAUDRATE  103
 #define CMD_CONFI_DATARATE  104
+#define CMD_CALI_AX         105
+#define CMD_CALI_AY         106
+#define CMD_CALI_AZ         107
+#define CMD_CALI_A11        108
+#define CMD_CALI_A12        109
+#define CMD_CALI_A13        110
+#define CMD_CALI_A21        111
+#define CMD_CALI_A22        112
+#define CMD_CALI_A23        113
+#define CMD_CALI_A31        114
+#define CMD_CALI_A32        115
+#define CMD_CALI_A33        116
+#define CMD_CALI_GX         117
+#define CMD_CALI_GY         118
+#define CMD_CALI_GZ         119
+#define CMD_CALI_G11        120
+#define CMD_CALI_G12        121
+#define CMD_CALI_G13        122
+#define CMD_CALI_G21        123
+#define CMD_CALI_G22        124
+#define CMD_CALI_G23        125
+#define CMD_CALI_G31        126
+#define CMD_CALI_G32        127
+#define CMD_CALI_G33        128
+#define CMD_DUMP_CALI_PARAMETERS	129
 
 #define MUX_OUTPUT		    0
 #define MUX_PARAMETER	    1
@@ -192,9 +217,35 @@
 #define SFB_INIT            0
 #define CUTOFF_INIT         FLOAT_650
 
-/*** OUTPUT PARAMETER*/
+/*** OUTPUT CONFIGURATION PARAMETERS*/
 #define BAUDRATE_INIT SET_BAUDRATE_230400
 #define DATARATE_INIT SET_DATARATE_100
+
+/*** CALIBRATION PARAMETERS*/
+#define CALI_AX_INIT 0
+#define CALI_AY_INIT 0
+#define CALI_AZ_INIT 0
+#define CALI_A11_INIT FLOAT_1
+#define CALI_A12_INIT 0
+#define CALI_A13_INIT 0
+#define CALI_A21_INIT 0
+#define CALI_A22_INIT FLOAT_1
+#define CALI_A23_INIT 0
+#define CALI_A31_INIT 0
+#define CALI_A32_INIT 0
+#define CALI_A33_INIT FLOAT_1
+#define CALI_GX_INIT 0
+#define CALI_GY_INIT 0
+#define CALI_GZ_INIT 0
+#define CALI_G11_INIT FLOAT_1
+#define CALI_G12_INIT 0
+#define CALI_G13_INIT 0
+#define CALI_G21_INIT 0
+#define CALI_G22_INIT FLOAT_1
+#define CALI_G23_INIT 0
+#define CALI_G31_INIT 0
+#define CALI_G32_INIT 0
+#define CALI_G33_INIT FLOAT_1
 
 
 /*** ADC PIN***/
@@ -203,3 +254,14 @@
 #define ADC_PD_DC   6
 #define ADC_ASE_TACT 19
 #define ADC_ASE_IACT 17
+
+#define MAX_STR_LENGTH 20
+#define PARAMETER_CNT 24
+#define MAX_TOTAL_LENGTH (MAX_STR_LENGTH * PARAMETER_CNT)
+
+typedef struct {
+    char str[MAX_STR_LENGTH];
+} DumpParameter;
+
+
+
