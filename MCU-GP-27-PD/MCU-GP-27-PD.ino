@@ -1,5 +1,5 @@
 #include "gp1z.h"
-#include "SAMDTimerInterrupt.h"
+
 /***
 SERCOM0: I2C     (PA08, PA09) [sda, scl]
 SERCOM1: serial3 (PA17, PA18) [rx, tx]
@@ -95,20 +95,11 @@ byte *reg_fog;
 
 unsigned int t_previous = 0;
 
-// SAMDTimer ITimer(TIMER_TC3);
-
-// void TimerHandler()
-// {
-//   static bool toggle = false;
-
-//   digitalWrite(PIG_SYNC, toggle);
-//   toggle = !toggle;
-// }
 
 void setup() {
   /*** pwm ***/
     pwm_init();
-    // ITimer.attachInterruptInterval(1250, TimerHandler);
+ 
   
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
@@ -176,7 +167,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   Serial.println(fog_op_status);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    
+    // delay(100);
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -185,7 +176,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    
+    // setupWDT(11);
   }
 
 
@@ -694,6 +685,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case STOP_SYNC:
+        reset_SYNC();
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
@@ -784,6 +776,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
       case STOP_SYNC:
         data_cnt = 0;
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
@@ -803,10 +796,13 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
-      if(fog) reg_fog = fog;
-      pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
-      if(ISR_PEDGE)
+      // if(fog) reg_fog = fog;
+      // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
+      // if(ISR_PEDGE)
+      if(fog)
       {
+        reg_fog = fog;
+        pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
@@ -877,6 +873,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
+        reset_SYNC();
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
@@ -983,6 +980,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case STOP_SYNC:
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         data_cnt = 0;
@@ -1055,6 +1053,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         MCU_cnt = 0;
@@ -1179,8 +1178,8 @@ void clear_SEL_EN(byte &select_fn)
 void ISR_EXTT()
 {
   // Serial.println(millis());
-  // sync_status = !sync_status;
-  // digitalWrite(PIG_SYNC, sync_status);
+  sync_status = !sync_status;
+  digitalWrite(PIG_SYNC, sync_status);
   ISR_Coming = !ISR_Coming;
   if(ISR_Coming == true) ISR_PEDGE = true;
 
@@ -1505,7 +1504,7 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_10: {
-      pwm.timer(1, 2, int(6000000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
       delay(100);
@@ -1651,4 +1650,10 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
       t0 = millis();
     }
   } 
+}
+
+void reset_SYNC()
+{
+  sync_status = 0;
+  digitalWrite(PIG_SYNC, sync_status);
 }

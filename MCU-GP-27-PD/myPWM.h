@@ -3,9 +3,9 @@
 
 
 #include <SAMD21turboPWM.h>
-#define PWM100 7  //time1
-#define PWM200 5  //time0
-#define PWM250 11 //time2
+#define PWM100 7
+#define PWM200 5
+#define PWM250 11
 #define PWM_FIX 1
 
 TurboPWM  pwm;
@@ -15,7 +15,6 @@ void pwm_init(void)
     pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
     pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
     pwm.timer(0, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
-    // pwm.timer(0, 2, int(6000000*PWM_FIX), false); //12M/2/30000 = 1Hz
     
     pwm.analogWrite(PWM100, 500);  
     pwm.analogWrite(PWM200, 500);  

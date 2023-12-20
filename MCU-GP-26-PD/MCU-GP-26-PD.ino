@@ -685,6 +685,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case STOP_SYNC:
+        reset_SYNC();
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
@@ -775,6 +776,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
       case STOP_SYNC:
         data_cnt = 0;
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
@@ -868,6 +870,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
+        reset_SYNC();
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
@@ -974,6 +977,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       break;
 
       case STOP_SYNC:
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         data_cnt = 0;
@@ -1046,6 +1050,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
+        reset_SYNC();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         MCU_cnt = 0;
@@ -1642,4 +1647,10 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
       t0 = millis();
     }
   } 
+}
+
+void reset_SYNC()
+{
+  sync_status = 0;
+  digitalWrite(PIG_SYNC, sync_status);
 }
