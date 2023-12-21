@@ -84,6 +84,7 @@ typedef union
 }
 my_acc_t;
 
+
 typedef union
 {
   struct {
@@ -390,9 +391,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    // Wait_FPGA_Wakeup(1);
-    // Wait_FPGA_Wakeup(2);
-    // Wait_FPGA_Wakeup(3);
+    Wait_FPGA_Wakeup(1);
+    Wait_FPGA_Wakeup(2);
+    Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
@@ -1418,19 +1419,20 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog_x, *fog_y, *fog_z;
   my_acc_t my_ADXL357, ADXL357_cali;
+  my_acc_t my_fog, fog_cali;
 	uint8_t CRC32[4];
   my_float_t pd_temp_x, pd_temp_y, pd_temp_z;
-  my_float_t cali_ax, fow_wy, fog_wz;
+  // my_float_t cali_ax, fow_wy, fog_wz;
 	
 	if(select_fn&SEL_AFI)
 	{
     Serial.println("Enter acq_afi mode: ");
     CtrlReg = value;
 
-    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    // delay(10);
-    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    run_fog_flag = sp14.setSyncMode(CtrlReg);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    delay(10);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    // run_fog_flag = sp14.setSyncMode(CtrlReg);
     
     Serial.print("AFI run_fog_flag: ");
     Serial.println(run_fog_flag);
@@ -1477,6 +1479,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_x) memcpy(reg_fog_x, fog_x, sizeof(reg_fog_x));
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
+
+      // my_fog.int_val[0] = 
     
       pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
       pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
@@ -1492,7 +1496,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         // 0.1252251130, -0.0445694464, 10.2653349881
         // );
 
-        acc_cali2(ADXL357_cali.float_val, my_ADXL357.float_val);
+        acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
+        gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
 
 
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
@@ -2159,7 +2164,7 @@ void read_misalignment_calibration_from_eeprom()
   misalignment_cali_coe._d.g31 = EEPROM_CALI_G31;
   misalignment_cali_coe._d.g32 = EEPROM_CALI_G32;
   misalignment_cali_coe._d.g33 = EEPROM_CALI_G33;
-  Serial.print("read_misalignment_calibration_from_eeprom done");
+  Serial.println("read_misalignment_calibration_from_eeprom done");
 }
 
 void read_fog_parameter_from_eeprom_all(byte fog_ch)
@@ -2434,14 +2439,14 @@ void Wait_FPGA_Wakeup(byte fog_ch)
 }
 
 
-void acc_cali(float acc_cli[3], float acc[3], float cali_x, float cali_y, float cali_z, float c11, float c12, float c13, float c21, float c22, float c23, float c31, float c32, float c33)
-{
-  acc_cli[0] = c11*(cali_x + acc[0]) + c12*(cali_y + acc[1]) + c13*(cali_z + acc[2]);
-  acc_cli[1] = c21*(cali_x + acc[0]) + c22*(cali_y + acc[1]) + c23*(cali_z + acc[2]);
-  acc_cli[2] = c31*(cali_x + acc[0]) + c32*(cali_y + acc[1]) + c33*(cali_z + acc[2]);
-} 
+// void acc_cali(float acc_cli[3], float acc[3], float cali_x, float cali_y, float cali_z, float c11, float c12, float c13, float c21, float c22, float c23, float c31, float c32, float c33)
+// {
+//   acc_cli[0] = c11*(cali_x + acc[0]) + c12*(cali_y + acc[1]) + c13*(cali_z + acc[2]);
+//   acc_cli[1] = c21*(cali_x + acc[0]) + c22*(cali_y + acc[1]) + c23*(cali_z + acc[2]);
+//   acc_cli[2] = c31*(cali_x + acc[0]) + c32*(cali_y + acc[1]) + c33*(cali_z + acc[2]);
+// } 
 
-void acc_cali2(float acc_cli[3], float acc[3])
+void acc_cali(float acc_cli[3], float acc[3])
 {
   acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
                misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
@@ -2454,15 +2459,55 @@ void acc_cali2(float acc_cli[3], float acc[3])
                misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
 } 
 
-void gyro_cali(float gyro_cli[3], float gyro[3])
+void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
 {
-  gyro_cli[0] = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + gyro[0]) + 
-                misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + gyro[1]) + 
-                misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + gyro[2]);
-  gyro_cli[1] = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + gyro[0]) + 
-                misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + gyro[1]) + 
-                misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + gyro[2]);
-  gyro_cli[2] = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + gyro[0]) + 
-                misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + gyro[1]) + 
-                misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + gyro[2]);
+  my_float_t x_f, y_f, z_f;
+  my_float_t x_cli, y_cli, z_cli;
+
+  x_f.bin_val[0] = gyro_clix[11];
+  x_f.bin_val[1] = gyro_clix[10];
+  x_f.bin_val[2] = gyro_clix[9];
+  x_f.bin_val[3] = gyro_clix[8];
+
+  y_f.bin_val[0] = gyro_cliy[11];
+  y_f.bin_val[1] = gyro_cliy[10];
+  y_f.bin_val[2] = gyro_cliy[9];
+  y_f.bin_val[3] = gyro_cliy[8];
+
+  z_f.bin_val[0] = gyro_cliz[11];
+  z_f.bin_val[1] = gyro_cliz[10];
+  z_f.bin_val[2] = gyro_cliz[9];
+  z_f.bin_val[3] = gyro_cliz[8];
+  // Serial.println(z_f.float_val*3600);
+
+  x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
+  y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
+  z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
+
+  gyro_clix[11] = x_cli.bin_val[0];
+  gyro_clix[10] = x_cli.bin_val[1];
+  gyro_clix[9] = x_cli.bin_val[2];
+  gyro_clix[8] = x_cli.bin_val[3];
+
+  gyro_cliy[11] = y_cli.bin_val[0];
+  gyro_cliy[10] = y_cli.bin_val[1];
+  gyro_cliy[9] = y_cli.bin_val[2];
+  gyro_cliy[8] = y_cli.bin_val[3];
+
+  gyro_cliz[11] = z_cli.bin_val[0];
+  gyro_cliz[10] = z_cli.bin_val[1];
+  gyro_cliz[9] = z_cli.bin_val[2];
+  gyro_cliz[8] = z_cli.bin_val[3];
+
+  // Serial.print(z_cli.float_val*3600);
+  // Serial.print(", ");
+  // Serial.print(z_cli.float_val*3600);
+  // Serial.print(", ");
+  // Serial.println(z_cli.float_val*3600);
 } 
