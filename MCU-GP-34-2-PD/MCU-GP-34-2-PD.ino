@@ -288,6 +288,7 @@ DumpParameter my_cali_para[PARAMETER_CNT];
 void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data) {
     snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
     Serial.println(output_data->str);
+    Serial1.print(output_data->str);
 }
 
 void setup() {
@@ -997,51 +998,78 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         break;
       }
       case CMD_DUMP_CALI_PARAMETERS: {
+        Serial1.print('{');
         my_parameter_f("AX", misalignment_cali_coe._f.ax, &my_cali_para[0]);
+        Serial1.print(", ");
         my_parameter_f("AY", misalignment_cali_coe._f.ay, &my_cali_para[1]);
+        Serial1.print(", ");
         my_parameter_f("AZ", misalignment_cali_coe._f.az, &my_cali_para[2]);
+        Serial1.print(", ");
         my_parameter_f("A11", misalignment_cali_coe._f.a11, &my_cali_para[3]);
+        Serial1.print(", ");
         my_parameter_f("A12", misalignment_cali_coe._f.a12, &my_cali_para[4]);
+        Serial1.print(", ");
         my_parameter_f("A13", misalignment_cali_coe._f.a13, &my_cali_para[5]);
+        Serial1.print(", ");
         my_parameter_f("A21", misalignment_cali_coe._f.a21, &my_cali_para[6]);
+        Serial1.print(", ");
         my_parameter_f("A22", misalignment_cali_coe._f.a22, &my_cali_para[7]);
+        Serial1.print(", ");
         my_parameter_f("A23", misalignment_cali_coe._f.a23, &my_cali_para[8]);
+        Serial1.print(", ");
         my_parameter_f("A31", misalignment_cali_coe._f.a31, &my_cali_para[9]);
+        Serial1.print(", ");
         my_parameter_f("A32", misalignment_cali_coe._f.a32, &my_cali_para[10]);
+        Serial1.print(", ");
         my_parameter_f("A33", misalignment_cali_coe._f.a33, &my_cali_para[11]);
+        Serial1.print(", ");
         my_parameter_f("GX", misalignment_cali_coe._f.gx, &my_cali_para[12]);
+        Serial1.print(", ");
         my_parameter_f("GY", misalignment_cali_coe._f.gy, &my_cali_para[13]);
+        Serial1.print(", ");
         my_parameter_f("GZ", misalignment_cali_coe._f.gz, &my_cali_para[14]);
+        Serial1.print(", ");
         my_parameter_f("G11", misalignment_cali_coe._f.g11, &my_cali_para[15]);
+        Serial1.print(", ");
         my_parameter_f("G12", misalignment_cali_coe._f.g12, &my_cali_para[16]);
+        Serial1.print(", ");
         my_parameter_f("G13", misalignment_cali_coe._f.g13, &my_cali_para[17]);
+        Serial1.print(", ");
         my_parameter_f("G21", misalignment_cali_coe._f.g21, &my_cali_para[18]);
+        Serial1.print(", ");
         my_parameter_f("G22", misalignment_cali_coe._f.g22, &my_cali_para[19]);
+        Serial1.print(", ");
         my_parameter_f("G23", misalignment_cali_coe._f.g23, &my_cali_para[20]);
+        Serial1.print(", ");
         my_parameter_f("G31", misalignment_cali_coe._f.g31, &my_cali_para[21]);
+        Serial1.print(", ");
         my_parameter_f("G32", misalignment_cali_coe._f.g32, &my_cali_para[22]);
+        Serial1.print(", ");
         my_parameter_f("G33", misalignment_cali_coe._f.g33, &my_cali_para[23]);
-        for (int i = 0; i < PARAMETER_CNT; i++) {
-							strcat(cali_para_dump, my_cali_para[i].str);
-							if(i<PARAMETER_CNT-1) strcat(cali_para_dump, ", ");
-						}
-        int para_size=0;
-        for(int i=0; i<sizeof(cali_para_dump); i++){
-            if(cali_para_dump[i]==0) {
-              para_size = i;
-              break;
-            }
-        }
-        char fog_para_dump_out[para_size];
-        memset(fog_para_dump_out, 0, para_size); // initialize fog_para_dump_out to zeros
-        strcat(fog_para_dump_out, cali_para_dump);
-        strcpy(cali_para_dump, ""); // reset fog_para_dump to ""
-        Serial1.write(0x7B);// {
-        for(int i=0; i<sizeof(fog_para_dump_out);i++){
-          Serial1.write(fog_para_dump_out[i]);
-        }
-        Serial1.write(0x7D);// }
-        Serial1.write(0x0A);// \n
+        Serial1.println("}");
+        // for (int i = 0; i < PARAMETER_CNT; i++) {
+        //   strcat(cali_para_dump, my_cali_para[i].str);
+        //   if(i<PARAMETER_CNT-1) strcat(cali_para_dump, ", ");
+        // }
+        // Serial.print("cali_para_dump: ");
+        // Serial.println(cali_para_dump);
+        // int para_size=0;
+        // for(int i=0; i<sizeof(cali_para_dump); i++){
+        //     if(cali_para_dump[i]==0) {
+        //       para_size = i;
+        //       break;
+        //     }
+        // }
+        // char fog_para_dump_out[para_size];
+        // memset(fog_para_dump_out, 0, para_size); // initialize fog_para_dump_out to zeros
+        // strcat(fog_para_dump_out, cali_para_dump);
+        // strcpy(cali_para_dump, ""); // reset fog_para_dump to ""
+        // Serial1.write(0x7B);// {
+        // for(int i=0; i<sizeof(fog_para_dump_out);i++){
+        //   Serial1.write(fog_para_dump_out[i]);
+        // }
+        // Serial1.write(0x7D);// }
+        // Serial1.write(0x0A);// \n
 //
         
         break;
