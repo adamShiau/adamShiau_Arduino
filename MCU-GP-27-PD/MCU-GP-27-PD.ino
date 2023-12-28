@@ -92,6 +92,7 @@ unsigned int MCU_cnt = 0;
 TinyGPSPlus gps;
 
 byte *reg_fog;
+byte *t_reg_fog;
 
 unsigned int t_previous = 0;
 
@@ -137,7 +138,7 @@ void setup() {
   delay(500);
 
   byte FPGA_wakeup_flag = 0; 
-  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  // Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
   parameter_init();
@@ -168,14 +169,14 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
     // delay(100);
-    Serial.println("AUTO RST");
-    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    select_fn = my_f.int_val;
-    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    output_fn = (fn_ptr)my_f.int_val; 
-    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    value = my_f.int_val;
-    fog_channel = 2;
+    // Serial.println("AUTO RST");
+    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    // select_fn = my_f.int_val;
+    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    // output_fn = (fn_ptr)my_f.int_val; 
+    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    // value = my_f.int_val;
+    // fog_channel = 2;
     // setupWDT(11);
   }
 
@@ -642,6 +643,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
+
 		
 	}
 	clear_SEL_EN(select_fn);
@@ -651,6 +653,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
+  uint8_t buf[14];
 	uint8_t CRC32[4];
   String fpga_version;
 	
@@ -678,10 +681,9 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
-
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        setupWDT(11);
+        // setupWDT(11);
       break;
 
       case STOP_SYNC:
@@ -699,6 +701,8 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 	}
   if(run_fog_flag) {
 	    t_new = micros();
+      // if(Serial3.available());
+      // Serial.println(Serial3.available());
       
            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
@@ -706,6 +710,11 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       
       if(fog) reg_fog = fog;
 
+      // if(!streamObj.ReadUartStream(buf, 14)) {
+      //   t_reg_fog = buf;
+      // }
+
+// /***
       if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
@@ -714,6 +723,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
         
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
+        // memcpy(imu_data+4, t_reg_fog, 14);
         memcpy(imu_data+4, reg_fog, 14);
         memcpy(imu_data+18, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 22, CRC32);
@@ -723,6 +733,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
         if(data_cnt >= DELAY_CNT)
         {
           Serial1.write(KVH_HEADER, 4);
+          // Serial1.write(t_reg_fog, 14);
           Serial1.write(reg_fog, 14);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
@@ -730,9 +741,11 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
        #endif
         
       }
+// */
+
 	    
       t_old = t_new;
-      resetWDT();
+      // resetWDT();
         
 	}
 	clear_SEL_EN(select_fn);	
@@ -1414,19 +1427,44 @@ void report_current_output_configuration()
 
   switch(EEPROM_DATARATE)
   {
+    case SET_DATARATE_400: {
+      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 400 Hz");
+      Serial1.println("Data rate set to 400 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_200: {
+      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 200 Hz");
+      Serial1.println("Data rate set to 200 Hz");
+      delay(100);
+      break;
+    }
     case SET_DATARATE_100: {
-      Serial1.println("Data rate set to 100 Hz");
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
+      delay(100);
       break;
     }
     case SET_DATARATE_10: {
-      Serial1.println("Data rate set to 10 Hz");
+      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
+      Serial1.println("Data rate set to 10 Hz");
+      delay(100);
       break;
     }
-    default: {
-      Serial1.println("Data rate set to 100 Hz");
+    default:{
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
+      delay(100);
       break;
     }
   }
@@ -1496,8 +1534,25 @@ void update_datarate(byte eeprom_var)
 {
   switch(eeprom_var)
   {
+    case SET_DATARATE_400: {
+      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 400 Hz");
+      Serial1.println("Data rate set to 400 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_200: {
+      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 200 Hz");
+      Serial1.println("Data rate set to 200 Hz");
+      delay(100);
+      break;
+    }
     case SET_DATARATE_100: {
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);
@@ -1505,6 +1560,7 @@ void update_datarate(byte eeprom_var)
     }
     case SET_DATARATE_10: {
       pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
       delay(100);
@@ -1512,6 +1568,7 @@ void update_datarate(byte eeprom_var)
     }
     default:{
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);

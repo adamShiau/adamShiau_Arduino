@@ -241,7 +241,7 @@ void PIG::printData(unsigned char data[14])
 	step = data[8]<<24 | data[9]<<16 | data[10]<<8 | data[11];
     pd_T = data[12]<<8 | data[13];
 
-    Serial.println(port.available());
+    // Serial.println(port.available());
     // Serial.print(", ");
 	// Serial.print(time, HEX);
     // Serial.print(", ");

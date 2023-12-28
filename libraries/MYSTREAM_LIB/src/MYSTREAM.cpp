@@ -52,6 +52,9 @@ MYSTREAMStatusTypeDef myStream::ReadUartStream(uint8_t* buf, uint8_t buf_size)
 
     if(!dev_serial.available()) return MYSTREAM_ERROR;
     data = dev_serial.read();
+    // Serial.println(dev_serial.available());
+    // Serial.print(", ");
+    // Serial.println(data, HEX);
     switch (_state)
     {
     case EXPECTING_HEADER:

@@ -13,6 +13,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
   
 ***/
 #include "uartRT.h"
+#include <MYSTREAM.h>
 // cmd read from GUI
 uint8_t myCmd_header[] = {0xAB, 0xBA};
 uint8_t myCmd_trailer[] = {0x55, 0x56};
@@ -28,6 +29,7 @@ uint16_t try_cnt;
 const uint8_t sizeofheader = sizeof(header);
 const uint8_t sizeoftrailer = sizeof(trailer);
 
+
 Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
@@ -38,6 +40,7 @@ void SERCOM3_Handler() {Serial4.IrqHandler();}
 #include "pig_v2.h"
 PIG sp13(Serial2); //SP13
 PIG sp14(Serial3, 14); //SP14
+myStream streamObj(Serial3, header, 2);
 PIG sp9(Serial4); //SP14
 
 void myUART_init(void)
