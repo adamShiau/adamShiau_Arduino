@@ -784,7 +784,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        setupWDT(11);
+        // setupWDT(11);
       break;
 
       case STOP_SYNC:
@@ -809,12 +809,12 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
-      // if(fog) reg_fog = fog;
+      if(fog) reg_fog = fog;
       // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
-      // if(ISR_PEDGE)
-      if(fog)
+      if(ISR_PEDGE)
+      // if(fog)
       {
-        reg_fog = fog;
+        // reg_fog = fog;
         pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
         data_cnt++;
@@ -842,7 +842,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       }
 	    
       t_old = t_new;
-      resetWDT();
+      // resetWDT();
         
 	}
 	clear_SEL_EN(select_fn);	

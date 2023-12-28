@@ -309,7 +309,7 @@ unsigned char* uartRT::readData_3(uint8_t* expected_header, uint8_t header_size,
 		EXPECTING_PAYLOAD,
         EXPECTING_TRAILER
 	} state_3 = EXPECTING_HEADER; // state machine definition
-    // Serial.println(port.available());
+    Serial.println(port.available());
     if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
     uint8_t data = port.read();
     #if defined(TEST_MODE)
