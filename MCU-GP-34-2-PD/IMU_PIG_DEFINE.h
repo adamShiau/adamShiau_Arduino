@@ -181,8 +181,11 @@
 #define SET_BAUDRATE_115200 1
 #define SET_BAUDRATE_9600   2
 #define SET_BAUDRATE_4800   3
-#define SET_DATARATE_100    0
-#define SET_DATARATE_10     1
+
+#define SET_DATARATE_200    3
+#define SET_DATARATE_100    2
+#define SET_DATARATE_50     1
+#define SET_DATARATE_10     0
 
 #define EEPROM_PARAMETER_EXIST 0xAA
 

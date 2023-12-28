@@ -180,12 +180,12 @@ void setup() {
 
   #ifdef AFI 
     // Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
-  // parameter_init();
+  parameter_init();
   Blink_MCU_LED();
 
 	/*** var initialization***/
@@ -206,7 +206,7 @@ void setup() {
 
 	
 
-
+/***
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
     Serial.println("AUTO RST");
@@ -219,6 +219,8 @@ void setup() {
     fog_channel = 2;
     // setupWDT(11);
   }
+*/
+
 
 
 }
@@ -286,7 +288,6 @@ void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_compl
   byte *cmd;
 
     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-
     if(cmd){
       uart_cmd = cmd[0];
       uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
@@ -993,10 +994,10 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
     Serial.println("Enter acq_afi mode: ");
     CtrlReg = value;
 
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    delay(10);
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    
+    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    // delay(10);
+    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    run_fog_flag = sp14.setSyncMode(CtrlReg);
     Serial.print("AFI run_fog_flag: ");
     Serial.println(run_fog_flag);
 
@@ -1670,8 +1671,25 @@ void update_datarate(byte eeprom_var)
 {
   switch(eeprom_var)
   {
+    case SET_DATARATE_400: {
+      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 400 Hz");
+      Serial1.println("Data rate set to 400 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_200: {
+      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 200 Hz");
+      Serial1.println("Data rate set to 200 Hz");
+      delay(100);
+      break;
+    }
     case SET_DATARATE_100: {
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);
@@ -1679,6 +1697,7 @@ void update_datarate(byte eeprom_var)
     }
     case SET_DATARATE_10: {
       pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
       delay(100);
@@ -1686,6 +1705,7 @@ void update_datarate(byte eeprom_var)
     }
     default:{
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);

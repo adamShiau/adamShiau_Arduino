@@ -150,6 +150,10 @@
 #define SET_BAUDRATE_115200 1
 #define SET_BAUDRATE_9600   2
 #define SET_BAUDRATE_4800   3
+#define SET_BAUDRATE_460800   4
+
+#define SET_DATARATE_400    3
+#define SET_DATARATE_200    2
 #define SET_DATARATE_100    0
 #define SET_DATARATE_10     1
 

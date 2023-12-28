@@ -318,9 +318,10 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   // tt1 = millis();
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
+  /***
+  
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // delay(100);
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -329,8 +330,8 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    // setupWDT(11);
   }
+  ***/
 
 
 }
@@ -1559,19 +1560,44 @@ void report_current_output_configuration()
 
   switch(EEPROM_DATARATE)
   {
+   case SET_DATARATE_400: {
+      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 400 Hz");
+      Serial1.println("Data rate set to 400 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_200: {
+      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 200 Hz");
+      Serial1.println("Data rate set to 200 Hz");
+      delay(100);
+      break;
+    }
     case SET_DATARATE_100: {
-      Serial1.println("Data rate set to 100 Hz");
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
+      delay(100);
       break;
     }
     case SET_DATARATE_10: {
-      Serial1.println("Data rate set to 10 Hz");
+      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
+      Serial1.println("Data rate set to 10 Hz");
+      delay(100);
       break;
     }
-    default: {
-      Serial1.println("Data rate set to 100 Hz");
+    default:{
+      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
+      Serial1.println("Data rate set to 100 Hz");
+      delay(100);
       break;
     }
   }
@@ -1599,6 +1625,13 @@ void update_baudrate(byte eeprom_var)
 {
   switch(eeprom_var)
   {
+    case SET_BAUDRATE_460800: {
+      Serial1.println("Baudrate set to 460800");
+      Serial.println("Baudrate set to 460800");
+      delay(100);
+      Serial1.begin(460800);
+      break;
+    }
     case SET_BAUDRATE_230400: {
       Serial1.println("Baudrate set to 230400");
       Serial.println("Baudrate set to 230400");
@@ -1641,8 +1674,25 @@ void update_datarate(byte eeprom_var)
 {
   switch(eeprom_var)
   {
+    case SET_DATARATE_400: {
+      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 400 Hz");
+      Serial1.println("Data rate set to 400 Hz");
+      delay(100);
+      break;
+    }
+    case SET_DATARATE_200: {
+      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.analogWrite(PWM100, 500);  
+      Serial.println("Data rate set to 200 Hz");
+      Serial1.println("Data rate set to 200 Hz");
+      delay(100);
+      break;
+    }
     case SET_DATARATE_100: {
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);
@@ -1650,6 +1700,7 @@ void update_datarate(byte eeprom_var)
     }
     case SET_DATARATE_10: {
       pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
       delay(100);
@@ -1657,6 +1708,7 @@ void update_datarate(byte eeprom_var)
     }
     default:{
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       delay(100);
