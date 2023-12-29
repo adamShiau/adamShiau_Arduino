@@ -28,7 +28,6 @@ uint16_t try_cnt;
 const uint8_t sizeofheader = sizeof(header);
 const uint8_t sizeoftrailer = sizeof(trailer);
 
-
 Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
@@ -37,9 +36,13 @@ void SERCOM1_Handler() {Serial3.IrqHandler();}
 void SERCOM3_Handler() {Serial4.IrqHandler();}
 
 #include "pig_v2.h"
-PIG sp13(Serial2); //SP13
-PIG sp14(Serial3, 14); //SP14
-PIG sp9(Serial4); //SP14
+PIG sp13(Serial2, 16); //SP13
+PIG sp14(Serial3, 16); //SP14, Wz
+PIG sp9(Serial4, 16); //SP14
+
+uartRT SP13_Read(Serial2, 16);
+uartRT SP14_Read(Serial3, 16);
+uartRT SP9_Read(Serial4, 16);
 
 void myUART_init(void)
 {

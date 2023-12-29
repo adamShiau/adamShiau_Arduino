@@ -1447,10 +1447,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog_x, *fog_y, *fog_z;
   my_acc_t my_ADXL357, ADXL357_cali;
-  my_acc_t my_fog, fog_cali;
 	uint8_t CRC32[4];
   my_float_t pd_temp_x, pd_temp_y, pd_temp_z;
-  // my_float_t cali_ax, fow_wy, fog_wz;
 	
 	if(select_fn&SEL_AFI)
 	{

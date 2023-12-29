@@ -36,9 +36,9 @@ void SERCOM1_Handler() {Serial3.IrqHandler();}
 void SERCOM3_Handler() {Serial4.IrqHandler();}
 
 #include "pig_v2.h"
-PIG sp13(Serial2); //SP13
-PIG sp14(Serial3, 14); //SP14
-PIG sp9(Serial4); //SP14
+PIG sp13(Serial2, 14); //SP13
+PIG sp14(Serial3, 14); //SP14, Wz
+PIG sp9(Serial4, 14); //SP14
 
 uartRT SP13_Read(Serial2, 14);
 uartRT SP14_Read(Serial3, 14);

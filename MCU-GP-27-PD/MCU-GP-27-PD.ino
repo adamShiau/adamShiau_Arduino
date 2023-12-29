@@ -138,7 +138,7 @@ void setup() {
   delay(500);
 
   byte FPGA_wakeup_flag = 0; 
-  // Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
+  Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
   parameter_init();
@@ -168,16 +168,15 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   Serial.println(fog_op_status);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // delay(100);
-    // Serial.println("AUTO RST");
-    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    // select_fn = my_f.int_val;
-    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    // output_fn = (fn_ptr)my_f.int_val; 
-    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    // value = my_f.int_val;
-    // fog_channel = 2;
-    // setupWDT(11);
+    Serial.println("AUTO RST");
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    output_fn = (fn_ptr)my_f.int_val; 
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    value = my_f.int_val;
+    fog_channel = 2;
+    setupWDT(11);
   }
 
 
@@ -701,8 +700,6 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 	}
   if(run_fog_flag) {
 	    t_new = micros();
-      // if(Serial3.available());
-      // Serial.println(Serial3.available());
       
            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
@@ -710,11 +707,6 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       
       if(fog) reg_fog = fog;
 
-      // if(!streamObj.ReadUartStream(buf, 14)) {
-      //   t_reg_fog = buf;
-      // }
-
-// /***
       if(ISR_PEDGE)
       {
         uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
@@ -739,14 +731,9 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(CRC32, 4);
         }
        #endif
-        
-      }
-// */
-
-	    
-      t_old = t_new;
       // resetWDT();
-        
+      }
+      t_old = t_new;   
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -766,8 +753,6 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
     if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-
-    
 
     switch(CtrlReg){
       case INT_SYNC:
@@ -812,7 +797,6 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       if(fog) reg_fog = fog;
       // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
       if(ISR_PEDGE)
-      // if(fog)
       {
         // reg_fog = fog;
         pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
@@ -838,12 +822,9 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(CRC32, 4);
         #endif
         }
-        
+        resetWDT();
       }
-	    
-      t_old = t_new;
-      // resetWDT();
-        
+      t_old = t_new;  
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -940,10 +921,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
       }
-      #endif   
+      #endif  
+      resetWDT(); 
     }
     t_old = t_new;    
-    resetWDT();
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -1026,8 +1007,8 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         }
         
        #endif 
+       resetWDT();
       }
-      resetWDT();
 	}
 	clear_SEL_EN(select_fn);	
 }
@@ -1122,11 +1103,11 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(adc_var, 8);
         Serial1.write(CRC32, 4);
        #endif
-        
+        resetWDT();
       }
 	    
       t_old = t_new;
-      resetWDT();
+      
         
 	}
 	clear_SEL_EN(select_fn);	

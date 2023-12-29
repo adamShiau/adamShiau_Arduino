@@ -1267,9 +1267,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // setupWDT(11);
-        // enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -1278,9 +1278,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // setupWDT(11);
-        // enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1308,10 +1308,10 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_x) memcpy(reg_fog_x, fog_x, sizeof(reg_fog_x));
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
-      // if(fog_x) reg_fog_x = fog_x;
-      // if(fog_y) reg_fog_y = fog_y;
-      // if(fog_z) reg_fog_z = fog_z;
     
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
       pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
       pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
       pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
@@ -1323,6 +1323,13 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         // Serial.print(",");
         // Serial.println(Serial4.available());
 
+        Serial.print(pd_temp_x.float_val);
+        Serial.print(",");
+        Serial.print(pd_temp_y.float_val);
+        Serial.print(",");
+        Serial.println(pd_temp_z.float_val);
+
+        // Serial.println(Serial3.available());
 
         adxl357_i2c.readData_f(my_ADXL357.float_val);
         acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
@@ -1361,8 +1368,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(CRC32, 4);
         #endif
         }
-        // resetWDT();
-        // reset_EXT_WDI(WDI);
+        resetWDT();
+        reset_EXT_WDI(WDI);
       }
       t_old = t_new;
 	}
@@ -1562,7 +1569,15 @@ float convert_PDtemp(byte dataH, byte dataL)
 
 float convert_PDtemp(byte* fog)
 {
-  return (float)(*(fog+12));
+  my_float_t t;
+  // byte dataH, dataL;
+  // dataH = (*(fog+12));
+  // dataL = (*(fog+13));
+  t.bin_val[0] = (*(fog+15));
+  t.bin_val[1] = (*(fog+14));
+  t.bin_val[2] = (*(fog+13));
+  t.bin_val[3] = (*(fog+12));
+  return t.float_val;
 }
 
 
