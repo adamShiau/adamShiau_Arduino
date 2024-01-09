@@ -1254,10 +1254,10 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
     Serial.println("Enter acq_afi mode: ");
     CtrlReg = value;
 
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    delay(10);
-    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    // run_fog_flag = sp14.setSyncMode(CtrlReg);
+    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    // delay(10);
+    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    run_fog_flag = sp14.setSyncMode(CtrlReg);
     Serial.print("AFI run_fog_flag: ");
     Serial.println(run_fog_flag);
 
