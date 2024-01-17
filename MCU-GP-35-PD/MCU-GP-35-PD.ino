@@ -121,7 +121,7 @@ void my_parameter_f(const char *parameter_name, float input_value, DumpParameter
 
 void setup() {
   pwm_init();
-  myWDT_init();
+  myWDT_init(); //disable all WDT
   
 
 
@@ -190,15 +190,15 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    // Wait_FPGA_Wakeup(1);
-    // Wait_FPGA_Wakeup(2);
-    // Wait_FPGA_Wakeup(3);
+    Wait_FPGA_Wakeup(1);
+    Wait_FPGA_Wakeup(2);
+    Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
   parameter_init();
   Blink_MCU_LED();
-
+  printVersion();
 	/*** var initialization***/
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
@@ -217,7 +217,7 @@ void setup() {
 
 	
 
-/***
+// /***
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
     Serial.println("AUTO RST");
@@ -230,7 +230,7 @@ void setup() {
     fog_channel = 2;
     // setupWDT(11);
   }
-*/
+// */
 
 
 
@@ -841,30 +841,6 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         Serial1.print(", ");
         my_parameter_f("G33", misalignment_cali_coe._f.g33, &my_cali_para[23]);
         Serial1.println("}");
-        // for (int i = 0; i < PARAMETER_CNT; i++) {
-        //   strcat(cali_para_dump, my_cali_para[i].str);
-        //   if(i<PARAMETER_CNT-1) strcat(cali_para_dump, ", ");
-        // }
-        // Serial.print("cali_para_dump: ");
-        // Serial.println(cali_para_dump);
-        // int para_size=0;
-        // for(int i=0; i<sizeof(cali_para_dump); i++){
-        //     if(cali_para_dump[i]==0) {
-        //       para_size = i;
-        //       break;
-        //     }
-        // }
-        // char fog_para_dump_out[para_size];
-        // memset(fog_para_dump_out, 0, para_size); // initialize fog_para_dump_out to zeros
-        // strcat(fog_para_dump_out, cali_para_dump);
-        // strcpy(cali_para_dump, ""); // reset fog_para_dump to ""
-        // Serial1.write(0x7B);// {
-        // for(int i=0; i<sizeof(fog_para_dump_out);i++){
-        //   Serial1.write(fog_para_dump_out[i]);
-        // }
-        // Serial1.write(0x7D);// }
-        // Serial1.write(0x0A);// \n
-//
         
         break;
       }
@@ -1254,10 +1230,10 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
     Serial.println("Enter acq_afi mode: ");
     CtrlReg = value;
 
-    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    // delay(10);
-    // run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
-    run_fog_flag = sp14.setSyncMode(CtrlReg);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    delay(10);
+    run_fog_flag = sp13.setSyncMode(CtrlReg) && sp14.setSyncMode(CtrlReg) && sp9.setSyncMode(CtrlReg);
+    // run_fog_flag = sp14.setSyncMode(CtrlReg);
     Serial.print("AFI run_fog_flag: ");
     Serial.println(run_fog_flag);
 
@@ -1267,9 +1243,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // setupWDT(11);
-        // enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -1278,9 +1254,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // setupWDT(11);
-        // enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1361,8 +1337,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(CRC32, 4);
         #endif
         }
-        // resetWDT();
-        // reset_EXT_WDI(WDI);
+        resetWDT();
+        reset_EXT_WDI(WDI);
       }
       t_old = t_new;
 	}
@@ -2311,3 +2287,9 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   gyro_cliz[9] = z_cli.bin_val[2];
   gyro_cliz[8] = z_cli.bin_val[3];
 } 
+
+  void printVersion()
+  {
+    Serial.print("Version:");
+    Serial.println(MCU_VERSION);
+  }
