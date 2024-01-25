@@ -1,5 +1,5 @@
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-25-RD"
+#define MCU_VERSION "MCU-GP-26-RD"
 
 /*** adxl355 conversion factor***/
 #define ADXL355_8G 0.0000156
