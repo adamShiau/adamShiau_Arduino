@@ -3,5 +3,6 @@
         "vector": "cpp",
         "xstring": "cpp",
         "xutility": "cpp"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 }
