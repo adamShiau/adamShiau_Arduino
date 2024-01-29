@@ -294,7 +294,7 @@ void my_parameter_f(const char *parameter_name, float input_value, DumpParameter
 void setup() {
 
   /*** pwm ***/
-
+  OSC32K_SET();
   pwm.setClockDivider(2, false); //48MHz/4 = 12MHz
   // pwm.timer(2, 2, int(24000*PWM_FIX), false); //12M/2/24000 = 250Hz
   pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
@@ -2549,3 +2549,48 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   // Serial.print(", ");
   // Serial.println(z_cli.float_val*3600);
 } 
+
+void OSC32K_SET()
+{
+  /* This works around a quirk in the hardware (errata 1.2.1) -
+   the DFLLCTRL register must be manually reset to this value before
+   configuration. */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_ENABLE;
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+/* Set up the multiplier. This tells the DFLL to multiply the 32.768 kHz
+   reference clock to 48 MHz */
+SYSCTRL->DFLLMUL.reg =
+    /* This value is output frequency / reference clock frequency,
+       so 48 MHz / 32.768 kHz */
+    SYSCTRL_DFLLMUL_MUL(1478) |
+    /* The coarse and fine step are used by the DFLL to lock
+       on to the target frequency. These are set to half
+       of the maximum value. Lower values mean less overshoot,
+       whereas higher values typically result in some overshoot but
+       faster locking. */
+    SYSCTRL_DFLLMUL_FSTEP(511) | // max value: 1023
+    SYSCTRL_DFLLMUL_CSTEP(31);  // max value: 63
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+uint32_t coarse = (*((uint32_t *)FUSES_DFLL48M_COARSE_CAL_ADDR) & FUSES_DFLL48M_COARSE_CAL_Msk) >> FUSES_DFLL48M_COARSE_CAL_Pos;
+
+SYSCTRL->DFLLVAL.bit.COARSE = coarse;
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+SYSCTRL->DFLLCTRL.reg |=
+    /* Closed loop mode */
+    SYSCTRL_DFLLCTRL_MODE |
+    /* Wait for the frequency to be locked before outputting the clock */
+    SYSCTRL_DFLLCTRL_WAITLOCK |
+    /* Enable it */
+    SYSCTRL_DFLLCTRL_ENABLE;
+
+/* Wait for the frequency to lock */
+while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {}
+}
