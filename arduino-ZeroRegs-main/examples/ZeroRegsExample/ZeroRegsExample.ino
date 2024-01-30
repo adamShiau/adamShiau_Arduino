@@ -4,7 +4,7 @@
 
 void setup() {
   // XOSC32K_SET();
-  OSC32K_SET();
+  // OSC32K_SET();
   // OSC8M_SET();
   // pinMode(PWM_PIN, OUTPUT);
   // analogWrite(PWM_PIN, 127);
@@ -30,6 +30,8 @@ void setup() {
 
 void loop() {
   // Do nothing
+  delay(100);
+    // Serial.println("hi");
 }
 
 void XOSC32K_SET()

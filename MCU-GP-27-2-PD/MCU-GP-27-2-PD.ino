@@ -175,7 +175,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     // setupWDT(11);
   }
 
-
+printVersion();
 }
 
 void loop() {
@@ -1495,6 +1495,13 @@ void update_datarate(byte eeprom_var)
 {
   switch(eeprom_var)
   {
+    case SET_PPS_MODE: {
+      Serial.println("PPS MODE");
+      Serial1.println("PPS MODE");
+      pinMode(PWM100, INPUT);
+      delay(100);
+      break;
+    }
     case SET_DATARATE_400: {
       pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
       pwm.analogWrite(PWM100, 500);  
@@ -1675,3 +1682,9 @@ void reset_SYNC()
   sync_status = 0;
   digitalWrite(PIG_SYNC, sync_status);
 }
+
+ void printVersion()
+  {
+    Serial.print("Version:");
+    Serial.println(MCU_VERSION);
+  }

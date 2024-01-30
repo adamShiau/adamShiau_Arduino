@@ -141,8 +141,7 @@ void setup() {
 
   parameter_init();
   Blink_MCU_LED();
-  printVersion();
-	
+
   IMU.init(); //setting MEMS IMU parameters 
   
     
@@ -178,7 +177,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     // setupWDT(11);
   }
 
-
+  printVersion();
 }
 
 void loop() {
@@ -1738,7 +1737,7 @@ SYSCTRL->XOSC32K.reg =
   /* Crystal oscillators can take a long time to startup. This
       waits the maximum amount of time (4 seconds). This can be
       reduced depending on your crystal oscillator. */
-  SYSCTRL_XOSC32K_STARTUP(0x7) |
+  SYSCTRL_XOSC32K_STARTUP(0x5) |
   SYSCTRL_XOSC32K_EN32K |
   SYSCTRL_XOSC32K_XTALEN;
 
