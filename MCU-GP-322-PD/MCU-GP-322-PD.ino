@@ -391,7 +391,7 @@ void loop() {
 	output_mode_setting(mux_flag, select_fn);
 	output_fn(select_fn, uart_value, fog_ch);
 
-  analogRead(ADC_VIN);
+  // analogRead(ADC_VIN);
   // if(readVin()<=11.0)  {
   //   Serial.println("hi");
     // Serial.println(readVin());
