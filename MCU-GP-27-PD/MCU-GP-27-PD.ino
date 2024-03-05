@@ -189,7 +189,9 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  
+  // Serial1.write(0xAB);
+  // Serial.println(0xAB,HEX);
+  delay(10);
   // readADC();
 }
 
