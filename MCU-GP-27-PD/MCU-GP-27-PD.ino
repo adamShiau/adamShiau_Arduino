@@ -178,7 +178,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     fog_channel = 2;
     setupWDT(11);
   }
-
+printVersion();
 
 }
 
@@ -189,9 +189,7 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  // Serial1.write(0xAB);
-  // Serial.println(0xAB,HEX);
-  delay(10);
+
   // readADC();
 }
 
@@ -1697,3 +1695,9 @@ void reset_SYNC()
   sync_status = 0;
   digitalWrite(PIG_SYNC, sync_status);
 }
+
+ void printVersion()
+  {
+    Serial.print("Version:");
+    Serial.println(MCU_VERSION);
+  }
