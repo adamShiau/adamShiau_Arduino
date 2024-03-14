@@ -190,9 +190,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    // Wait_FPGA_Wakeup(1);
-    // Wait_FPGA_Wakeup(2);
-    // Wait_FPGA_Wakeup(3);
+    Wait_FPGA_Wakeup(1);
+    Wait_FPGA_Wakeup(2);
+    Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
@@ -212,8 +212,8 @@ void setup() {
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
   /***write EEPROM DVT test value*/
-  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
 	
 
@@ -228,16 +228,11 @@ void setup() {
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    // setupWDT(11);
   }
 // */
-
-
-
 }
 
 void loop() {
-
 	// getCmdValue(cmd, value, fog_channel, cmd_complete);
 	cmd_mux(cmd_complete, uart_cmd, mux_flag);
 	parameter_setting(mux_flag, uart_cmd, uart_value, fog_ch);
@@ -1047,17 +1042,19 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
         Serial.println("Enter EXT_SYNC mode");
-        Serial.println("Set EXTT to RISING");
+        // Serial.println("Set EXTT to RISING");
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        reset_EXT_WDI(WDI);
       break;
 
       case STOP_SYNC:
@@ -1065,6 +1062,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
+        disable_EXT_WDT(EXT_WDT_EN);
       break;
 
       default:
@@ -1108,6 +1106,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         #endif
         }
         resetWDT();
+        reset_EXT_WDI(WDI);
       }
 	    
       t_old = t_new;
