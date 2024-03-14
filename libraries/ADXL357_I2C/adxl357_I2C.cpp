@@ -217,6 +217,7 @@ void Adxl357_I2C::init()
 
 	Serial.println("Validating SYNC_ADDR: ");
 	validateReg(SYNC_ADDR, EXT_SYNC);
+	// validateReg(SYNC_ADDR, INT_SYNC);
 
 	Serial.println("Validating RANGE_ADDR: ");
 	validateReg(RANGE_ADDR, F_MODE | RANGE_40G);
