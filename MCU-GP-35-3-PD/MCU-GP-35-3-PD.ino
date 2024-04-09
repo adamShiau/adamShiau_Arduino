@@ -109,14 +109,15 @@ unsigned int MCU_cnt = 0;
 // TinyGPSPlus gps;
 unsigned int t_previous = 0;
 
-char cali_para_dump[MAX_TOTAL_LENGTH] = "";
+// char cali_para_dump[MAX_TOTAL_LENGTH] = "";
 
 DumpParameter my_cali_para[PARAMETER_CNT];
 
-void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data) {
-    snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
-    Serial.println(output_data->str);
-    Serial1.print(output_data->str);
+void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data) 
+{
+  snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
+  Serial.println(output_data->str);
+  Serial1.print(output_data->str);
 }
 
 void setup() {
@@ -356,6 +357,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
           Serial.println("FOG_MOD_FREQ changed!");
           write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_Mod_freq, eeprom_ptr->EEPROM_ADDR_MOD_FREQ, value);
           sp->updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_Mod_freq, 0xCC);
+          Serial.println(eeprom_ptr->EEPROM_ADDR_MOD_FREQ);
         }
         break;}
 			case CMD_FOG_MOD_AMP_H: {
@@ -754,6 +756,68 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
           Serial.println("CALI_G33 changed!");
           write_fog_parameter_to_eeprom(EEPROM_CALI_G33, EEPROM_ADDR_CALI_G33, value);
           misalignment_cali_coe._d.g33 = EEPROM_CALI_G33;
+        }
+      break;}
+      case CMD_BIAS_COMP_T1: {
+        if(value != eeprom_ptr->EEPROM_BIAS_COMP_T1){
+          Serial.println("BIAS_COMP_T1 changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_BIAS_COMP_T1, eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T1, value);
+          sp->updateParameter(myCmd_header, BIAS_COMP_T1_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_BIAS_COMP_T1, 0xCC);
+        }
+        // Serial.println(eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T1);
+        // eeprom.Parameter_Read(eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T1, my_f.bin_val);
+        // Serial.println(my_f.float_val,10);
+      break;}
+      case CMD_BIAS_COMP_T2: {
+        if(value != eeprom_ptr->EEPROM_BIAS_COMP_T2){
+          Serial.println("BIAS_COMP_T2 changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_BIAS_COMP_T2, eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T2, value);
+          sp->updateParameter(myCmd_header, BIAS_COMP_T2_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_BIAS_COMP_T2, 0xCC);
+        }
+        // Serial.println(eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T2);
+        // eeprom.Parameter_Read(eeprom_ptr->EEPROM_ADDR_BIAS_COMP_T2, my_f.bin_val);
+        // Serial.println(my_f.float_val,10);
+      break;}
+      case CMD_SFB_1_SLOPE: {
+        if(value != eeprom_ptr->EEPROM_SFB_1_SLOPE){
+          Serial.println("SFB_1_SLOPE changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_1_SLOPE, eeprom_ptr->EEPROM_ADDR_SFB_1_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_1_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_1_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_1_OFFSET: {
+        if(value != eeprom_ptr->EEPROM_SFB_1_OFFSET){
+          Serial.println("SFB_1_OFFSET changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_1_OFFSET, eeprom_ptr->EEPROM_ADDR_SFB_1_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_1_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_1_OFFSET, 0xCC);
+        }
+      break;}
+      case CMD_SFB_2_SLOPE: {
+        if(value != eeprom_ptr->EEPROM_SFB_2_SLOPE){
+          Serial.println("SFB_2_SLOPE changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_2_SLOPE, eeprom_ptr->EEPROM_ADDR_SFB_2_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_2_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_2_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_2_OFFSET: {
+        if(value != eeprom_ptr->EEPROM_SFB_2_OFFSET){
+          Serial.println("SFB_2_OFFSET changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_2_OFFSET, eeprom_ptr->EEPROM_ADDR_SFB_2_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_2_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_2_OFFSET, 0xCC);
+        }
+      break;}
+      case CMD_SFB_3_SLOPE: {
+        if(value != eeprom_ptr->EEPROM_SFB_3_SLOPE){
+          Serial.println("SFB_3_SLOPE changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_3_SLOPE, eeprom_ptr->EEPROM_ADDR_SFB_3_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_3_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_3_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_3_OFFSET: {
+        if(value != eeprom_ptr->EEPROM_SFB_3_OFFSET){
+          Serial.println("SFB_3_OFFSET changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_SFB_3_OFFSET, eeprom_ptr->EEPROM_ADDR_SFB_3_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_3_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_3_OFFSET, 0xCC);
         }
       break;}
 
@@ -1289,9 +1353,12 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       // pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
       // pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
       // pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
-      pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
-      pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
-      pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
+      pd_temp_x.float_val = 31.2;
+      pd_temp_y.float_val = 31.3;
+      pd_temp_z.float_val = 31.4;
       if(ISR_PEDGE)
       {
         adxl357_i2c.readData_f(my_ADXL357.float_val);
@@ -2183,6 +2250,24 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   delay(dly_time);
   sp->sendCmd(myCmd_header, TMAX_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_TMAX);
   delay(dly_time);
+  //  Bias temp. compensation
+  sp->sendCmd(myCmd_header, BIAS_COMP_T1_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_BIAS_COMP_T1);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, BIAS_COMP_T2_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_BIAS_COMP_T2);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_1_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_1_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_1_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_1_OFFSET);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_2_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_2_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_2_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_2_OFFSET);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_3_SLOPE_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_3_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_3_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_3_OFFSET);
+  delay(dly_time);
+
   Serial.println("Setting SP parameters done");
 }
 

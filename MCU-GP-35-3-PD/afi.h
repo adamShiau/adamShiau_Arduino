@@ -2,6 +2,7 @@
 #define AFI_H
 
 #include "IMU_PIG_DEFINE.h"
+#include "myCALIBRATION.h"
 #include "EEPROM_MANAGE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"

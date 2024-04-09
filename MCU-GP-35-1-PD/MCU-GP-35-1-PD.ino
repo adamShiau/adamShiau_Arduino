@@ -190,9 +190,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(1);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
   #endif
   Blink_MCU_LED();
 
@@ -354,6 +354,7 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
           Serial.println("FOG_MOD_FREQ changed!");
           write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_Mod_freq, eeprom_ptr->EEPROM_ADDR_MOD_FREQ, value);
           sp->updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_Mod_freq, 0xCC);
+          Serial.println(eeprom_ptr->EEPROM_ADDR_MOD_FREQ);
         }
         break;}
 			case CMD_FOG_MOD_AMP_H: {

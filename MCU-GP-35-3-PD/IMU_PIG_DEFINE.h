@@ -72,17 +72,17 @@
 #define CMD_FOG_SFB     	38
 #define CMD_FOG_CUTOFF     	39
 // Bias Temp. Compensation
-#define CMD_BIAS_COMP_T1    40
-#define CMD_BIAS_COMP_T2    41
-#define CMD_SFB_1_SLOPE     42
-#define CMD_SFB_1_OFFSET    43
-#define CMD_SFB_2_SLOPE     44
-#define CMD_SFB_2_OFFSET    45
-#define CMD_SFB_3_SLOPE     46
-#define CMD_SFB_3_OFFSET    47
+#define CMD_BIAS_COMP_T1    40 //28
+#define CMD_BIAS_COMP_T2    41 //29
+#define CMD_SFB_1_SLOPE     42 //2A
+#define CMD_SFB_1_OFFSET    43 //2B
+#define CMD_SFB_2_SLOPE     44 //2C
+#define CMD_SFB_2_OFFSET    45 //2D
+#define CMD_SFB_3_SLOPE     46 //2E
+#define CMD_SFB_3_OFFSET    47 //2F
 // End of Bias Temp. Compensation
-#define CMD_FPGA_VERSION	101
-#define CMD_DUMP_PARAMETERS	102
+#define CMD_FPGA_VERSION	101 //65
+#define CMD_DUMP_PARAMETERS	102 //66
 #define CMD_CONFI_BAUDRATE  103
 #define CMD_CONFI_DATARATE  104
 #define CMD_CALI_AX         105
@@ -109,7 +109,7 @@
 #define CMD_CALI_G31        126
 #define CMD_CALI_G32        127
 #define CMD_CALI_G33        128
-#define CMD_DUMP_CALI_PARAMETERS	129
+#define CMD_DUMP_CALI_PARAMETERS	129 //81
 
 #define MUX_OUTPUT		    0
 #define MUX_PARAMETER	    1
@@ -282,11 +282,3 @@
 #define ADC_ASE_TACT 19
 #define ADC_ASE_IACT 17
 
-
-#define MAX_STR_LENGTH 20
-#define PARAMETER_CNT 24
-#define MAX_TOTAL_LENGTH (MAX_STR_LENGTH * PARAMETER_CNT)
-
-typedef struct {
-    char str[MAX_STR_LENGTH];
-} DumpParameter;
