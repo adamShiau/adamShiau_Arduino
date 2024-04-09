@@ -428,15 +428,14 @@ void setup() {
   // tt1 = millis();
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // Serial.println("AUTO RST");
-    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    // select_fn = my_f.int_val;
-    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    // output_fn = (fn_ptr)my_f.int_val; 
-    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    // value = my_f.int_val;
-    // fog_channel = 2;
-    // setupWDT(11);
+    Serial.println("AUTO RST");
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    output_fn = (fn_ptr)my_f.int_val; 
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    value = my_f.int_val;
+    fog_channel = 2;
   }
 
   printVersion();
@@ -1310,6 +1309,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
       
       if(fog) reg_fog = fog;
+
       pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
       if(ISR_PEDGE)
       {
@@ -1507,7 +1507,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
 
-    
       pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
       pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
       pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
@@ -1913,7 +1912,7 @@ void parameter_init(void)
   /***fog parameter is empty,  write initial fog data*/
   if(EEPROM_Parameter_exist != EEPROM_PARAMETER_EXIST){
     eeprom.Parameter_Write(EEPROM_ADDR_PARAMETER_EXIST, EEPROM_PARAMETER_EXIST);
-    Serial.println("EEPROM FOG parameter not exist!");
+    Serial.println("\n*****EEPROM FOG parameter not exist!********");
 
     /***output configuration*/
     Serial.println("Start setting output configuration.");
@@ -1924,7 +1923,7 @@ void parameter_init(void)
     /***end of output configuration*/
 
     /*** IMU misalignment calibration*/
-    Serial.println("Start setting IMU misalignment calibration.");
+    Serial.println("\nStart setting IMU misalignment calibration.");
     write_fog_parameter_to_eeprom(EEPROM_CALI_AX, EEPROM_ADDR_CALI_AX, CALI_AX_INIT);
     write_fog_parameter_to_eeprom(EEPROM_CALI_AY, EEPROM_ADDR_CALI_AY, CALI_AY_INIT);
     write_fog_parameter_to_eeprom(EEPROM_CALI_AZ, EEPROM_ADDR_CALI_AZ, CALI_AZ_INIT);
@@ -1978,7 +1977,7 @@ void parameter_init(void)
     /***end of IMU misalignment calibration*/
 
     /***fog parameters*/
-    Serial.println("Start writing initial fog data.");
+    Serial.println("\nStart writing initial fog data.");
     // eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0); // change to 0 12/18
     #ifdef GP1Z 
       write_fog_parameter_to_eeprom_all(2);

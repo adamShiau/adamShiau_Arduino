@@ -211,6 +211,7 @@
 
 #define EEPROM_PARAMETER_EXIST 0xAA
 
+#define FLOAT_0P0001 0x38d1b717 
 #define FLOAT_1 0x3f800000  
 #define FLOAT_2 0x40000000  
 #define FLOAT_3 0x40400000  
@@ -239,7 +240,7 @@
 #define FB_ON_INIT          1
 #define DAC_GAIN_INIT       77
 #define DATA_INT_DELAY_INIT 2000
-#define SF_INIT             FLOAT_1   
+#define SF_INIT             FLOAT_0P0001   
 #define SFB_INIT            0
 #define CUTOFF_INIT         FLOAT_650
 

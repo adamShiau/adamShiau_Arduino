@@ -52,8 +52,8 @@ unsigned char fog_op_status;
 // }
 
 // bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
-byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
-// byte *reg_fog_x, *reg_fog_y, *reg_fog_z;
+// byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
+byte reg_fog_x[14] = {0}, reg_fog_y[14] = {0}, reg_fog_z[14] = {0};
 byte *reg_fog;
 
 
@@ -190,9 +190,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(1);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
     Serial1.println("AFI parameters initializing...... ");
   #endif
   Blink_MCU_LED();
@@ -1285,22 +1285,15 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_x) memcpy(reg_fog_x, fog_x, sizeof(reg_fog_x));
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
-      // if(fog_x) reg_fog_x = fog_x;
-      // if(fog_y) reg_fog_y = fog_y;
-      // if(fog_z) reg_fog_z = fog_z;
     
-      pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
-      pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
-      pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
+      pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
+      pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
+      pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
       if(ISR_PEDGE)
       {
-        // Serial.print(Serial2.available());
-        // Serial.print(",");
-        // Serial.print(Serial3.available());
-        // Serial.print(",");
-        // Serial.println(Serial4.available());
-
-
         adxl357_i2c.readData_f(my_ADXL357.float_val);
         acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
         gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
@@ -1667,10 +1660,10 @@ void parameter_init(void)
   /***fog parameter is empty,  write initial fog data*/
   if(EEPROM_Parameter_exist != EEPROM_PARAMETER_EXIST){
     eeprom.Parameter_Write(EEPROM_ADDR_PARAMETER_EXIST, EEPROM_PARAMETER_EXIST);
-    Serial.println("EEPROM FOG parameter not exist!");
+    Serial.println("\n*****EEPROM FOG parameter not exist!********");
 
     /***output configuration*/
-    Serial.println("Start setting output configuration.");
+    Serial.println("\nStart setting output configuration.");
     write_fog_parameter_to_eeprom(EEPROM_BAUDRATE, EEPROM_ADDR_BAUDRATE, BAUDRATE_INIT);
     write_fog_parameter_to_eeprom(EEPROM_DATARATE, EEPROM_ADDR_DATARATE, DATARATE_INIT);
     set_output_configuration_init();
@@ -1678,7 +1671,7 @@ void parameter_init(void)
     /***end of output configuration*/
 
     /*** IMU misalignment calibration*/
-    Serial.println("Start setting IMU misalignment calibration.");
+    Serial.println("\nStart setting IMU misalignment calibration.");
     write_fog_parameter_to_eeprom(EEPROM_CALI_AX, EEPROM_ADDR_CALI_AX, CALI_AX_INIT);
     write_fog_parameter_to_eeprom(EEPROM_CALI_AY, EEPROM_ADDR_CALI_AY, CALI_AY_INIT);
     write_fog_parameter_to_eeprom(EEPROM_CALI_AZ, EEPROM_ADDR_CALI_AZ, CALI_AZ_INIT);
