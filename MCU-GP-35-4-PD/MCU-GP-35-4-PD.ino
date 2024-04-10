@@ -53,7 +53,7 @@ unsigned char fog_op_status;
 
 // bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
 // byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
-byte reg_fog_x[14] = {0}, reg_fog_y[14] = {0}, reg_fog_z[14] = {0};
+byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
 byte *reg_fog;
 
 
@@ -191,9 +191,9 @@ void setup() {
   #endif
 
   #ifdef AFI 
-    Wait_FPGA_Wakeup(1);
-    Wait_FPGA_Wakeup(2);
-    Wait_FPGA_Wakeup(3);
+    // Wait_FPGA_Wakeup(1);
+    // Wait_FPGA_Wakeup(2);
+    // Wait_FPGA_Wakeup(3);
     Serial1.println("AFI parameters initializing...... ");
   #endif
   Blink_MCU_LED();
@@ -1052,22 +1052,22 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 
       if(ISR_PEDGE)
       {
-        uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
+        uint8_t* imu_data = (uint8_t*)malloc(20+4); // KVH_HEADER:4 + pig:16
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
-        memcpy(imu_data+4, reg_fog, 14);
-        memcpy(imu_data+18, mcu_time.bin_val, 4);
-        myCRC.crc_32(imu_data, 22, CRC32);
+        memcpy(imu_data+4, reg_fog, 16);
+        memcpy(imu_data+20, mcu_time.bin_val, 4);
+        myCRC.crc_32(imu_data, 24, CRC32);
         free(imu_data);
 
         #ifdef UART_RS422_CMD
         if(data_cnt >= DELAY_CNT)
         {
           Serial1.write(KVH_HEADER, 4);
-          Serial1.write(reg_fog, 14);
+          Serial1.write(reg_fog, 16);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
         }
@@ -1350,11 +1350,15 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
     
-      
-      pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
-      pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
-      pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
-     
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
+      // pd_temp_x.float_val = 31.2;
+      // pd_temp_y.float_val = 31.3;
+      // pd_temp_z.float_val = 31.4;
       if(ISR_PEDGE)
       {
         adxl357_i2c.readData_f(my_ADXL357.float_val);
@@ -1371,9 +1375,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+12, reg_fog_z+8, 4); //fog_z
         memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
         // memcpy(imu_data+16, my_ADXL357.bin_val, 12); //ax, ay, az
-        memcpy(imu_data+28, pd_temp_x.bin_val, 4); //Temp_x
-        memcpy(imu_data+32, pd_temp_y.bin_val, 4); //Temp_y
-        memcpy(imu_data+36, pd_temp_z.bin_val, 4); //Temp_z
+        memcpy(imu_data+28, reg_fog_x+12, 4); //Temp_x
+        memcpy(imu_data+32, reg_fog_y+12, 4); //Temp_y
+        memcpy(imu_data+36, reg_fog_z+12, 4); //Temp_z
         memcpy(imu_data+40, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 44, CRC32);
         free(imu_data);
@@ -1387,9 +1391,9 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_z+8, 4);
           Serial1.write(ADXL357_cali.bin_val, 12);
           // Serial1.write(my_ADXL357.bin_val, 12);
-          Serial1.write(pd_temp_x.bin_val, 4);
-          Serial1.write(pd_temp_y.bin_val, 4);
-          Serial1.write(pd_temp_z.bin_val, 4);
+          Serial1.write(reg_fog_x+12, 4);
+          Serial1.write(reg_fog_y+12, 4);
+          Serial1.write(reg_fog_z+12, 4);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
         #endif
@@ -1585,14 +1589,12 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 }
 
 
+// pd_temp.float_val = (float)reg_fog[12] + (float)(reg_fog[13]>>7)*0.5 ;
+//       pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
 float convert_PDtemp(byte dataH, byte dataL)
 {
-  if(dataH>>7) {
-    Serial.println((float)dataH - 256.0 + (float)(dataL>>7)*0.5);
-    return (float)dataH - 256.0 + (float)(dataL>>7)*0.5;
-  }
-  else return (float)dataH + (float)(dataL>>7)*0.5; 
+  return (float)dataH + (float)(dataL>>7)*0.5;
 }
 
 float convert_PDtemp(byte* fog)
