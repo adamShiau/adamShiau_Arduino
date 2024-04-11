@@ -167,6 +167,7 @@ void setup() {
   /***ADC MUX Setting*/
   pinMode(ADCMUX_S1, OUTPUT);
   pinMode(ADCMUX_S0, OUTPUT);
+  
 
   pinMode(PIG_SYNC, OUTPUT); 
   digitalWrite(PIG_SYNC, sync_status);
@@ -357,8 +358,10 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
           Serial.println("FOG_MOD_FREQ changed!");
           write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_Mod_freq, eeprom_ptr->EEPROM_ADDR_MOD_FREQ, value);
           sp->updateParameter(myCmd_header, MOD_FREQ_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_Mod_freq, 0xCC);
-          Serial.println(eeprom_ptr->EEPROM_ADDR_MOD_FREQ);
         }
+        Serial.print(fog_ch);
+        Serial.print(", ");
+        Serial.println(eeprom_ptr->EEPROM_ADDR_MOD_FREQ, HEX);
         break;}
 			case CMD_FOG_MOD_AMP_H: {
        if(value != eeprom_ptr->EEPROM_Amp_H){
