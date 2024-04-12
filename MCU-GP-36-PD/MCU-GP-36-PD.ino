@@ -908,6 +908,29 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         break;
       }
 
+      case CMD_PD_MON_SW: {
+        if(value != eeprom_ptr->EEPROM_Wait_cnt){
+          Serial.println("FOG_WAIT_CNT changed!");
+          write_fog_parameter_to_eeprom(eeprom_ptr->EEPROM_Wait_cnt, eeprom_ptr->EEPROM_ADDR_WAIT_CNT, value);
+          sp->updateParameter(myCmd_header, WAIT_CNT_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_Wait_cnt, 0xCC);
+        }
+        if(value == 1){ //CH1
+          digitalWrite(ADCMUX_S1, LOW);
+          digitalWrite(ADCMUX_S0, HIGH);
+        }
+        else if(value == 2){ //CH2
+          digitalWrite(ADCMUX_S1, LOW);
+          digitalWrite(ADCMUX_S0, LOW);
+        } 
+        else if(value == 3){ //CH3
+          digitalWrite(ADCMUX_S1, HIGH);
+          digitalWrite(ADCMUX_S0, LOW);
+        } 
+        Serial.print("PD monitor switch to: ");
+        Serial.println(value);
+        break;
+      }
+
 			default: break;
 		}
     
