@@ -52,8 +52,8 @@
 #define CMD_FOG_GAIN2		18
 #define CMD_FOG_FB_ON		19
 #define CMD_FOG_CONST_STEP	20
-#define CMD_FOG_FPGA_Q		21
-#define CMD_FOG_FPGA_R		22
+#define CMD_FOG_FPGA_Q		21 //15
+#define CMD_FOG_FPGA_R		22 //16
 #define CMD_FOG_DAC_GAIN	23
 #define CMD_FOG_INT_DELAY	24
 #define CMD_FOG_OUT_START	25
@@ -210,7 +210,7 @@
 #define SET_DATARATE_100    1
 #define SET_DATARATE_10     0
 
-#define EEPROM_PARAMETER_EXIST 0xAA
+#define EEPROM_PARAMETER_EXIST 0xAB
 
 #define FLOAT_0P0001 0x38d1b717 
 #define FLOAT_1 0x3f800000  
