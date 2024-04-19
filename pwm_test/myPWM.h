@@ -3,7 +3,7 @@
 
 
 #include <SAMD21turboPWM.h>
-#define PWM100 7
+#define PWM100 4
 // #define PWM200 5
 // #define PWM250 11
 #define PWM_FIX 1

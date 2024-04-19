@@ -1,13 +1,15 @@
 #include "wiring_private.h"
 #include "myPWM.h"
+#define EXTT 5
 
 
-// #define PWM_PIN 2
+bool sync_status = false;
 
 void setup() {
-  XOSC32K_SET();
+  // XOSC32K_SET();
 //   OSC32K_SET();
   // SYSCTRL->DFLLMUL.bit.MUL = 0xBC00;
+attachInterrupt(EXTT, ISR_EXTT, CHANGE);
 pwm_init();
 // pinMode(PWM_PIN, OUTPUT);
 // analogWrite(PWM_PIN, 127);
@@ -17,7 +19,16 @@ pwm_init();
 
 void loop() {
     delay(100);
-    Serial.println("hi");
+    // Serial.println("hi");
+}
+
+void ISR_EXTT()
+{
+  // Serial.println(millis());
+  sync_status = !sync_status;
+  digitalWrite(6, sync_status);
+
+  // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
 }
 
 void XOSC32K_SET()
