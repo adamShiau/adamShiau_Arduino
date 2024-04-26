@@ -95,9 +95,9 @@ unsigned int t_previous = 0;
 
 
 void setup() {
-  // OSC32K_SET();
-  XOSC32K_SET();
-  // XOSC32K_CLK_SET();
+
+  // XOSC32K_SET();
+
   /*** pwm ***/
     pwm_init();
     myWDT_init(); //disable all WDT
@@ -175,7 +175,7 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    // setupWDT(11);
+    
   }
 
   printVersion();
@@ -1064,8 +1064,9 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        // setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
-        // reset_EXT_WDI(WDI);
+        reset_EXT_WDI(WDI);
 
       break;
       case STOP_SYNC:
@@ -1125,7 +1126,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(adc_var, 8);
         Serial1.write(CRC32, 4);
        #endif
-       resetWDT();
+      //  resetWDT();
       //  reset_EXT_WDI(WDI);
       }
 	    

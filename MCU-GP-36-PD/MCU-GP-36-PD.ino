@@ -1005,6 +1005,7 @@ void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	if(select_fn&SEL_RST) {
+    Serial.println("Enter fn_rst: ");
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
 				for(int i=0; i<256; i++) Serial1.read();
@@ -1012,7 +1013,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-		
+		disable_EXT_WDT(EXT_WDT_EN);
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -1545,6 +1546,8 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
 
       break;
       case STOP_SYNC:
