@@ -76,7 +76,7 @@ bool sync_status = 0;
 volatile bool ISR_Coming = false;
 volatile bool ISR_PEDGE;
 
-int t_adc = millis();
+unsigned int t_start;
 
 
 int WDT_CNT=0;
@@ -165,8 +165,11 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   // tt1 = millis();
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
+ 
+
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
+    int temp_rst, temp_fog, temp_imu, temp_HP_test, temp_nmea, temp_fog_para, temp_fn;
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -175,9 +178,40 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-    
+
+    Serial.println("\nOUTPUT_FN: ");
+    Serial.print("MODE_IDLE: ");
+    Serial.print((int)temp_idle);
+    Serial.print(", MODE_RST: ");
+    Serial.print((int)fn_rst);
+    Serial.print(", MODE_FOG: ");
+    Serial.print((int)acq_fog);
+    Serial.print(", MODE_IMU: ");
+    Serial.print((int)acq_imu);
+    Serial.print(", MODE_FOG_HP_TEST: ");
+    Serial.print((int)acq_HP_test);
+    Serial.print(", MODE_NMEA: ");
+    Serial.print((int)acq_nmea);
+    Serial.print(", MODE_FOG_PARAMETER: ");
+    Serial.println((int)acq_fog_parameter);
+    Serial.print("Current: ");
+    Serial.println((int)output_fn);
+    if(!( (int)output_fn==(int)temp_idle |(int)output_fn==(int)fn_rst | (int)output_fn==(int)acq_fog | (int)output_fn==(int)acq_imu |
+    (int)output_fn==(int)acq_HP_test | (int)output_fn==(int)acq_nmea| (int)output_fn==(int)acq_fog_parameter ))
+    {
+      Serial.println("output of function range, go to reset!");
+      select_fn = SEL_RST;
+      output_fn = fn_rst; 
+    } 
+
   }
 
+   PRINT_SELECT_FN(select_fn);
+   Serial.print("\nVALUE: ");
+   Serial.println(value);
+   PRINT_MUX_FLAG(mux_flag);
+
+  t_start = millis();
   printVersion();
 }
 
@@ -625,14 +659,21 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
   
 }
 
-void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	clear_SEL_EN(select_fn);
-	// delay(100);
+  if((millis() - t_start)>=1000) 
+  {
+    t_start = millis();
+    Serial.println("IDLE");
+    Serial1.println("IDLE");
+  }
+  
 }
 
-void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
+  Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
@@ -641,14 +682,16 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-
-		
+    Serial.println("Set fog_op_status to 0");
+    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+    Serial.println("Set fn_rst to temp_idle");
+		output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
 
 
-void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
+static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
   uint8_t buf[14];
@@ -744,7 +787,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 }
 
 
-void acq_fog(byte &select_fn, unsigned int value, byte ch)
+static void acq_fog(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
 	uint8_t CRC32[4];
@@ -841,7 +884,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 }
 
 
-void acq_imu(byte &select_fn, unsigned int value, byte ch)
+static void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
   my_acc_t my_memsXLM, my_memsGYRO;
   my_float_t pd_temp;
@@ -944,7 +987,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);
 }
 
-void acq_nmea(byte &select_fn, unsigned int value, byte ch)
+static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
 	uint8_t CRC32[4];
@@ -1033,7 +1076,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 	clear_SEL_EN(select_fn);	
 }
 
-void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
+static void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog, eeprom_var[4], mcu_var[4], adc_var[8];
 	uint8_t CRC32[4];

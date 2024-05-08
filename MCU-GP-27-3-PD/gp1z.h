@@ -32,4 +32,36 @@ typedef union
   int int_val;
 }my_float_t;
 
+#define PRINT_SELECT_FN(x) \
+  Serial.println("\nprint SELECT_FN"); \
+  if (x == 0) { \
+      Serial.println("SELECT SEL_DEFAULT"); \
+  } else if (x == 1) { \
+      Serial.println("SELECT SEL_RST"); \
+  } else if (x == 2) { \
+      Serial.println("SELECT SEL_FOG_1"); \
+  } else if (x == 3) { \
+      Serial.println("SELECT SEL_FOG_2"); \
+  } else if (x == 4) { \
+      Serial.println("SELECT SEL_FOG_3"); \
+  } else if (x == 5) { \
+      Serial.println("SELECT SEL_IMU"); \
+  } else if (x == 6) { \
+      Serial.println("SELECT SEL_NMEA"); \
+  } else if (x == 7) { \
+      Serial.println("SELECT SEL_FOG_PARA"); \
+  } else if (x == 8) { \
+      Serial.println("SELECT SEL_HP_TEST"); \
+  }\
+  else { \
+      Serial.println("Invalid input"); \
+  }
+
+#define PRINT_MUX_FLAG(x) \
+  Serial.println("\nprint mux_flag"); \
+  if(x == 0) Serial.println("MUX_OUTPUT"); \
+  else if(x == 1) Serial.println("MUX_PARAMETER"); \
+  else if(x == 2) Serial.println("MUX_ESCAPE"); 
+
+
 #endif
