@@ -168,14 +168,14 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   Serial.println(fog_op_status);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    Serial.println("AUTO RST");
-    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    select_fn = my_f.int_val;
-    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    output_fn = (fn_ptr)my_f.int_val; 
-    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    value = my_f.int_val;
-    fog_channel = 2;
+    // Serial.println("AUTO RST");
+    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    // select_fn = my_f.int_val;
+    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    // output_fn = (fn_ptr)my_f.int_val; 
+    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    // value = my_f.int_val;
+    // fog_channel = 2;
   }
 printVersion();
 
@@ -730,7 +730,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(CRC32, 4);
         }
        #endif
-      // resetWDT();
+      resetWDT();
       }
       t_old = t_new;   
 	}
