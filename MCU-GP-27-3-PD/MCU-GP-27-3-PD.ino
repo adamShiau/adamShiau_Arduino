@@ -63,6 +63,7 @@ unsigned int CtrlReg=-1;
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
 
+/*** declare the output function type***/
 typedef void (*fn_ptr) (byte &, unsigned int, byte);
 fn_ptr output_fn;
 
@@ -149,7 +150,7 @@ void setup() {
 	/*** var initialization***/
 	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
-	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
+	select_fn = SEL_DEFAULT; 
 	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
@@ -649,12 +650,6 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
 
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
-      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-      // Serial.print("output_mode_setting - value: ");
-      // Serial.print((int)value);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val);
-
 	}
   
 }
