@@ -19,9 +19,6 @@ uint8_t myCmd_trailer[] = {0x55, 0x56};
 uint16_t myCmd_try_cnt;
 const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
 const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
-byte uart_cmd, fog_ch;
-int uart_value;
-bool cmd_complete, fog_woke_flag = 0;
 
 uartRT myCmd(Serial1, 6);
 
@@ -31,46 +28,18 @@ uint16_t try_cnt;
 const uint8_t sizeofheader = sizeof(header);
 const uint8_t sizeoftrailer = sizeof(trailer);
 
-/** Move Serial1 definition from variant.cpp to here*/
-Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
+
 Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 void SERCOM2_Handler() {Serial2.IrqHandler();}
 void SERCOM1_Handler() {Serial3.IrqHandler();}
 void SERCOM3_Handler() {Serial4.IrqHandler();}
-void SERCOM5_Handler()
-{
-  Serial1.IrqHandler();
-
-  byte *cmd;
-  
-  cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-
-  if(cmd){
-    uart_cmd = cmd[0];
-    uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-    fog_ch = cmd[5];
-    cmd_complete = 1;
-
-    Serial.print("cmd, value, ch: ");
-    Serial.print(uart_cmd);
-    Serial.print(", ");
-    Serial.print(uart_value);
-    Serial.print(", ");
-    Serial.println(fog_ch);
-    fog_woke_flag = 1;
-  }
-}
 
 #include "pig_v2.h"
-PIG sp13(Serial2, 16); //SP13
-PIG sp14(Serial3, 16); //SP14, Wz
-PIG sp9(Serial4, 16); //SP14
-
-uartRT SP13_Read(Serial2, 16);
-uartRT SP14_Read(Serial3, 16);
-uartRT SP9_Read(Serial4, 16);
+PIG sp13(Serial2); //SP13
+PIG sp14(Serial3, 14); //SP14
+PIG sp9(Serial4); //SP14
 
 void myUART_init(void)
 {
@@ -79,7 +48,6 @@ void myUART_init(void)
     Serial2.begin(115200); //fog
     Serial3.begin(115200);
     Serial4.begin(115200);
-    cmd_complete = 0;
 
     pinPeripheral(24, PIO_SERCOM);
     pinPeripheral(25, PIO_SERCOM);

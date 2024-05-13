@@ -10,12 +10,8 @@ SPIClassSAMD mySPI(&sercom4, 3, 23, 22, SPI_PAD_0_SCK_1, SERCOM_RX_PAD_3);
 
 
 #include <ASM330LHHSensor.h>
-#include <EEPROM_25LC512_SPI.h>
 #define CHIP_SELECT_PIN 2
 ASM330LHHSensor IMU(&mySPI, CHIP_SELECT_PIN);
-
-// EEPROMM
-EEPROM_25LC512_SPI eeprom = EEPROM_25LC512_SPI(mySPI, CHIP_SELECT_PIN);
 
 
 void mySPI_init(void)
@@ -24,7 +20,6 @@ void mySPI_init(void)
     pinPeripheral(3, PIO_SERCOM_ALT);
     pinPeripheral(22, PIO_SERCOM_ALT);
     pinPeripheral(23, PIO_SERCOM_ALT);
-    eeprom.init();
 }
 
 #endif
