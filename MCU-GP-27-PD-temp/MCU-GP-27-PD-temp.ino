@@ -771,24 +771,22 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 
       if(ISR_PEDGE)
       {
-        uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
+        uint8_t* imu_data = (uint8_t*)malloc(20+4); // KVH_HEADER:4 + pig:16
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
-        // memcpy(imu_data+4, t_reg_fog, 14);
-        memcpy(imu_data+4, reg_fog, 14);
-        memcpy(imu_data+18, mcu_time.bin_val, 4);
-        myCRC.crc_32(imu_data, 22, CRC32);
+        memcpy(imu_data+4, reg_fog, 16);
+        memcpy(imu_data+20, mcu_time.bin_val, 4);
+        myCRC.crc_32(imu_data, 24, CRC32);
         free(imu_data);
 
         #ifdef UART_RS422_CMD
         if(data_cnt >= DELAY_CNT)
         {
           Serial1.write(KVH_HEADER, 4);
-          // Serial1.write(t_reg_fog, 14);
-          Serial1.write(reg_fog, 14);
+          Serial1.write(reg_fog, 16);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
         }
