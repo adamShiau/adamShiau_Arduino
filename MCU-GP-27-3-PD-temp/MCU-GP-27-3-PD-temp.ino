@@ -96,11 +96,12 @@ byte *t_reg_fog;
 
 unsigned int t_previous = 0;
 
+// auto rst fn flag
+byte rst_fn_flag = MODE_RST;
 
 void setup() {
 
-  // XOSC32K_SET();
-  XOSC32K_CLK_SET();
+  // XOSC32K_CLK_SET();
 
   /*** pwm ***/
     pwm_init();
@@ -172,14 +173,15 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   Serial.println(fog_op_status);
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // Serial.println("AUTO RST");
-    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    // select_fn = my_f.int_val;
-    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    Serial.println("AUTO RST");
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
     // output_fn = (fn_ptr)my_f.int_val; 
-    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    // value = my_f.int_val;
-    // fog_channel = 2;
+    rst_fn_flag = my_f.int_val; 
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    value = my_f.int_val;
+    fog_channel = 2;
   }
 printVersion();
 
@@ -646,31 +648,37 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
             }
       case MODE_FOG_PARAMETER: {
           output_fn = acq_fog_parameter;
           select_fn = SEL_FOG_PARA;
+          rst_fn_flag = MODE_FOG_PARAMETER;
           break;
       }
 
@@ -679,17 +687,44 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
 
-      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
 
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
-      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-      // Serial.print("output_mode_setting - value: ");
-      // Serial.print((int)value);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val);
-
 	}
-  
+
+  if(fog_op_status==1) // for auto reset
+  {
+    fog_op_status=0;
+    Serial.println("AUTO RST select function");
+		switch(rst_fn_flag) {
+			case MODE_RST: {
+				output_fn = fn_rst;
+				break;
+			}
+			case MODE_FOG: {
+				output_fn = acq_fog;
+        Serial.println("MODE_FOG");
+				break;
+			}
+			case MODE_IMU: {
+				output_fn = acq_imu; 
+				break;
+			}
+			case MODE_FOG_HP_TEST: {
+				output_fn = acq_HP_test; 
+				break;
+			}
+			case MODE_NMEA: {
+				output_fn = acq_nmea;
+				break;
+            }
+      case MODE_FOG_PARAMETER: {
+          output_fn = acq_fog_parameter;
+          break;
+      }
+      default: break;
+      }
+	}
 }
 
 void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
