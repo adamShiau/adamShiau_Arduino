@@ -94,10 +94,13 @@ byte *t_reg_fog;
 
 unsigned int t_previous = 0;
 
+// auto rst fn flag
+byte rst_fn_flag = MODE_RST;
 
 void setup() {
 
-  // XOSC32K_SET();
+  XOSC32K_CLK_SET();
+  // OSC32K_SET(); //for no external clock, can turn the pll
 
   /*** pwm ***/
     pwm_init();
@@ -160,8 +163,8 @@ void setup() {
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
   /***write EEPROM DVT test value*/
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+  eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
   // tt1 = millis();
   Serial.print("fog_op_status: ");
@@ -170,50 +173,33 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
 
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    int temp_rst, temp_fog, temp_imu, temp_HP_test, temp_nmea, temp_fog_para, temp_fn;
     Serial.println("AUTO RST");
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
     eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    output_fn = (fn_ptr)my_f.int_val; 
+    // output_fn = (fn_ptr)my_f.int_val; 
+    rst_fn_flag = my_f.int_val; 
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
     value = my_f.int_val;
     fog_channel = 2;
-
-    Serial.println("\nOUTPUT_FN: ");
-    Serial.print("MODE_IDLE: ");
-    Serial.print((int)temp_idle);
-    Serial.print(", MODE_RST: ");
-    Serial.print((int)fn_rst);
-    Serial.print(", MODE_FOG: ");
-    Serial.print((int)acq_fog);
-    Serial.print(", MODE_IMU: ");
-    Serial.print((int)acq_imu);
-    Serial.print(", MODE_FOG_HP_TEST: ");
-    Serial.print((int)acq_HP_test);
-    Serial.print(", MODE_NMEA: ");
-    Serial.print((int)acq_nmea);
-    Serial.print(", MODE_FOG_PARAMETER: ");
-    Serial.println((int)acq_fog_parameter);
-    Serial.print("Current: ");
-    Serial.println((int)output_fn);
-    if(!( (int)output_fn==(int)temp_idle |(int)output_fn==(int)fn_rst | (int)output_fn==(int)acq_fog | (int)output_fn==(int)acq_imu |
-    (int)output_fn==(int)acq_HP_test | (int)output_fn==(int)acq_nmea| (int)output_fn==(int)acq_fog_parameter ))
-    {
-      Serial.println("output of function range, go to reset!");
-      select_fn = SEL_RST;
-      output_fn = fn_rst; 
-    } 
-
   }
+  PRINT_SELECT_FN(select_fn);
+  PRINT_OUTPUT_MODE(rst_fn_flag);
+  if(!( rst_fn_flag==MODE_RST |rst_fn_flag==MODE_FOG | rst_fn_flag==MODE_IMU | rst_fn_flag==MODE_FOG_HP_TEST |
+      rst_fn_flag==MODE_NMEA | rst_fn_flag==MODE_FOG_PARAMETER ))
+  {
+    Serial.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+  } 
 
-   PRINT_SELECT_FN(select_fn);
-   Serial.print("\nVALUE: ");
-   Serial.println(value);
-   PRINT_MUX_FLAG(mux_flag);
-
-  t_start = millis();
+  Serial.print("\nVALUE: ");
+  Serial.println(value);
+  PRINT_MUX_FLAG(mux_flag);
   printVersion();
+
+  // t_start = millis();
+
 }
 
 void loop() {
@@ -614,31 +600,37 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
             }
       case MODE_FOG_PARAMETER: {
           output_fn = acq_fog_parameter;
           select_fn = SEL_FOG_PARA;
+          rst_fn_flag = MODE_FOG_PARAMETER;
           break;
       }
 
@@ -647,9 +639,42 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
 
-      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
 
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+	}
+  if(fog_op_status==1) // for auto reset
+  {
+    fog_op_status=0;
+    Serial.println("AUTO RST select function");
+		switch(rst_fn_flag) {
+			case MODE_RST: {
+				output_fn = fn_rst;
+				break;
+			}
+			case MODE_FOG: {
+				output_fn = acq_fog;
+        Serial.println("MODE_FOG");
+				break;
+			}
+			case MODE_IMU: {
+				output_fn = acq_imu; 
+				break;
+			}
+			case MODE_FOG_HP_TEST: {
+				output_fn = acq_HP_test; 
+				break;
+			}
+			case MODE_NMEA: {
+				output_fn = acq_nmea;
+				break;
+            }
+      case MODE_FOG_PARAMETER: {
+          output_fn = acq_fog_parameter;
+          break;
+      }
+      default: break;
+      }
 	}
   
 }
@@ -657,7 +682,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	clear_SEL_EN(select_fn);
-  if((millis() - t_start)>=1000) 
+  if((millis() - t_start)>=5000) 
   {
     t_start = millis();
     Serial.println("IDLE");
@@ -1740,7 +1765,7 @@ void reset_SYNC()
   SYSCTRL->DFLLMUL.reg =
       /* This value is output frequency / reference clock frequency,
         so 48 MHz / 32.768 kHz = 1465 */
-      SYSCTRL_DFLLMUL_MUL(1474) |// FOR OSC32K
+      SYSCTRL_DFLLMUL_MUL(1478) |// FOR OSC32K
       /* The coarse and fine step are used by the DFLL to lock
         on to the target frequency. These are set to half
         of the maximum value. Lower values mean less overshoot,
@@ -1912,7 +1937,7 @@ while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
 SYSCTRL->DFLLMUL.reg =
     /* This value is output frequency / reference clock frequency,
        so 48 MHz / 32.768 kHz = 1465*/
-    SYSCTRL_DFLLMUL_MUL(48000) |
+    SYSCTRL_DFLLMUL_MUL(1465) |
     /* The coarse and fine step are used by the DFLL to lock
        on to the target frequency. These are set to half
        of the maximum value. Lower values mean less overshoot,

@@ -183,7 +183,20 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
     value = my_f.int_val;
     fog_channel = 2;
   }
-printVersion();
+  PRINT_SELECT_FN(select_fn);
+  PRINT_OUTPUT_MODE(rst_fn_flag);
+  if(!( rst_fn_flag==MODE_RST |rst_fn_flag==MODE_FOG | rst_fn_flag==MODE_IMU | rst_fn_flag==MODE_FOG_HP_TEST |
+      rst_fn_flag==MODE_NMEA | rst_fn_flag==MODE_FOG_PARAMETER ))
+  {
+    Serial.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+  } 
+
+  Serial.print("\nVALUE: ");
+  Serial.println(value);
+  PRINT_MUX_FLAG(mux_flag);
+  printVersion();
 
 }
 
@@ -735,6 +748,7 @@ void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 
 void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
+  Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
@@ -743,7 +757,10 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-
+  Serial.println("Set fog_op_status to 0");
+  eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+  Serial.println("Set fn_rst to temp_idle");
+  output_fn = temp_idle; 
 		
 	}
 	clear_SEL_EN(select_fn);

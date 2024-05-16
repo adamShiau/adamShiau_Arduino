@@ -57,6 +57,25 @@ typedef union
       Serial.println("Invalid input"); \
   }
 
+#define PRINT_OUTPUT_MODE(x) \
+Serial.println("\nprint OUTPUT_MODE"); \
+if (x == MODE_RST) { \
+    Serial.println("MODE_RST"); \
+} else if (x == MODE_FOG) { \
+    Serial.println("MODE_FOG"); \
+} else if (x == MODE_IMU) { \
+    Serial.println("MODE_IMU"); \
+} else if (x == MODE_FOG_HP_TEST) { \
+    Serial.println("MODE_FOG_HP_TEST"); \
+} else if (x == MODE_NMEA) { \
+    Serial.println("MODE_NMEA"); \
+} else if (x == MODE_FOG_PARAMETER) { \
+    Serial.println("MODE_FOG_PARAMETER"); \
+}\
+else { \
+    Serial.println("Invalid input"); \
+}
+
 #define PRINT_MUX_FLAG(x) \
   Serial.println("\nprint mux_flag"); \
   if(x == 0) Serial.println("MUX_OUTPUT"); \
