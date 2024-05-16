@@ -198,7 +198,7 @@ void setup() {
   PRINT_MUX_FLAG(mux_flag);
   printVersion();
 
-  // t_start = millis();
+  t_start = millis();
 
 }
 

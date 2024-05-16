@@ -78,6 +78,8 @@ volatile bool ISR_PEDGE;
 
 int t_adc = millis();
 
+unsigned int t_start;
+
 /*** * Watch dog  * **/
 static void   WDTsync() {
   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
@@ -96,12 +98,18 @@ byte *t_reg_fog;
 
 unsigned int t_previous = 0;
 
+// auto rst fn flag
+byte rst_fn_flag = MODE_RST;
 
 void setup() {
+
+  OSC32K_SET(); //for no external clock, can turn the pll
+
+
   /*** pwm ***/
     pwm_init();
  
-  
+
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
@@ -166,19 +174,36 @@ eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
   // tt1 = millis();
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
+
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    // Serial.println("AUTO RST");
-    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    // select_fn = my_f.int_val;
-    // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
+    Serial.println("AUTO RST");
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
     // output_fn = (fn_ptr)my_f.int_val; 
-    // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    // value = my_f.int_val;
-    // fog_channel = 2;
+    rst_fn_flag = my_f.int_val; 
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
+    value = my_f.int_val;
+    fog_channel = 2;
   }
-printVersion();
+  PRINT_SELECT_FN(select_fn);
+  PRINT_OUTPUT_MODE(rst_fn_flag);
+  if(!( rst_fn_flag==MODE_RST |rst_fn_flag==MODE_FOG | rst_fn_flag==MODE_IMU | rst_fn_flag==MODE_FOG_HP_TEST |
+      rst_fn_flag==MODE_NMEA | rst_fn_flag==MODE_FOG_PARAMETER ))
+  {
+    Serial.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+  } 
 
+  Serial.print("\nVALUE: ");
+  Serial.println(value);
+  PRINT_MUX_FLAG(mux_flag);
+  printVersion();
+
+
+  t_start = millis();
 }
 
 void loop() {
@@ -642,31 +667,37 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
             }
       case MODE_FOG_PARAMETER: {
           output_fn = acq_fog_parameter;
           select_fn = SEL_FOG_PARA;
+          rst_fn_flag = MODE_FOG_PARAMETER;
           break;
       }
 
@@ -675,27 +706,61 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
 
-      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
 
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
-      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-      // Serial.print("output_mode_setting - value: ");
-      // Serial.print((int)value);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val);
-
+	}
+  if(fog_op_status==1) // for auto reset
+  {
+    fog_op_status=0;
+    Serial.println("AUTO RST select function");
+		switch(rst_fn_flag) {
+			case MODE_RST: {
+				output_fn = fn_rst;
+				break;
+			}
+			case MODE_FOG: {
+				output_fn = acq_fog;
+        Serial.println("MODE_FOG");
+				break;
+			}
+			case MODE_IMU: {
+				output_fn = acq_imu; 
+				break;
+			}
+			case MODE_FOG_HP_TEST: {
+				output_fn = acq_HP_test; 
+				break;
+			}
+			case MODE_NMEA: {
+				output_fn = acq_nmea;
+				break;
+            }
+      case MODE_FOG_PARAMETER: {
+          output_fn = acq_fog_parameter;
+          break;
+      }
+      default: break;
+      }
 	}
   
 }
 
-void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	clear_SEL_EN(select_fn);
-	// delay(100);
+  if((millis() - t_start)>=5000) 
+  {
+    t_start = millis();
+    Serial.println("IDLE");
+    Serial1.println("IDLE");
+  }
+  
 }
 
-void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
+  Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
@@ -704,8 +769,10 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-
-		
+    Serial.println("Set fog_op_status to 0");
+    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+    Serial.println("Set fn_rst to temp_idle");
+		output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -1796,3 +1863,48 @@ void reset_SYNC()
     Serial.print("Version:");
     Serial.println(MCU_VERSION);
   }
+
+  void OSC32K_SET()
+{
+  /* This works around a quirk in the hardware (errata 1.2.1) -
+   the DFLLCTRL register must be manually reset to this value before
+   configuration. */
+  while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+  SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_ENABLE;
+  while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+/* Set up the multiplier. This tells the DFLL to multiply the 32.768 kHz
+   reference clock to 48 MHz */
+  SYSCTRL->DFLLMUL.reg =
+      /* This value is output frequency / reference clock frequency,
+        so 48 MHz / 32.768 kHz = 1465 */
+      SYSCTRL_DFLLMUL_MUL(1478) |// FOR OSC32K
+      /* The coarse and fine step are used by the DFLL to lock
+        on to the target frequency. These are set to half
+        of the maximum value. Lower values mean less overshoot,
+        whereas higher values typically result in some overshoot but
+        faster locking. */
+      SYSCTRL_DFLLMUL_FSTEP(511) | // max value: 1023
+      SYSCTRL_DFLLMUL_CSTEP(31);  // max value: 63
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+uint32_t coarse = (*((uint32_t *)FUSES_DFLL48M_COARSE_CAL_ADDR) & FUSES_DFLL48M_COARSE_CAL_Msk) >> FUSES_DFLL48M_COARSE_CAL_Pos;
+
+SYSCTRL->DFLLVAL.bit.COARSE = coarse;
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+SYSCTRL->DFLLCTRL.reg |=
+    /* Closed loop mode */
+    SYSCTRL_DFLLCTRL_MODE |
+    /* Wait for the frequency to be locked before outputting the clock */
+    SYSCTRL_DFLLCTRL_WAITLOCK |
+    /* Enable it */
+    SYSCTRL_DFLLCTRL_ENABLE;
+
+/* Wait for the frequency to lock */
+while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {}
+}
