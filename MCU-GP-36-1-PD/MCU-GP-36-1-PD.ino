@@ -234,10 +234,10 @@ void setup() {
       PRINT_OUTPUT_MODE(rst_fn_flag);
       
       eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
-      value = my_f.int_val;
+      uart_value = my_f.int_val;
       // value = 10; //test fn reg output of range 
-      verify_output_fn_reg_value(value);
-      PRINT_OUTPUT_REG(value);
+      verify_output_fn_reg_value(uart_value);
+      PRINT_OUTPUT_REG(uart_value);
 
       eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
       select_fn = my_f.int_val;
@@ -245,7 +245,7 @@ void setup() {
       verify_select_fn(select_fn);
       PRINT_SELECT_FN(select_fn);
 
-      fog_channel = 2;
+      fog_ch = 2;
     }
     PRINT_MUX_FLAG(mux_flag);
     printVersion();
@@ -966,43 +966,65 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
       }
       case MODE_FOG_PARAMETER: {
         output_fn = acq_fog_parameter;
         select_fn = SEL_FOG_PARA;
+        rst_fn_flag = MODE_FOG_PARAMETER;
         break;
       }
       case MODE_AFI: {
         output_fn = acq_afi;
         select_fn = SEL_AFI;
+        rst_fn_flag = MODE_AFI;
         break;
       }
       default: break;
     }
-      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
+      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+
+      // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
+      // rst_fn_flag = my_f.int_val; 
+      // PRINT_OUTPUT_MODE(rst_fn_flag);
+      
+      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
+      // uart_value = my_f.int_val;
+      // Serial.println(uart_value);
+      // PRINT_OUTPUT_REG(uart_value);
+
+      // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+      // select_fn = my_f.int_val;
+      // PRINT_SELECT_FN(select_fn);
+      
 	}
 
   if(fog_op_status==1) // for auto reset
@@ -1061,8 +1083,8 @@ static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
       t_start = millis();
       Serial.println("IDLE");
       Serial1.println("IDLE");
-      disable_EXT_WDT(EXT_WDT_EN);
-      disableWDT();
+      // disable_EXT_WDT(EXT_WDT_EN);
+      // disableWDT();
     }
   }
 	clear_SEL_EN(select_fn);

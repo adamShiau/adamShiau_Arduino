@@ -100,6 +100,7 @@ byte rst_fn_flag = MODE_RST;
 void setup() {
 
   // XOSC32K_CLK_SET();
+  // XOSC32K_SET();
   OSC32K_SET(); //for no external clock, can turn the pll
 
   /*** pwm ***/
@@ -173,31 +174,30 @@ void setup() {
 
   if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    Serial.println("AUTO RST");
+    Serial.println("\n-------AUTO RST---------");
+
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
+    rst_fn_flag = my_f.int_val; 
+    // rst_fn_flag = 10; //test output fn output of range 
+    verify_output_fn(rst_fn_flag);// check if output function is valid
+    PRINT_OUTPUT_MODE(rst_fn_flag);
+    
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
+    value = my_f.int_val;
+    // value = 10; //test fn reg output of range 
+    verify_output_fn_reg_value(value);
+    PRINT_OUTPUT_REG(value);
+
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
-    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    // output_fn = (fn_ptr)my_f.int_val; 
-    rst_fn_flag = my_f.int_val; 
-    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    value = my_f.int_val;
+    // select_fn = 10; //test select_fn output of range 
+    verify_select_fn(select_fn);
+    PRINT_SELECT_FN(select_fn);
+
     fog_channel = 2;
   }
-  PRINT_SELECT_FN(select_fn);
-  PRINT_OUTPUT_MODE(rst_fn_flag);
-  if(!( rst_fn_flag==MODE_RST |rst_fn_flag==MODE_FOG | rst_fn_flag==MODE_IMU | rst_fn_flag==MODE_FOG_HP_TEST |
-      rst_fn_flag==MODE_NMEA | rst_fn_flag==MODE_FOG_PARAMETER ))
-  {
-    Serial.println("output of function range, go to reset!");
-    select_fn = SEL_RST;
-    rst_fn_flag = MODE_RST; 
-  } 
-
-  Serial.print("\nVALUE: ");
-  Serial.println(value);
   PRINT_MUX_FLAG(mux_flag);
   printVersion();
-
   t_start = millis();
 
 }
@@ -636,13 +636,11 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 
       default: break;
       }
-
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
-
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
 	}
+
   if(fog_op_status==1) // for auto reset
   {
     fog_op_status=0;
@@ -667,6 +665,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
+        Serial.println("select MODE_NMEA");
 				break;
             }
       case MODE_FOG_PARAMETER: {
@@ -675,8 +674,10 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       default: break;
       }
+      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
 	}
-  
 }
 
 static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
@@ -1846,7 +1847,7 @@ while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
 SYSCTRL->DFLLMUL.reg =
     /* This value is output frequency / reference clock frequency,
        so 48 MHz / 32.768 kHz = 1465*/
-    SYSCTRL_DFLLMUL_MUL(1465) |
+    SYSCTRL_DFLLMUL_MUL(1478) |
     /* The coarse and fine step are used by the DFLL to lock
        on to the target frequency. These are set to half
        of the maximum value. Lower values mean less overshoot,
@@ -1977,4 +1978,61 @@ GCLK->GENCTRL.reg =
 
 /* Wait for the write to complete */
 while(GCLK->STATUS.bit.SYNCBUSY);
+}
+
+void verify_output_fn(byte in)
+{
+  Serial.println("\nverifying output fn........" );
+  Serial.print("Input function index: ");
+  Serial.println(in);
+  if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
+    in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
+  {
+    Serial.println("verify output fn: fail");
+    Serial.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+    value = STOP_SYNC;
+  } 
+  else {
+    Serial.println("verify output fn: pass");
+  }
+}
+
+void verify_output_fn_reg_value(int in)
+{
+  Serial.println("\nverifying output fn reg value........" );
+  Serial.print("Input reg value: ");
+  Serial.println(in);
+  if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
+    in==HP_TEST ))
+    {
+      Serial.println("verify output fn reg value: fail");
+      Serial.println("output of reg value range, go to reset!");
+      select_fn = SEL_RST;
+      rst_fn_flag = MODE_RST; 
+      value = STOP_SYNC;
+    } 
+  else {
+    Serial.println("verify output fn: pass");
+  }
+}
+
+void verify_select_fn(int in)
+{
+  Serial.println("\nverifying select fn........" );
+  Serial.print("Input select_fn: ");
+  Serial.println(in);
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
+    {
+      Serial.println("verify select_fn: fail");
+      Serial.println("output of select_fn range, go to reset!");
+      select_fn = SEL_RST;
+      rst_fn_flag = MODE_RST; 
+      value = STOP_SYNC;
+    } 
+  else {
+    Serial.println("verify select_fn: pass");
+  }
 }

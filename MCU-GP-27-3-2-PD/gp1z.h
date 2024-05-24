@@ -1,9 +1,7 @@
-#ifndef AFI_H
-#define AFI_H
+#ifndef GP1Z_H
+#define GP1Z_H
 
 #include "IMU_PIG_DEFINE.h"
-#include "myCALIBRATION.h"
-#include "EEPROM_MANAGE.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
 #include <TinyGPSPlus.h>
@@ -34,86 +32,27 @@ typedef union
   int int_val;
 }my_float_t;
 
-typedef union
-{
-  struct {
-    float ax;
-    float ay;
-    float az;
-    float a11;
-    float a12;
-    float a13;
-    float a21;
-    float a22;
-    float a23;
-    float a31;
-    float a32;
-    float a33;
-    float gx;
-    float gy;
-    float gz;
-    float g11;
-    float g12;
-    float g13;
-    float g21;
-    float g22;
-    float g23;
-    float g31;
-    float g32;
-    float g33;
-  } _f; 
-  struct {
-    int ax;
-    int ay;
-    int az;
-    int a11;
-    int a12;
-    int a13;
-    int a21;
-    int a22;
-    int a23;
-    int a31;
-    int a32;
-    int a33;
-    int gx;
-    int gy;
-    int gz;
-    int g11;
-    int g12;
-    int g13;
-    int g21;
-    int g22;
-    int g23;
-    int g31;
-    int g32;
-    int g33;
-  } _d; 
-}
-my_misalignment_cali_t;
-
 #define PRINT_SELECT_FN(x) \
   Serial.println("\nprint SELECT_FN"); \
-  if (x == SEL_DEFAULT) { \
+  if (x == 0) { \
       Serial.println("SELECT SEL_DEFAULT"); \
-  } else if (x == SEL_RST) { \
+  } else if (x == 1) { \
       Serial.println("SELECT SEL_RST"); \
-  } else if (x == SEL_FOG_1) { \
+  } else if (x == 2) { \
       Serial.println("SELECT SEL_FOG_1"); \
-  } else if (x == SEL_FOG_2) { \
+  } else if (x == 3) { \
       Serial.println("SELECT SEL_FOG_2"); \
-  } else if (x == SEL_FOG_3) { \
+  } else if (x == 4) { \
       Serial.println("SELECT SEL_FOG_3"); \
-  } else if (x == SEL_IMU) { \
+  } else if (x == 5) { \
       Serial.println("SELECT SEL_IMU"); \
-  } else if (x == SEL_NMEA) { \
+  } else if (x == 6) { \
       Serial.println("SELECT SEL_NMEA"); \
-  } else if (x == SEL_FOG_PARA) { \
+  } else if (x == 7) { \
       Serial.println("SELECT SEL_FOG_PARA"); \
-  } else if (x == SEL_HP_TEST) { \
+  } else if (x == 8) { \
       Serial.println("SELECT SEL_HP_TEST"); \
-  } else if (x == SEL_AFI) { \
-      Serial.println("SELECT SEL_AFI"); \
-  } \
+  }\
   else { \
       Serial.println("SELECT_FN out of range!"); \
   }
@@ -156,9 +95,7 @@ if (x == MODE_RST) { \
     Serial.println("MODE_NMEA"); \
 } else if (x == MODE_FOG_PARAMETER) { \
     Serial.println("MODE_FOG_PARAMETER"); \
-} else if (x == MODE_AFI) { \
-    Serial.println("MODE_AFI"); \
-} \
+}\
 else { \
     Serial.println("OUTPUT_MODE out of range!"); \
 }

@@ -1,5 +1,5 @@
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-36-2-PD"
+#define MCU_VERSION "MCU-GP-36-1-PD"
 
 // #define GP1Z
 #define AFI
@@ -189,6 +189,7 @@
 #define SEL_FOG_PARA	    7
 #define SEL_HP_TEST 	    8
 #define SEL_AFI          	9
+
 
 /*** MODE_RST CTRL REG***/
 #define REFILL_SERIAL1 1
