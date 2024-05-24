@@ -19,9 +19,11 @@ uint8_t myCmd_trailer[] = {0x55, 0x56};
 uint16_t myCmd_try_cnt;
 const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
 const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
-byte uart_cmd, fog_ch;
-int uart_value;
-bool cmd_complete, fog_woke_flag = 0;
+bool fog_woke_flag = 0;
+
+inline byte uart_cmd, fog_ch;
+inline int uart_value;
+inline bool cmd_complete;
 
 uartRT myCmd(Serial1, 6);
 
