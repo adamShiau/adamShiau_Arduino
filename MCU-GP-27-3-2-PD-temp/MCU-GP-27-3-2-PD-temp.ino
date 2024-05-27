@@ -165,23 +165,28 @@ void setup() {
 
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
-  if(fog_op_status==1) // disconnected last time, send cmd again
+ if(fog_op_status==1) // disconnected last time, send cmd again
   {
     Serial.println("\n-------AUTO RST---------");
-    // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    // select_fn = my_f.int_val;
+
     eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
     rst_fn_flag = my_f.int_val; 
     // rst_fn_flag = 10; //test output fn output of range 
     verify_output_fn(rst_fn_flag);// check if output function is valid
     PRINT_OUTPUT_MODE(rst_fn_flag);
-    PRINT_SELECT_FN(select_fn);
-
+    
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
     value = my_f.int_val;
     // value = 10; //test fn reg output of range 
     verify_output_fn_reg_value(value);
     PRINT_OUTPUT_REG(value);
+
+    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+    select_fn = my_f.int_val;
+    // select_fn = 10; //test select_fn output of range 
+    verify_select_fn(select_fn);
+    PRINT_SELECT_FN(select_fn);
+
     fog_channel = 2;
   }
   PRINT_MUX_FLAG(mux_flag);
@@ -1009,14 +1014,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) reg_fog = fog;
-    pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
     if(ISR_PEDGE)
     {
       uint8_t* imu_data = (uint8_t*)malloc(36); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
-
       data_cnt++;
-
       mcu_time.ulong_val = millis() - t_previous;
 
       ISR_PEDGE = false;
@@ -1028,7 +1030,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       memcpy(imu_data+4, my_memsGYRO.bin_val, 8);//wx, wy
       memcpy(imu_data+12, reg_fog+8, 4); //wz
       memcpy(imu_data+16, my_memsXLM.bin_val, 12);//ax, ay, az
-      memcpy(imu_data+28, pd_temp.bin_val, 4);
+      memcpy(imu_data+28, reg_fog+12, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
       myCRC.crc_32(imu_data, 36, CRC32);
 
@@ -1038,10 +1040,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       if(data_cnt >= DELAY_CNT)
       {
         Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_memsGYRO.bin_val, 8);
-        Serial1.write(reg_fog+8, 4);
-        Serial1.write(my_memsXLM.bin_val, 12);
-        Serial1.write(pd_temp.bin_val, 4);
+        Serial1.write(my_memsGYRO.bin_val, 8);//wx, wy
+        Serial1.write(reg_fog+8, 4);          //wz
+        Serial1.write(my_memsXLM.bin_val, 12);//ax, ay, az
+        Serial1.write(reg_fog+12, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
       }
@@ -2016,36 +2018,59 @@ GCLK->GENCTRL.reg =
 while(GCLK->STATUS.bit.SYNCBUSY);
 }
 
-  void verify_output_fn(byte in)
+void verify_output_fn(byte in)
+{
+  Serial.println("\nverifying output fn........" );
+  Serial.print("Input function index: ");
+  Serial.println(in);
+  if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
+    in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
   {
-    Serial.println("\nverifying output fn........" );
-    if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
-      in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
+    Serial.println("verify output fn: fail");
+    Serial.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+    value = STOP_SYNC;
+  } 
+  else {
+    Serial.println("verify output fn: pass");
+  }
+}
+
+void verify_output_fn_reg_value(int in)
+{
+  Serial.println("\nverifying output fn reg value........" );
+  Serial.print("Input reg value: ");
+  Serial.println(in);
+  if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
+    in==HP_TEST ))
     {
-      Serial.println("verify output fn: fail");
-      Serial.println("output of function range, go to reset!");
+      Serial.println("verify output fn reg value: fail");
+      Serial.println("output of reg value range, go to reset!");
       select_fn = SEL_RST;
       rst_fn_flag = MODE_RST; 
       value = STOP_SYNC;
     } 
-    else {
-      Serial.println("verify output fn: pass");
-    }
+  else {
+    Serial.println("verify output fn: pass");
   }
+}
 
-  void verify_output_fn_reg_value(int in)
-  {
-    Serial.println("\nverifying output fn reg value........" );
-    if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
-      in==HP_TEST ))
-      {
-        Serial.println("verify output fn reg value: fail");
-        Serial.println("output of reg value range, go to reset!");
-        select_fn = SEL_RST;
-        rst_fn_flag = MODE_RST; 
-        value = STOP_SYNC;
-      } 
-    else {
-      Serial.println("verify output fn: pass");
-    }
+void verify_select_fn(int in)
+{
+  Serial.println("\nverifying select fn........" );
+  Serial.print("Input select_fn: ");
+  Serial.println(in);
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
+    {
+      Serial.println("verify select_fn: fail");
+      Serial.println("output of select_fn range, go to reset!");
+      select_fn = SEL_RST;
+      rst_fn_flag = MODE_RST; 
+      value = STOP_SYNC;
+    } 
+  else {
+    Serial.println("verify select_fn: pass");
   }
+}

@@ -312,27 +312,27 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
-{
-  byte *cmd;
+// void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
+// {
+//   byte *cmd;
 
-    cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-    if(cmd){
-      uart_cmd = cmd[0];
-      uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-      fog_ch = cmd[5];
-      uart_complete = 1;
-      // printVal_0("uart_cmd", uart_cmd);
-      // printVal_0("uart_value", uart_value);
-      Serial.print("cmd, value, ch: ");
-      Serial.print(uart_cmd);
-      Serial.print(", ");
-      Serial.print(uart_value);
-      Serial.print(", ");
-      Serial.println(fog_ch);
-      // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
-    }
-}
+//     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+//     if(cmd){
+//       uart_cmd = cmd[0];
+//       uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+//       fog_ch = cmd[5];
+//       uart_complete = 1;
+//       // printVal_0("uart_cmd", uart_cmd);
+//       // printVal_0("uart_value", uart_value);
+//       Serial.print("cmd, value, ch: ");
+//       Serial.print(uart_cmd);
+//       Serial.print(", ");
+//       Serial.print(uart_value);
+//       Serial.print(", ");
+//       Serial.println(fog_ch);
+//       // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
+//     }
+// }
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 {
@@ -1049,7 +1049,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
 }
 
@@ -1061,8 +1061,8 @@ static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
       t_start = millis();
       Serial.println("IDLE");
       Serial1.println("IDLE");
-      disable_EXT_WDT(EXT_WDT_EN);
-      disableWDT();
+      // disable_EXT_WDT(EXT_WDT_EN);
+      // disableWDT();
     }
   }
 	clear_SEL_EN(select_fn);

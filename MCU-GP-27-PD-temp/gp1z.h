@@ -33,28 +33,52 @@ typedef union
 
 #define PRINT_SELECT_FN(x) \
   Serial.println("\nprint SELECT_FN"); \
-  if (x == 0) { \
+  if (x == SEL_DEFAULT) { \
       Serial.println("SELECT SEL_DEFAULT"); \
-  } else if (x == 1) { \
+  } else if (x == SEL_RST) { \
       Serial.println("SELECT SEL_RST"); \
-  } else if (x == 2) { \
+  } else if (x == SEL_FOG_1) { \
       Serial.println("SELECT SEL_FOG_1"); \
-  } else if (x == 3) { \
+  } else if (x == SEL_FOG_2) { \
       Serial.println("SELECT SEL_FOG_2"); \
-  } else if (x == 4) { \
+  } else if (x == SEL_FOG_3) { \
       Serial.println("SELECT SEL_FOG_3"); \
-  } else if (x == 5) { \
+  } else if (x == SEL_IMU) { \
       Serial.println("SELECT SEL_IMU"); \
-  } else if (x == 6) { \
+  } else if (x == SEL_NMEA) { \
       Serial.println("SELECT SEL_NMEA"); \
-  } else if (x == 7) { \
+  } else if (x == SEL_FOG_PARA) { \
       Serial.println("SELECT SEL_FOG_PARA"); \
-  } else if (x == 8) { \
+  } else if (x == SEL_HP_TEST) { \
       Serial.println("SELECT SEL_HP_TEST"); \
   }\
   else { \
-      Serial.println("Invalid input"); \
+      Serial.println("SELECT_FN out of range!"); \
   }
+
+#define PRINT_OUTPUT_REG(x) \
+    Serial.println("\nprint OUTPUT_REG"); \
+    switch(x) { \
+        case INT_SYNC: \
+            Serial.println("INT_SYNC"); \
+            break; \
+        case EXT_SYNC: \
+            Serial.println("EXT_SYNC"); \
+            break; \
+        case STOP_SYNC: \
+            Serial.println("STOP_SYNC"); \
+            break; \
+        case NMEA_MODE: \
+            Serial.println("NMEA_MODE"); \
+            break; \
+        case HP_TEST: \
+            Serial.println("HP_TEST"); \
+            break; \
+        default: \
+            Serial.println("Reg value out of range!"); \
+            break; \
+    }
+
 
 #define PRINT_OUTPUT_MODE(x) \
 Serial.println("\nprint OUTPUT_MODE"); \
@@ -72,7 +96,7 @@ if (x == MODE_RST) { \
     Serial.println("MODE_FOG_PARAMETER"); \
 }\
 else { \
-    Serial.println("Invalid input"); \
+    Serial.println("OUTPUT_MODE out of range!"); \
 }
 
 #define PRINT_MUX_FLAG(x) \
@@ -80,6 +104,5 @@ else { \
   if(x == 0) Serial.println("MUX_OUTPUT"); \
   else if(x == 1) Serial.println("MUX_PARAMETER"); \
   else if(x == 2) Serial.println("MUX_ESCAPE"); 
-
 
 #endif
