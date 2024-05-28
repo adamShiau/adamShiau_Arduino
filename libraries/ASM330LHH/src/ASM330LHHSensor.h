@@ -64,7 +64,7 @@
 #define ASM330LHH_GYRO_SENSITIVITY_FS_2000DPS	0.070000f
 #define ASM330LHH_GYRO_SENSITIVITY_FS_4000DPS	0.140000f
 
-
+#define DEG_TO_RAD  0.017453292519943295769236907684886
 /* Typedefs ------------------------------------------------------------------*/
 
 typedef enum
@@ -100,6 +100,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_X_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_X_Axes(int32_t *Acceleration);
     ASM330LHHStatusTypeDef Get_X_Axes_f(float Acceleration[3]);
+    ASM330LHHStatusTypeDef Get_X_Axes_g_f(float Acceleration[3]);
     ASM330LHHStatusTypeDef Get_X_DRDY_Status(uint8_t *Status);
 	  ASM330LHHStatusTypeDef readAcceleration(unsigned char *);
 	  void print_AccelerationData(unsigned char *, unsigned int, unsigned int&);
@@ -116,6 +117,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_AxesRaw(uint8_t *Value);
     ASM330LHHStatusTypeDef Get_G_Axes(int32_t *AngularRate);
     ASM330LHHStatusTypeDef Get_G_Axes_f(float AngularRate[3]);
+    ASM330LHHStatusTypeDef Get_G_Axes_rps_f(float AngularRate[3]);
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
     ASM330LHHStatusTypeDef Get_Temperature(float *temp);
 	  ASM330LHHStatusTypeDef readGyroscope(unsigned char []);

@@ -639,6 +639,38 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes_f(float Acceleration[3])
   return ASM330LHH_OK;
 }
 
+ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_Axes_g_f(float Acceleration[3])
+{
+  axis3bit16_t data_raw;
+  float sensitivity = 0.0f;
+
+  /* Read raw data values. */
+  if (asm330lhh_acceleration_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Get ASM330LHH actual sensitivity. */
+  if (Get_X_Sensitivity(&sensitivity) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Calculate the data. */
+  Acceleration[0] = (float)data_raw.i16bit[0] * sensitivity * 9.8;
+  Acceleration[1] = (float)data_raw.i16bit[1] * sensitivity * 9.8;
+  Acceleration[2] = (float)data_raw.i16bit[2] * sensitivity * 9.8;
+
+  // Serial.print("X: ");
+  // Serial.print(Acceleration[0]);
+  // Serial.print(", ");
+  // Serial.print(Acceleration[1]);
+  // Serial.print(", ");
+  // Serial.println(Acceleration[2]);
+
+  return ASM330LHH_OK;
+}
+
 ASM330LHHStatusTypeDef ASM330LHHSensor::readAcceleration(unsigned char *data)
 {
   axis3bit16_t data_raw;
@@ -1152,6 +1184,38 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes_f(float AngularRate[3])
   AngularRate[0] = (float)data_raw.i16bit[0] * sensitivity;
   AngularRate[1] = (float)data_raw.i16bit[1] * sensitivity;
   AngularRate[2] = (float)data_raw.i16bit[2] * sensitivity;
+
+  // Serial.print("Gyro: ");
+  // Serial.print(AngularRate[0]);
+  // Serial.print(", ");
+  // Serial.print(AngularRate[1]);
+  // Serial.print(", ");
+  // Serial.println(AngularRate[2]);
+
+  return ASM330LHH_OK;
+}
+
+ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes_rps_f(float AngularRate[3])
+{
+  axis3bit16_t data_raw;
+  float sensitivity;
+
+  /* Read raw data values. */
+  if (asm330lhh_angular_rate_raw_get(&reg_ctx, data_raw.u8bit) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Get ASM330LHH actual sensitivity. */
+  if (Get_G_Sensitivity(&sensitivity) != ASM330LHH_OK)
+  {
+    return ASM330LHH_ERROR;
+  }
+
+  /* Calculate the data. */
+  AngularRate[0] = (float)data_raw.i16bit[0] * sensitivity * DEG_TO_RAD;
+  AngularRate[1] = (float)data_raw.i16bit[1] * sensitivity * DEG_TO_RAD;
+  AngularRate[2] = (float)data_raw.i16bit[2] * sensitivity * DEG_TO_RAD;
 
   // Serial.print("Gyro: ");
   // Serial.print(AngularRate[0]);

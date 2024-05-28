@@ -210,7 +210,7 @@
 #define FB_ON_INIT          1
 #define DAC_GAIN_INIT       77
 #define DATA_INT_DELAY_INIT 2000
-#define SF_INIT             FLOAT_1   
+#define SF_INIT             FLOAT_0P0001   
 #define SFB_INIT            0
 #define CUTOFF_INIT         FLOAT_650
 

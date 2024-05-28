@@ -1424,11 +1424,11 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T1, EEPROM_ADDR_BIAS_COMP_T1, 0);
     write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T2, EEPROM_ADDR_BIAS_COMP_T2, FLOAT_40);
     write_fog_parameter_to_eeprom(EEPROM_SFB_1_SLOPE, EEPROM_ADDR_SFB_1_SLOPE, 0);
-    write_fog_parameter_to_eeprom(EEPROM_SFB_1_OFFSET, EEPROM_ADDR_SFB_1_OFFSET, FLOAT_1);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_1_OFFSET, EEPROM_ADDR_SFB_1_OFFSET, 0);
     write_fog_parameter_to_eeprom(EEPROM_SFB_2_SLOPE, EEPROM_ADDR_SFB_2_SLOPE, 0);
-    write_fog_parameter_to_eeprom(EEPROM_SFB_2_OFFSET, EEPROM_ADDR_SFB_2_OFFSET, FLOAT_1);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_2_OFFSET, EEPROM_ADDR_SFB_2_OFFSET, 0);
     write_fog_parameter_to_eeprom(EEPROM_SFB_3_SLOPE, EEPROM_ADDR_SFB_3_SLOPE, 0);
-    write_fog_parameter_to_eeprom(EEPROM_SFB_3_OFFSET, EEPROM_ADDR_SFB_3_OFFSET, FLOAT_1);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_3_OFFSET, EEPROM_ADDR_SFB_3_OFFSET, 0);
     update_fpga_fog_parameter_init(100, 2);
     /***end of fog parameters*/
 
