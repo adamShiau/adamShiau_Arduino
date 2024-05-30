@@ -29,6 +29,8 @@ unsigned long pre_time = 0;
 /***End of Attitude calculation*/
 
 
+
+
 /*** global var***/
 // int pin_scl_mux = 17;
 // bool trig_status[2] = {0, 0};
@@ -71,7 +73,6 @@ unsigned int CtrlReg=-1;
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
 
-/*** declare the output function type***/
 typedef void (*fn_ptr) (byte &, unsigned int, byte);
 fn_ptr output_fn;
 
@@ -85,9 +86,12 @@ bool sync_status = 0;
 volatile bool ISR_Coming = false;
 volatile bool ISR_PEDGE;
 
-unsigned int t_start;
+int t_adc = millis();
 
-
+// /*** * Watch dog  * **/
+// static void   WDTsync() {
+//   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
+// }
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
 unsigned long data_cnt = 0;
@@ -101,25 +105,24 @@ byte *reg_fog;
 byte *t_reg_fog;
 
 unsigned int t_previous = 0;
+unsigned int t_start;
 
 // auto rst fn flag
 byte rst_fn_flag = MODE_RST;
 
 void setup() {
 
-  // XOSC32K_CLK_SET();
-  // XOSC32K_SET();
-  OSC32K_SET(); //for no external clock, can turn the pll
+  XOSC32K_CLK_SET();
 
   /*** pwm ***/
     pwm_init();
     myWDT_init(); //disable all WDT
 
-    /*** Kalman Filter Initialize ***/
-    float std_imu[] = {0.001, 0.001, 0.001, 0.0007, 0.0007, 0.0007};
-    // my_cpf.setIMUError(std_imu);
-    my_ekf.setInit(std_imu);
-    /*** End of Kalman Filter Initialize***/
+  /*** Kalman Filter Initialize ***/
+  float std_imu[] = {0.001, 0.001, 0.001, 0.0007, 0.0007, 0.0007};
+  // my_cpf.setIMUError(std_imu);
+  my_ekf.setInit(std_imu);
+  /*** End of Kalman Filter Initialize***/
   
     // EXTT
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
@@ -127,6 +130,7 @@ void setup() {
      *  ****/
   attachInterrupt(26, ISR_EXTT, CHANGE);
 
+  // disableWDT();
 // set interrupt mode to None
   /***----- for PIG MCU & IMU_V4 EXINT[15]----- ***/
   EIC->CONFIG[1].bit.SENSE7 = 0;  // set ISR no NONE
@@ -161,32 +165,23 @@ void setup() {
 
   parameter_init();
   Blink_MCU_LED();
-
+	
   IMU.init(); //setting MEMS IMU parameters 
   
     
 	/*** var initialization***/
 	cmd_complete = 0;
-	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
-	select_fn = SEL_DEFAULT; 
-	// select_fn = SEL_IMU;
+	mux_flag = MUX_ESCAPE; 
+	select_fn = SEL_DEFAULT; 	
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 
-
-      /***read eeprom current status*/
+  /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
 
-  /***write EEPROM DVT test value*/
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
-
-  // tt1 = millis();
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
- 
-
-  if(fog_op_status==1) // disconnected last time, send cmd again
+ if(fog_op_status==1) // disconnected last time, send cmd again
   {
     Serial.println("\n-------AUTO RST---------");
 
@@ -222,48 +217,8 @@ void loop() {
 	parameter_setting(mux_flag, cmd, value, fog_channel);
 	output_mode_setting(mux_flag, cmd, select_fn);
 	output_fn(select_fn, value, fog_channel);
-  
-  /***
-  my_acc_t my_memsXLM, my_memsGYRO;
-  unsigned long dt = micros() - pre_time;
-  pre_time = micros();
-  if (dt > 0) {
-    //load gyro and accl data
-    IMU.Get_X_Axes_g_f(my_memsXLM.float_val);
-    // IMU.Get_G_Axes_f(my_memsGYRO.float_val);
-    IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);
 
-    //Linear correction
-    LC.update(my_memsGYRO.float_val); // 扣掉bias offset，只扣轉速，加速度待校正
-
-    // calculate attitude
-    float ori[3];
-    my_ekf.run(float(dt) * 1e-6, my_memsGYRO.float_val, my_memsXLM.float_val);
-    my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw
-    // my_cpf.run(float(dt) * 1e-6, omg_rad, acc);
-    // my_cpf.getEularAngle(ori);
-    
-    //transport data
-    // Output_IMU(float(dt) * 1e-6);// Serial print raw data
-    // Output_ori(ori);//print att. pitchm, raw
-
-    //reset Linear correction
-    if (Serial.available() > 0){
-      char input = Serial.read();
-      if (input == '0'){
-        LC.reset();
-      }
-    }
-
-  } //end of att ***/
-}
-
-void Output_ori(const float (&ori)[3]){
-  Serial.print(ori[0], 5);
-  Serial.print(",");
-  Serial.print(ori[1], 5);
-  Serial.print(",");
-  Serial.println(ori[2], 5);
+  // readADC();
 }
 
 void printAdd(char name[], void* addr)
@@ -608,6 +563,69 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         }
       break;}
 
+      case CMD_BIAS_COMP_T1: {
+        if(value != EEPROM_BIAS_COMP_T1){
+          Serial.println("BIAS_COMP_T1 changed!");
+          write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T1, EEPROM_ADDR_BIAS_COMP_T1, value);
+          sp->updateParameter(myCmd_header, BIAS_COMP_T1_ADDR, myCmd_trailer, EEPROM_BIAS_COMP_T1, 0xCC);
+        }
+        // Serial.println(EEPROM_ADDR_BIAS_COMP_T1);
+        // eeprom.Parameter_Read(EEPROM_ADDR_BIAS_COMP_T1, my_f.bin_val);
+        // Serial.println(my_f.float_val,10);
+      break;}
+      case CMD_BIAS_COMP_T2: {
+        if(value != EEPROM_BIAS_COMP_T2){
+          Serial.println("BIAS_COMP_T2 changed!");
+          write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T2, EEPROM_ADDR_BIAS_COMP_T2, value);
+          sp->updateParameter(myCmd_header, BIAS_COMP_T2_ADDR, myCmd_trailer, EEPROM_BIAS_COMP_T2, 0xCC);
+        }
+        // Serial.println(EEPROM_ADDR_BIAS_COMP_T2);
+        // eeprom.Parameter_Read(EEPROM_ADDR_BIAS_COMP_T2, my_f.bin_val);
+        // Serial.println(my_f.float_val,10);
+      break;}
+      case CMD_SFB_1_SLOPE: {
+        if(value != EEPROM_SFB_1_SLOPE){
+          Serial.println("SFB_1_SLOPE changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_1_SLOPE, EEPROM_ADDR_SFB_1_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_1_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_1_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_1_OFFSET: {
+        if(value != EEPROM_SFB_1_OFFSET){
+          Serial.println("SFB_1_OFFSET changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_1_OFFSET, EEPROM_ADDR_SFB_1_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_1_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_1_OFFSET, 0xCC);
+        }
+      break;}
+      case CMD_SFB_2_SLOPE: {
+        if(value != EEPROM_SFB_2_SLOPE){
+          Serial.println("SFB_2_SLOPE changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_2_SLOPE, EEPROM_ADDR_SFB_2_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_2_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_2_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_2_OFFSET: {
+        if(value != EEPROM_SFB_2_OFFSET){
+          Serial.println("SFB_2_OFFSET changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_2_OFFSET, EEPROM_ADDR_SFB_2_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_2_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_2_OFFSET, 0xCC);
+        }
+      break;}
+      case CMD_SFB_3_SLOPE: {
+        if(value != EEPROM_SFB_3_SLOPE){
+          Serial.println("SFB_3_SLOPE changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_3_SLOPE, EEPROM_ADDR_SFB_3_SLOPE, value);
+          sp->updateParameter(myCmd_header, SFB_3_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_3_SLOPE, 0xCC);
+        }
+      break;}
+      case CMD_SFB_3_OFFSET: {
+        if(value != EEPROM_SFB_3_OFFSET){
+          Serial.println("SFB_3_OFFSET changed!");
+          write_fog_parameter_to_eeprom(EEPROM_SFB_3_OFFSET, EEPROM_ADDR_SFB_3_OFFSET, value);
+          sp->updateParameter(myCmd_header, SFB_3_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_3_OFFSET, 0xCC);
+        }
+      break;}
+
       case CMD_FPGA_VERSION: {
         String fpga_version;
         for(int i=0; i<255; i++) SER->read();//clear serial buffer
@@ -718,7 +736,6 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
-        Serial.println("select MODE_NMEA");
 				break;
             }
       case MODE_FOG_PARAMETER: {
@@ -733,7 +750,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 	}
 }
 
-static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
+void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	clear_SEL_EN(select_fn);
   if((millis() - t_start)>=5000) 
@@ -742,10 +759,9 @@ static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
     Serial.println("IDLE");
     Serial1.println("IDLE");
   }
-  
 }
 
-static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
+void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
   Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
@@ -756,16 +772,16 @@ static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-    Serial.println("Set fog_op_status to 0");
-    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-    Serial.println("Set fn_rst to temp_idle");
-		output_fn = temp_idle; 
+  Serial.println("Set fog_op_status to 0");
+  eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+  Serial.println("Set fn_rst to temp_idle");
+  output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
 
 
-static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
+void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
   uint8_t buf[14];
@@ -830,29 +846,27 @@ static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 
       if(ISR_PEDGE)
       {
-        uint8_t* imu_data = (uint8_t*)malloc(18+4); // KVH_HEADER:4 + pig:14
+        uint8_t* imu_data = (uint8_t*)malloc(20+4); // KVH_HEADER:4 + pig:16
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
-        // memcpy(imu_data+4, t_reg_fog, 14);
-        memcpy(imu_data+4, reg_fog, 14);
-        memcpy(imu_data+18, mcu_time.bin_val, 4);
-        myCRC.crc_32(imu_data, 22, CRC32);
+        memcpy(imu_data+4, reg_fog, 16);
+        memcpy(imu_data+20, mcu_time.bin_val, 4);
+        myCRC.crc_32(imu_data, 24, CRC32);
         free(imu_data);
 
         #ifdef UART_RS422_CMD
         if(data_cnt >= DELAY_CNT)
         {
           Serial1.write(KVH_HEADER, 4);
-          // Serial1.write(t_reg_fog, 14);
-          Serial1.write(reg_fog, 14);
+          Serial1.write(reg_fog, 16);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
         }
        #endif
-      resetWDT();
+      resetWDT(); 
       reset_EXT_WDI(WDI);
       }
       t_old = t_new;   
@@ -861,7 +875,7 @@ static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 }
 
 
-static void acq_fog(byte &select_fn, unsigned int value, byte ch)
+void acq_fog(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
 	uint8_t CRC32[4];
@@ -883,8 +897,6 @@ static void acq_fog(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
-        enable_EXT_WDT(EXT_WDT_EN);
-        reset_EXT_WDI(WDI);
       break;
 
       case EXT_SYNC:
@@ -926,7 +938,7 @@ static void acq_fog(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         // reg_fog = fog;
-        pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
+        // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
@@ -934,7 +946,7 @@ static void acq_fog(byte &select_fn, unsigned int value, byte ch)
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, reg_fog+8, 4); //fog
-        memcpy(imu_data+8, pd_temp.bin_val, 4);
+        memcpy(imu_data+8, reg_fog+12, 4);// PD temp
         memcpy(imu_data+12, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 16, CRC32);
         free(imu_data);
@@ -944,7 +956,7 @@ static void acq_fog(byte &select_fn, unsigned int value, byte ch)
         {
           Serial1.write(KVH_HEADER, 4);
           Serial1.write(reg_fog+8, 4);
-          Serial1.write(pd_temp.bin_val, 4);
+          Serial1.write(reg_fog+12, 4);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
         #endif
@@ -958,7 +970,7 @@ static void acq_fog(byte &select_fn, unsigned int value, byte ch)
 }
 
 
-static void acq_imu(byte &select_fn, unsigned int value, byte ch)
+void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
   my_acc_t my_memsXLM, my_memsGYRO;
   my_float_t pd_temp;
@@ -981,6 +993,7 @@ static void acq_imu(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
         
@@ -992,6 +1005,7 @@ static void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
 
@@ -1016,27 +1030,26 @@ static void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) reg_fog = fog;
-    pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
 
     if(ISR_PEDGE)
     {
       uint8_t* imu_data = (uint8_t*)malloc(36); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
-
       data_cnt++;
-
       mcu_time.ulong_val = millis() - t_previous;
 
       ISR_PEDGE = false;
 
-      IMU.Get_X_Axes_f(my_memsXLM.float_val);
-      IMU.Get_G_Axes_f(my_memsGYRO.float_val);
+      // IMU.Get_X_Axes_f(my_memsXLM.float_val);
+      // IMU.Get_G_Axes_f(my_memsGYRO.float_val);
+      IMU.Get_X_Axes_g_f(my_memsXLM.float_val);
+      IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);
       LC.update(my_memsGYRO.float_val); // substract gyro bias offset
 
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_memsGYRO.bin_val, 8);//wx, wy
       memcpy(imu_data+12, reg_fog+8, 4); //wz
       memcpy(imu_data+16, my_memsXLM.bin_val, 12);//ax, ay, az
-      memcpy(imu_data+28, pd_temp.bin_val, 4);
+      memcpy(imu_data+28, reg_fog+12, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
       myCRC.crc_32(imu_data, 36, CRC32);
 
@@ -1046,26 +1059,23 @@ static void acq_imu(byte &select_fn, unsigned int value, byte ch)
       if(data_cnt >= DELAY_CNT)
       {
         Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_memsGYRO.bin_val, 8);
-        Serial1.write(reg_fog+8, 4);
-        Serial1.write(my_memsXLM.bin_val, 12);
-        Serial1.write(pd_temp.bin_val, 4);
+        Serial1.write(my_memsGYRO.bin_val, 8);//wx, wy
+        Serial1.write(reg_fog+8, 4);          //wz
+        Serial1.write(my_memsXLM.bin_val, 12);//ax, ay, az
+        Serial1.write(reg_fog+12, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
       }
       #endif  
-      resetWDT();
+      resetWDT(); 
       reset_EXT_WDI(WDI);
-      // float ori[3];
-      // my_ekf.run(mcu_time.float_val * 1e-3, my_memsGYRO.float_val, my_memsXLM.float_val);
-      // my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw
     }
     t_old = t_new;    
 	}
 	clear_SEL_EN(select_fn);
 }
 
-static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
+void acq_nmea(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
 	uint8_t CRC32[4];
@@ -1088,6 +1098,7 @@ static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter INT_SYNC mode");
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
       break;
@@ -1098,6 +1109,7 @@ static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
       break;
@@ -1108,6 +1120,7 @@ static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
       break;
@@ -1148,13 +1161,13 @@ static void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         
        #endif 
        resetWDT();
-        reset_EXT_WDI(WDI);
+       reset_EXT_WDI(WDI);
       }
 	}
 	clear_SEL_EN(select_fn);	
 }
 
-static void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
+void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog, eeprom_var[4], mcu_var[4], adc_var[8];
 	uint8_t CRC32[4];
@@ -1182,12 +1195,9 @@ static void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");
 
-        data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-        // setupWDT(11);
-        enable_EXT_WDT(EXT_WDT_EN);
-        reset_EXT_WDI(WDI);
+        setupWDT(11);
 
       break;
       case STOP_SYNC:
@@ -1247,8 +1257,7 @@ static void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(adc_var, 8);
         Serial1.write(CRC32, 4);
        #endif
-      //  resetWDT();
-      //  reset_EXT_WDI(WDI);
+        resetWDT();
       }
 	    
       t_old = t_new;
@@ -1430,6 +1439,15 @@ void parameter_init(void)
     write_fog_parameter_to_eeprom(EEPROM_CUTOFF, EEPROM_ADDR_CUTOFF, CUTOFF_INIT);
     write_fog_parameter_to_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN, MINUS20);
     write_fog_parameter_to_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX, PLUS80);
+    // BIAS temp. compensation
+    write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T1, EEPROM_ADDR_BIAS_COMP_T1, 0);
+    write_fog_parameter_to_eeprom(EEPROM_BIAS_COMP_T2, EEPROM_ADDR_BIAS_COMP_T2, FLOAT_40);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_1_SLOPE, EEPROM_ADDR_SFB_1_SLOPE, 0);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_1_OFFSET, EEPROM_ADDR_SFB_1_OFFSET, 0);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_2_SLOPE, EEPROM_ADDR_SFB_2_SLOPE, 0);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_2_OFFSET, EEPROM_ADDR_SFB_2_OFFSET, 0);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_3_SLOPE, EEPROM_ADDR_SFB_3_SLOPE, 0);
+    write_fog_parameter_to_eeprom(EEPROM_SFB_3_OFFSET, EEPROM_ADDR_SFB_3_OFFSET, 0);
     update_fpga_fog_parameter_init(100, 2);
     /***end of fog parameters*/
 
@@ -1468,6 +1486,15 @@ void parameter_init(void)
     read_fog_parameter_from_eeprom(EEPROM_CUTOFF, EEPROM_ADDR_CUTOFF);
     read_fog_parameter_from_eeprom(EEPROM_TMIN, EEPROM_ADDR_TMIN);
     read_fog_parameter_from_eeprom(EEPROM_TMAX, EEPROM_ADDR_TMAX);
+    // BIAS temp. compensation
+    read_fog_parameter_from_eeprom(EEPROM_BIAS_COMP_T1, EEPROM_ADDR_BIAS_COMP_T1);
+    read_fog_parameter_from_eeprom(EEPROM_BIAS_COMP_T2, EEPROM_ADDR_BIAS_COMP_T2);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_1_SLOPE, EEPROM_ADDR_SFB_1_SLOPE);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_1_OFFSET, EEPROM_ADDR_SFB_1_OFFSET);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_2_SLOPE, EEPROM_ADDR_SFB_2_SLOPE);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_2_OFFSET, EEPROM_ADDR_SFB_2_OFFSET);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_3_SLOPE, EEPROM_ADDR_SFB_3_SLOPE);
+    read_fog_parameter_from_eeprom(EEPROM_SFB_3_OFFSET, EEPROM_ADDR_SFB_3_OFFSET);
     update_fpga_fog_parameter_init(100, 2);
     /***end of fog parameters*/
 
@@ -1746,6 +1773,23 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   delay(dly_time);
   sp->sendCmd(myCmd_header, TMAX_ADDR, myCmd_trailer, EEPROM_TMAX);
   delay(dly_time);
+    //  Bias temp. compensation
+  sp->sendCmd(myCmd_header, BIAS_COMP_T1_ADDR, myCmd_trailer, EEPROM_BIAS_COMP_T1);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, BIAS_COMP_T2_ADDR, myCmd_trailer, EEPROM_BIAS_COMP_T2);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_1_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_1_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_1_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_1_OFFSET);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_2_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_2_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_2_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_2_OFFSET);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_3_SLOPE_ADDR, myCmd_trailer, EEPROM_SFB_3_SLOPE);
+  delay(dly_time);
+  sp->sendCmd(myCmd_header, SFB_3_OFFSET_ADDR, myCmd_trailer, EEPROM_SFB_3_OFFSET);
+  delay(dly_time);
   Serial.println("Setting SP parameters done");
 }
 
@@ -1809,52 +1853,7 @@ void reset_SYNC()
     Serial.println(MCU_VERSION);
   }
 
-  void OSC32K_SET()
-{
-  /* This works around a quirk in the hardware (errata 1.2.1) -
-   the DFLLCTRL register must be manually reset to this value before
-   configuration. */
-  while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
-  SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_ENABLE;
-  while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
-
-/* Set up the multiplier. This tells the DFLL to multiply the 32.768 kHz
-   reference clock to 48 MHz */
-  SYSCTRL->DFLLMUL.reg =
-      /* This value is output frequency / reference clock frequency,
-        so 48 MHz / 32.768 kHz = 1465 */
-      SYSCTRL_DFLLMUL_MUL(1478) |// FOR OSC32K
-      /* The coarse and fine step are used by the DFLL to lock
-        on to the target frequency. These are set to half
-        of the maximum value. Lower values mean less overshoot,
-        whereas higher values typically result in some overshoot but
-        faster locking. */
-      SYSCTRL_DFLLMUL_FSTEP(511) | // max value: 1023
-      SYSCTRL_DFLLMUL_CSTEP(31);  // max value: 63
-
-/* Wait for the write to finish */
-while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
-
-uint32_t coarse = (*((uint32_t *)FUSES_DFLL48M_COARSE_CAL_ADDR) & FUSES_DFLL48M_COARSE_CAL_Msk) >> FUSES_DFLL48M_COARSE_CAL_Pos;
-
-SYSCTRL->DFLLVAL.bit.COARSE = coarse;
-
-/* Wait for the write to finish */
-while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
-
-SYSCTRL->DFLLCTRL.reg |=
-    /* Closed loop mode */
-    SYSCTRL_DFLLCTRL_MODE |
-    /* Wait for the frequency to be locked before outputting the clock */
-    SYSCTRL_DFLLCTRL_WAITLOCK |
-    /* Enable it */
-    SYSCTRL_DFLLCTRL_ENABLE;
-
-/* Wait for the frequency to lock */
-while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {}
-}
-
-void XOSC32K_SET()
+  void XOSC32K_SET()
 {
   /* Set the correct number of wait states for 48 MHz @ 3.3v */
 NVMCTRL->CTRLB.bit.RWS = 1;
@@ -1904,7 +1903,7 @@ while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
 SYSCTRL->DFLLMUL.reg =
     /* This value is output frequency / reference clock frequency,
        so 48 MHz / 32.768 kHz = 1465*/
-    SYSCTRL_DFLLMUL_MUL(1478) |
+    SYSCTRL_DFLLMUL_MUL(1465) |
     /* The coarse and fine step are used by the DFLL to lock
        on to the target frequency. These are set to half
        of the maximum value. Lower values mean less overshoot,
@@ -1995,6 +1994,7 @@ while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
 SYSCTRL->DFLLMUL.reg =
     /* This value is output frequency / reference clock frequency,
        so 48 MHz / 32.768 kHz = 1465*/
+    // SYSCTRL_DFLLMUL_MUL(48000) |
     SYSCTRL_DFLLMUL_MUL(1465) |
     /* The coarse and fine step are used by the DFLL to lock
        on to the target frequency. These are set to half

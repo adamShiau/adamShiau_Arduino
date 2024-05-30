@@ -16,10 +16,6 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 //MCU LED
 #define MCU_LED A2
 
-//PWM
-
-
-
 
 /*** global var***/
 // int pin_scl_mux = 17;
@@ -102,7 +98,7 @@ byte rst_fn_flag = MODE_RST;
 
 void setup() {
 
-  // XOSC32K_CLK_SET();
+  XOSC32K_CLK_SET();
 
   /*** pwm ***/
     pwm_init();
