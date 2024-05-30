@@ -976,7 +976,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
   my_acc_t my_memsXLM, my_memsGYRO;
   my_float_t pd_temp;
   static my_float_t myfog_GYRO;
-  static my_acc_t my_GYRO;
+  static my_acc_t my_GYRO, my_att;
   float att_dt_f;
   static uint32_t att_dt;
 
@@ -1045,28 +1045,26 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     if(ISR_PEDGE)
     {
-      uint8_t* imu_data = (uint8_t*)malloc(36); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
+      uint8_t* imu_data = (uint8_t*)malloc(36+12); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
       data_cnt++;
       mcu_time.ulong_val = millis() - t_previous;
 
       ISR_PEDGE = false;
 
-      // IMU.Get_X_Axes_f(my_memsXLM.float_val);
-      // IMU.Get_G_Axes_f(my_memsGYRO.float_val);
       IMU.Get_X_Axes_g_f(my_memsXLM.float_val);
       IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);
-      LC.update(my_memsGYRO.float_val); // substract gyro bias offset
       my_GYRO.float_val[0] = my_memsGYRO.float_val[0];
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
-      // LC.update(my_GYRO.float_val); // substract gyro bias offset
+      LC.update(my_GYRO.float_val); // substract gyro bias offset
 
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_GYRO.bin_val, 12);//wx, wy, wz
       memcpy(imu_data+16, my_memsXLM.bin_val, 12);//ax, ay, az
       memcpy(imu_data+28, reg_fog+12, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
-      myCRC.crc_32(imu_data, 36, CRC32);
+      memcpy(imu_data+36, my_att.bin_val, 12);
+      myCRC.crc_32(imu_data, 48, CRC32);
 
       free(imu_data);
       
@@ -1078,27 +1076,27 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial1.write(my_memsXLM.bin_val, 12);//ax, ay, az
         Serial1.write(reg_fog+12, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
+        Serial1.write(my_att.bin_val, 12);
         Serial1.write(CRC32, 4);
-        // Serial.println(myfog_GYRO.float_val);
       }
       #endif  
       resetWDT(); 
       reset_EXT_WDI(WDI);
+
       att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
-      // Serial.println(att_dt_f);
       att_dt = micros();
       float ori[3];
-      // my_ekf.run(att_dt_f, my_memsGYRO.float_val, my_memsXLM.float_val);
       my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
-      my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw
+      // my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw 
+      my_ekf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
 
-      Serial.print(att_dt_f, 5);
-      Serial.print(",");
-      Serial.print(ori[0], 5);
-      Serial.print(",");
-      Serial.print(ori[1], 5);
-      Serial.print(",");
-      Serial.println(ori[2], 5);
+      // Serial.print(att_dt_f, 5);
+      // Serial.print(",");
+      // Serial.print(my_att.float_val[0], 5);
+      // Serial.print(",");
+      // Serial.print(my_att.float_val[1], 5);
+      // Serial.print(",");
+      // Serial.println(my_att.float_val[2], 5);
     }
     // t_old = t_new;    
 	}
@@ -1119,8 +1117,6 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
     if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-
-    
 
     switch(CtrlReg){
       case INT_SYNC:
