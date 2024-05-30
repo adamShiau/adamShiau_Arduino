@@ -26,6 +26,7 @@ LinearCorrection LC(10);
 KalmanFilter::EKF my_ekf;
 unsigned short count = 0;
 unsigned long pre_time = 0;
+// #define DEG_TO_RAD 0.0174532925;
 /***End of Attitude calculation*/
 
 
@@ -974,6 +975,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
   my_acc_t my_memsXLM, my_memsGYRO;
   my_float_t pd_temp;
+  static my_float_t myfog_GYRO;
+  static my_acc_t my_GYRO;
+  float att_dt_f;
+  static uint32_t att_dt;
 
   byte *fog;
 	uint8_t CRC32[4];
@@ -1023,13 +1028,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       break;
     }
     t_previous = millis();
+    att_dt = micros();
 	}
 
 	if(run_fog_flag) {
-        t_new = micros();
+        // t_new = micros();
 
     fog = sp14.readData(header, sizeofheader, &try_cnt);
-    if(fog) reg_fog = fog;
+    if(fog) {
+      reg_fog = fog;
+      myfog_GYRO.bin_val[0] = reg_fog[11];
+      myfog_GYRO.bin_val[1] = reg_fog[10];
+      myfog_GYRO.bin_val[2] = reg_fog[9];
+      myfog_GYRO.bin_val[3] = reg_fog[8];
+    }
 
     if(ISR_PEDGE)
     {
@@ -1044,10 +1056,13 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       IMU.Get_X_Axes_g_f(my_memsXLM.float_val);
       IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);
       LC.update(my_memsGYRO.float_val); // substract gyro bias offset
+      my_GYRO.float_val[0] = my_memsGYRO.float_val[0];
+      my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
+      my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
+      // LC.update(my_GYRO.float_val); // substract gyro bias offset
 
       memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+4, my_memsGYRO.bin_val, 8);//wx, wy
-      memcpy(imu_data+12, reg_fog+8, 4); //wz
+      memcpy(imu_data+4, my_GYRO.bin_val, 12);//wx, wy, wz
       memcpy(imu_data+16, my_memsXLM.bin_val, 12);//ax, ay, az
       memcpy(imu_data+28, reg_fog+12, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
@@ -1059,18 +1074,33 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       if(data_cnt >= DELAY_CNT)
       {
         Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_memsGYRO.bin_val, 8);//wx, wy
-        Serial1.write(reg_fog+8, 4);          //wz
+        Serial1.write(my_GYRO.bin_val, 12);   //wx, wy, wz
         Serial1.write(my_memsXLM.bin_val, 12);//ax, ay, az
         Serial1.write(reg_fog+12, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(CRC32, 4);
+        // Serial.println(myfog_GYRO.float_val);
       }
       #endif  
       resetWDT(); 
       reset_EXT_WDI(WDI);
+      att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
+      // Serial.println(att_dt_f);
+      att_dt = micros();
+      float ori[3];
+      // my_ekf.run(att_dt_f, my_memsGYRO.float_val, my_memsXLM.float_val);
+      my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
+      my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw
+
+      Serial.print(att_dt_f, 5);
+      Serial.print(",");
+      Serial.print(ori[0], 5);
+      Serial.print(",");
+      Serial.print(ori[1], 5);
+      Serial.print(",");
+      Serial.println(ori[2], 5);
     }
-    t_old = t_new;    
+    // t_old = t_new;    
 	}
 	clear_SEL_EN(select_fn);
 }
