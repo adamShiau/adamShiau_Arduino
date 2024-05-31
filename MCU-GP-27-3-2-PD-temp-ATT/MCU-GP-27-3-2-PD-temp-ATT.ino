@@ -1032,8 +1032,6 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 	}
 
 	if(run_fog_flag) {
-        // t_new = micros();
-
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) {
       reg_fog = fog;
@@ -1085,20 +1083,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
       att_dt = micros();
-      float ori[3];
       my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
-      // my_ekf.getEularAngle(ori); //raw data -> att, pitch, row, yaw 
       my_ekf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
-
-      // Serial.print(att_dt_f, 5);
-      // Serial.print(",");
-      // Serial.print(my_att.float_val[0], 5);
-      // Serial.print(",");
-      // Serial.print(my_att.float_val[1], 5);
-      // Serial.print(",");
-      // Serial.println(my_att.float_val[2], 5);
     }
-    // t_old = t_new;    
 	}
 	clear_SEL_EN(select_fn);
 }
