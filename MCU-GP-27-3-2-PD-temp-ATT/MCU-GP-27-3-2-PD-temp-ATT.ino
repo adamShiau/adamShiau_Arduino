@@ -1049,9 +1049,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       ISR_PEDGE = false;
 
-      IMU.Get_X_Axes_g_f(my_memsXLM.float_val);
-      IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);
-      my_GYRO.float_val[0] = my_memsGYRO.float_val[0];
+      /*** get sensor raw data*/
+      IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
+      IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);// get mems GYRO data in radian/s
+      my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       LC.update(my_GYRO.float_val); // substract gyro bias offset
