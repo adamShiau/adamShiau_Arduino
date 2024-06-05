@@ -1677,18 +1677,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
       // LC.update(my_GYRO.float_val); // substract gyro bias offset
+      print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
-      // Serial.print(my_memsXLM_cali.float_val[0]);
-      // Serial.print(", ");
-      // Serial.print(my_memsXLM_cali.float_val[1]);
-      // Serial.print(", ");
-      // Serial.print(my_memsXLM_cali.float_val[2]);
-      // Serial.print(", ");
-      // Serial.print(my_GYRO.float_val[0]);
-      // Serial.print(", ");
-      // Serial.print(my_GYRO.float_val[1]);
-      // Serial.print(", ");
-      // Serial.println(my_GYRO.float_val[2]);
 
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_GYRO_cali.bin_val, 12);//wx, wy, wz
@@ -3058,5 +3048,23 @@ void gyro_cali(float gyro_cli[3], float gyro[3])
   gyro_cli[2] = misalignment_cali_coe._f.g31 * gyro[0] + 
                 misalignment_cali_coe._f.g32 * gyro[1] + 
                 misalignment_cali_coe._f.g33 * gyro[2] + 
-                misalignment_cali_coe._f.az;
+                misalignment_cali_coe._f.gz;
 } 
+
+void print_imu_data(bool on, float acc[3], float gyro[3])
+{
+  if(on) 
+  { 
+    Serial.print(acc[0]);
+    Serial.print(", ");
+    Serial.print(acc[1]);
+    Serial.print(", ");
+    Serial.print(acc[2]);
+    Serial.print(", ");
+    Serial.print(gyro[0]);
+    Serial.print(", ");
+    Serial.print(gyro[1]);
+    Serial.print(", ");
+    Serial.println(gyro[2]);
+  }
+}
