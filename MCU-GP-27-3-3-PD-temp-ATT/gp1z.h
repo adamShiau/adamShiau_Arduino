@@ -74,9 +74,6 @@ typedef union
         case NMEA_MODE: \
             Serial.println("NMEA_MODE"); \
             break; \
-        case MODE_ATT_NMEA: \
-            Serial.println("MODE_ATT_NMEA"); \
-            break; \
         case HP_TEST: \
             Serial.println("HP_TEST"); \
             break; \
@@ -98,6 +95,8 @@ if (x == MODE_RST) { \
     Serial.println("MODE_FOG_HP_TEST"); \
 } else if (x == MODE_NMEA) { \
     Serial.println("MODE_NMEA"); \
+} else if (x == NMEA_MODE) { \
+    Serial.println("NMEA_MODE"); \
 } else if (x == MODE_FOG_PARAMETER) { \
     Serial.println("MODE_FOG_PARAMETER"); \
 }\

@@ -1109,6 +1109,7 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
   static my_acc_t my_GYRO, my_att;
   float att_dt_f;
   static uint32_t att_dt;
+  char nmeaSentence[50];
 
   byte *fog;
 	uint8_t CRC32[4];
@@ -1150,6 +1151,7 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+        my_ekf.setInitOri(0,0,0);
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
       break;
@@ -1184,18 +1186,21 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
-      LC.update(my_GYRO.float_val); // substract gyro bias offset
+      // LC.update(my_GYRO.float_val); // substract gyro bias offset
+
+      sprintf(nmeaSentence, "SEN,%06.2f,%06.2f,%06.2f", my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);
+      byte checksum = 0;
+      for (int i = 0; i < strlen(nmeaSentence); i++) {
+        checksum ^= nmeaSentence[i];
+      }
+      char nmeaOutput[70]; // 50 (nmeaSentence) + 3 ($, *, \r\n) + 2 (checksum) + 1 (null terminator)
       
+
       #ifdef UART_RS422_CMD
       if(data_cnt >= DELAY_CNT)
       {
-        Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_GYRO.bin_val, 12);   //wx, wy, wz
-        Serial1.write(my_memsXLM.bin_val, 12);//ax, ay, az
-        Serial1.write(reg_fog+12, 4);         // PD temp
-        Serial1.write(mcu_time.bin_val, 4);
-        Serial1.write(my_att.bin_val, 12);
-        Serial1.write(CRC32, 4);
+        sprintf(nmeaOutput, "$%s*%02X\r\n", nmeaSentence, checksum);
+        Serial1.print(nmeaOutput);
       }
       #endif  
       resetWDT(); 
@@ -1204,7 +1209,10 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
       att_dt = micros();
       my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
-      my_ekf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
+      my_ekf.getEularAngle(my_att.float_val); //raw data -> att: pitch, roll, yaw 
+      // set roll value range
+      if(my_att.float_val[1] >= 360.0) my_att.float_val[1] -= 360.0;
+      else if(my_att.float_val[1] < 0.0) my_att.float_val[1] += 360.0;
     }
 	}
 	clear_SEL_EN(select_fn);
@@ -1452,9 +1460,6 @@ void clear_SEL_EN(byte &select_fn)
 {
 	select_fn = SEL_DEFAULT;
 }
-
-
-
 
 void ISR_EXTT()
 {
@@ -2226,3 +2231,93 @@ void verify_select_fn(int in)
     Serial.println("verify select_fn: pass");
   }
 }
+
+void acc_cali(float acc_cli[3], float acc[3])
+{
+  // acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
+  //              misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
+  //              misalignment_cali_coe._f.a13*(misalignment_cali_coe._f.az + acc[2]);
+  // acc_cli[1] = misalignment_cali_coe._f.a21*(misalignment_cali_coe._f.ax + acc[0]) + 
+  //              misalignment_cali_coe._f.a22*(misalignment_cali_coe._f.ay + acc[1]) + 
+  //              misalignment_cali_coe._f.a23*(misalignment_cali_coe._f.az + acc[2]);
+  // acc_cli[2] = misalignment_cali_coe._f.a31*(misalignment_cali_coe._f.ax + acc[0]) + 
+  //              misalignment_cali_coe._f.a32*(misalignment_cali_coe._f.ay + acc[1]) + 
+  //              misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
+  acc_cli[0] = misalignment_cali_coe._f.a11 * acc[0] + 
+               misalignment_cali_coe._f.a12 * acc[1] + 
+               misalignment_cali_coe._f.a13 * acc[2] + 
+               misalignment_cali_coe._f.ax;
+  acc_cli[1] = misalignment_cali_coe._f.a21 * acc[0] + 
+               misalignment_cali_coe._f.a22 * acc[1] + 
+               misalignment_cali_coe._f.a23 * acc[2] + 
+               misalignment_cali_coe._f.ax;
+  acc_cli[2] = misalignment_cali_coe._f.a31 * acc[0] + 
+               misalignment_cali_coe._f.a32 * acc[1] + 
+               misalignment_cali_coe._f.a33 * acc[2] + 
+               misalignment_cali_coe._f.ax;
+} 
+
+void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
+{
+  my_float_t x_f, y_f, z_f;
+  my_float_t x_cli, y_cli, z_cli;
+
+  x_f.bin_val[0] = gyro_clix[11];
+  x_f.bin_val[1] = gyro_clix[10];
+  x_f.bin_val[2] = gyro_clix[9];
+  x_f.bin_val[3] = gyro_clix[8];
+
+  y_f.bin_val[0] = gyro_cliy[11];
+  y_f.bin_val[1] = gyro_cliy[10];
+  y_f.bin_val[2] = gyro_cliy[9];
+  y_f.bin_val[3] = gyro_cliy[8];
+
+  z_f.bin_val[0] = gyro_cliz[11];
+  z_f.bin_val[1] = gyro_cliz[10];
+  z_f.bin_val[2] = gyro_cliz[9];
+  z_f.bin_val[3] = gyro_cliz[8];
+  // Serial.println(z_f.float_val*3600);
+
+  // x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
+  // y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
+  // z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
+  x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
+                    misalignment_cali_coe._f.g12 * y_f.float_val + 
+                    misalignment_cali_coe._f.g13 * z_f.float_val + 
+		                misalignment_cali_coe._f.gx;
+  y_cli.float_val = misalignment_cali_coe._f.g21 * x_f.float_val + 
+                    misalignment_cali_coe._f.g22 * y_f.float_val + 
+                    misalignment_cali_coe._f.g23 * z_f.float_val + 
+		                misalignment_cali_coe._f.gx;
+  z_cli.float_val = misalignment_cali_coe._f.g31 * x_f.float_val + 
+                    misalignment_cali_coe._f.g32 * y_f.float_val + 
+                    misalignment_cali_coe._f.g33 * z_f.float_val + 
+                    misalignment_cali_coe._f.gx;
+
+  gyro_clix[11] = x_cli.bin_val[0];
+  gyro_clix[10] = x_cli.bin_val[1];
+  gyro_clix[9] = x_cli.bin_val[2];
+  gyro_clix[8] = x_cli.bin_val[3];
+
+  gyro_cliy[11] = y_cli.bin_val[0];
+  gyro_cliy[10] = y_cli.bin_val[1];
+  gyro_cliy[9] = y_cli.bin_val[2];
+  gyro_cliy[8] = y_cli.bin_val[3];
+
+  gyro_cliz[11] = z_cli.bin_val[0];
+  gyro_cliz[10] = z_cli.bin_val[1];
+  gyro_cliz[9] = z_cli.bin_val[2];
+  gyro_cliz[8] = z_cli.bin_val[3];
+
+  // Serial.print(z_cli.float_val*3600);
+  // Serial.print(", ");
+  // Serial.print(z_cli.float_val*3600);
+  // Serial.print(", ");
+  // Serial.println(z_cli.float_val*3600);
+} 
