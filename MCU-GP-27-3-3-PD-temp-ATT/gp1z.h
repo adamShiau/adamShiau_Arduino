@@ -2,6 +2,7 @@
 #define GP1Z_H
 
 #include "IMU_PIG_DEFINE.h"
+#include "myCALIBRATION.h"
 #include "wiring_private.h"
 #include "crcCalculator.h"
 #include <TinyGPSPlus.h>

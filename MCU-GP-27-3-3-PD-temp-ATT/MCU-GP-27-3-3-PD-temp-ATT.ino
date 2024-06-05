@@ -111,6 +111,15 @@ unsigned int t_start;
 // auto rst fn flag
 byte rst_fn_flag = MODE_RST;
 
+DumpParameter my_cali_para[PARAMETER_CNT];
+
+void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data) 
+{
+  snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
+  Serial.println(output_data->str);
+  Serial1.print(output_data->str);
+}
+
 void setup() {
 
   XOSC32K_CLK_SET();
@@ -1103,10 +1112,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
 void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
 {
-  my_acc_t my_memsXLM, my_memsGYRO;
+  my_acc_t my_memsXLM, my_memsXLM_cali, my_memsGYRO;
   my_float_t pd_temp;
   static my_float_t myfog_GYRO;
-  static my_acc_t my_GYRO, my_att;
+  static my_acc_t my_GYRO, my_GYRO_cali, my_att;
   float att_dt_f;
   static uint32_t att_dt;
   char nmeaSentence[50];
@@ -1181,14 +1190,22 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       ISR_PEDGE = false;
 
       /*** get sensor raw data*/
-      IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
+      // IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
+      /*** ------get xlm raw data -----***/
+      IMU.Get_X_Axes_f(my_memsXLM.float_val);// get mems XLM data in g
+      /*** ------mis-alignment calibration xlm raw data -----***/
+      // acc_cali(my_memsXLM_cali.float_val, my_memsXLM.float_val);
+
+      /*** ------get gyro raw data -----***/
       IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);// get mems GYRO data in radian/s
       my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
+      /*** ------mis-alignment calibration gyro raw data -----***/
+      // gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
       // LC.update(my_GYRO.float_val); // substract gyro bias offset
 
-      sprintf(nmeaSentence, "SEN,%06.2f,%06.2f,%06.2f", my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);
+      sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);
       byte checksum = 0;
       for (int i = 0; i < strlen(nmeaSentence); i++) {
         checksum ^= nmeaSentence[i];
@@ -1210,9 +1227,12 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       att_dt = micros();
       my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
       my_ekf.getEularAngle(my_att.float_val); //raw data -> att: pitch, roll, yaw 
-      // set roll value range
-      if(my_att.float_val[1] >= 360.0) my_att.float_val[1] -= 360.0;
-      else if(my_att.float_val[1] < 0.0) my_att.float_val[1] += 360.0;
+      /*** set yaw value range */
+      if(my_att.float_val[2] >= 360.0) my_att.float_val[2] -= 360.0;
+      else if(my_att.float_val[2] < 0.0) my_att.float_val[2] += 360.0;
+      /*** set pitch value range */
+
+      /*** set roll value range */
     }
 	}
 	clear_SEL_EN(select_fn);
@@ -2181,7 +2201,7 @@ void verify_output_fn(byte in)
   Serial.print("Input function index: ");
   Serial.println(in);
   if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
-    in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
+    in==MODE_NMEA | in==MODE_FOG_PARAMETER | in==MODE_ATT_NMEA ))
   {
     Serial.println("verify output fn: fail");
     Serial.println("output of function range, go to reset!");
@@ -2218,8 +2238,8 @@ void verify_select_fn(int in)
   Serial.println("\nverifying select fn........" );
   Serial.print("Input select_fn: ");
   Serial.println(in);
-  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 |
-    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 | in==SEL_ATT_NMEA |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST ))
     {
       Serial.println("verify select_fn: fail");
       Serial.println("output of select_fn range, go to reset!");
@@ -2232,17 +2252,9 @@ void verify_select_fn(int in)
   }
 }
 
+/***
 void acc_cali(float acc_cli[3], float acc[3])
 {
-  // acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
-  //              misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
-  //              misalignment_cali_coe._f.a13*(misalignment_cali_coe._f.az + acc[2]);
-  // acc_cli[1] = misalignment_cali_coe._f.a21*(misalignment_cali_coe._f.ax + acc[0]) + 
-  //              misalignment_cali_coe._f.a22*(misalignment_cali_coe._f.ay + acc[1]) + 
-  //              misalignment_cali_coe._f.a23*(misalignment_cali_coe._f.az + acc[2]);
-  // acc_cli[2] = misalignment_cali_coe._f.a31*(misalignment_cali_coe._f.ax + acc[0]) + 
-  //              misalignment_cali_coe._f.a32*(misalignment_cali_coe._f.ay + acc[1]) + 
-  //              misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
   acc_cli[0] = misalignment_cali_coe._f.a11 * acc[0] + 
                misalignment_cali_coe._f.a12 * acc[1] + 
                misalignment_cali_coe._f.a13 * acc[2] + 
@@ -2250,74 +2262,26 @@ void acc_cali(float acc_cli[3], float acc[3])
   acc_cli[1] = misalignment_cali_coe._f.a21 * acc[0] + 
                misalignment_cali_coe._f.a22 * acc[1] + 
                misalignment_cali_coe._f.a23 * acc[2] + 
-               misalignment_cali_coe._f.ax;
+               misalignment_cali_coe._f.ay;
   acc_cli[2] = misalignment_cali_coe._f.a31 * acc[0] + 
                misalignment_cali_coe._f.a32 * acc[1] + 
                misalignment_cali_coe._f.a33 * acc[2] + 
-               misalignment_cali_coe._f.ax;
+               misalignment_cali_coe._f.az;
 } 
 
-void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
+void gyro_cali(float gyro_cli[3], float gyro[3])
 {
-  my_float_t x_f, y_f, z_f;
-  my_float_t x_cli, y_cli, z_cli;
-
-  x_f.bin_val[0] = gyro_clix[11];
-  x_f.bin_val[1] = gyro_clix[10];
-  x_f.bin_val[2] = gyro_clix[9];
-  x_f.bin_val[3] = gyro_clix[8];
-
-  y_f.bin_val[0] = gyro_cliy[11];
-  y_f.bin_val[1] = gyro_cliy[10];
-  y_f.bin_val[2] = gyro_cliy[9];
-  y_f.bin_val[3] = gyro_cliy[8];
-
-  z_f.bin_val[0] = gyro_cliz[11];
-  z_f.bin_val[1] = gyro_cliz[10];
-  z_f.bin_val[2] = gyro_cliz[9];
-  z_f.bin_val[3] = gyro_cliz[8];
-  // Serial.println(z_f.float_val*3600);
-
-  // x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
-  // y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
-  // z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
-  x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
-                    misalignment_cali_coe._f.g12 * y_f.float_val + 
-                    misalignment_cali_coe._f.g13 * z_f.float_val + 
-		                misalignment_cali_coe._f.gx;
-  y_cli.float_val = misalignment_cali_coe._f.g21 * x_f.float_val + 
-                    misalignment_cali_coe._f.g22 * y_f.float_val + 
-                    misalignment_cali_coe._f.g23 * z_f.float_val + 
-		                misalignment_cali_coe._f.gx;
-  z_cli.float_val = misalignment_cali_coe._f.g31 * x_f.float_val + 
-                    misalignment_cali_coe._f.g32 * y_f.float_val + 
-                    misalignment_cali_coe._f.g33 * z_f.float_val + 
-                    misalignment_cali_coe._f.gx;
-
-  gyro_clix[11] = x_cli.bin_val[0];
-  gyro_clix[10] = x_cli.bin_val[1];
-  gyro_clix[9] = x_cli.bin_val[2];
-  gyro_clix[8] = x_cli.bin_val[3];
-
-  gyro_cliy[11] = y_cli.bin_val[0];
-  gyro_cliy[10] = y_cli.bin_val[1];
-  gyro_cliy[9] = y_cli.bin_val[2];
-  gyro_cliy[8] = y_cli.bin_val[3];
-
-  gyro_cliz[11] = z_cli.bin_val[0];
-  gyro_cliz[10] = z_cli.bin_val[1];
-  gyro_cliz[9] = z_cli.bin_val[2];
-  gyro_cliz[8] = z_cli.bin_val[3];
-
-  // Serial.print(z_cli.float_val*3600);
-  // Serial.print(", ");
-  // Serial.print(z_cli.float_val*3600);
-  // Serial.print(", ");
-  // Serial.println(z_cli.float_val*3600);
+  gyro_cli[0] = misalignment_cali_coe._f.g11 * gyro[0] + 
+                misalignment_cali_coe._f.g12 * gyro[1] + 
+                misalignment_cali_coe._f.g13 * gyro[2] + 
+                misalignment_cali_coe._f.gx;
+  gyro_cli[1] = misalignment_cali_coe._f.g21 * gyro[0] + 
+                misalignment_cali_coe._f.g22 * gyro[1] + 
+                misalignment_cali_coe._f.g23 * gyro[2] + 
+                misalignment_cali_coe._f.gy;
+  gyro_cli[2] = misalignment_cali_coe._f.g31 * gyro[0] + 
+                misalignment_cali_coe._f.g32 * gyro[1] + 
+                misalignment_cali_coe._f.g33 * gyro[2] + 
+                misalignment_cali_coe._f.az;
 } 
+*/
