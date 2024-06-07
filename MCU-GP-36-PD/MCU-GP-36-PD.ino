@@ -2476,16 +2476,6 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   z_f.bin_val[2] = gyro_cliz[9];
   z_f.bin_val[3] = gyro_cliz[8];
 
-  // x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
-  // y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
-  // z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-  //               misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-  //               misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
-
   x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
                     misalignment_cali_coe._f.g12 * y_f.float_val + 
                     misalignment_cali_coe._f.g13 * z_f.float_val + 

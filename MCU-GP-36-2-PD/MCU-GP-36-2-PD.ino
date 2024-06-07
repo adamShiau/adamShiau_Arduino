@@ -208,24 +208,19 @@ void setup() {
 	// cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
 	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
-	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 
 
   /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
-
-  /***write EEPROM DVT test value*/
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
-
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
 
   if(fog_op_status==1) // disconnected last time, send cmd again
     {
       Serial.println("\n-------AUTO RST---------");
+      Serial1.println("\n-------AUTO RST---------");
 
       eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
       rst_fn_flag = my_f.int_val; 
@@ -234,10 +229,10 @@ void setup() {
       PRINT_OUTPUT_MODE(rst_fn_flag);
       
       eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
-      value = my_f.int_val;
+      uart_value = my_f.int_val;
       // value = 10; //test fn reg output of range 
-      verify_output_fn_reg_value(value);
-      PRINT_OUTPUT_REG(value);
+      verify_output_fn_reg_value(uart_value);
+      PRINT_OUTPUT_REG(uart_value);
 
       eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
       select_fn = my_f.int_val;
@@ -250,9 +245,7 @@ void setup() {
     PRINT_MUX_FLAG(mux_flag);
     printVersion();
     t_start = millis();
-
-
-}
+  }
 
 void loop() {
 	// getCmdValue(cmd, value, fog_channel, cmd_complete);
@@ -966,45 +959,52 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
       }
       case MODE_FOG_PARAMETER: {
         output_fn = acq_fog_parameter;
         select_fn = SEL_FOG_PARA;
+        rst_fn_flag = MODE_FOG_PARAMETER;
         break;
       }
       case MODE_AFI: {
         output_fn = acq_afi;
         select_fn = SEL_AFI;
+        rst_fn_flag = MODE_AFI;
         break;
       }
       default: break;
     }
+
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
-
   if(fog_op_status==1) // for auto reset
   {
     fog_op_status=0;
@@ -1012,7 +1012,6 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 		switch(rst_fn_flag) {
 			case MODE_RST: {
 				output_fn = fn_rst;
-        Serial.println("MODE_RST");
 				break;
 			}
 			case MODE_FOG: {
@@ -1022,53 +1021,47 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
-        Serial.println("MODE_IMU");
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
-        Serial.println("MODE_FOG_HP_TEST");
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
-        Serial.println("select MODE_NMEA");
 				break;
             }
       case MODE_FOG_PARAMETER: {
           output_fn = acq_fog_parameter;
-          Serial.println("MODE_FOG_PARAMETER");
           break;
       }
       case MODE_AFI: {
-        output_fn = acq_afi;
-        Serial.println("MODE_AFI");
-        break;
+          output_fn = acq_afi;
+          break;
       }
+      
       default: break;
       }
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
+  
 }
 
-static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
+
+void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
-  if(select_fn==SEL_DEFAULT) {
-    if((millis() - t_start)>=5000) 
-    {
-      t_start = millis();
-      Serial.println("IDLE");
-      Serial1.println("IDLE");
-      // disable_EXT_WDT(EXT_WDT_EN);
-      // disableWDT();
-    }
-  }
 	clear_SEL_EN(select_fn);
+  if((millis() - t_start)>=5000) 
+  {
+    t_start = millis();
+    Serial.println("IDLE");
+    Serial1.println("IDLE");
+  }
 }
 
-static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
+void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
   Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
@@ -1079,13 +1072,15 @@ static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-    Serial.println("Set fog_op_status to 0");
-    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-    Serial.println("Set fn_rst to temp_idle");
-		output_fn = temp_idle; 
+  Serial.println("Set fog_op_status to 0");
+  eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+  Serial.println("Set fn_rst to temp_idle");
+  output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
+
+
 
 static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
@@ -2451,15 +2446,18 @@ void manual_Wait_FPGA_Wakeup_escape(byte fog_ch)
 
 void acc_cali(float acc_cli[3], float acc[3])
 {
-  acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a13*(misalignment_cali_coe._f.az + acc[2]);
-  acc_cli[1] = misalignment_cali_coe._f.a21*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a22*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a23*(misalignment_cali_coe._f.az + acc[2]);
-  acc_cli[2] = misalignment_cali_coe._f.a31*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a32*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
+  acc_cli[0] = misalignment_cali_coe._f.a11 * acc[0] + 
+               misalignment_cali_coe._f.a12 * acc[1] + 
+               misalignment_cali_coe._f.a13 * acc[2] + 
+               misalignment_cali_coe._f.ax;
+  acc_cli[1] = misalignment_cali_coe._f.a21 * acc[0] + 
+               misalignment_cali_coe._f.a22 * acc[1] + 
+               misalignment_cali_coe._f.a23 * acc[2] + 
+               misalignment_cali_coe._f.ay;
+  acc_cli[2] = misalignment_cali_coe._f.a31 * acc[0] + 
+               misalignment_cali_coe._f.a32 * acc[1] + 
+               misalignment_cali_coe._f.a33 * acc[2] + 
+               misalignment_cali_coe._f.az;
 } 
 
 void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
@@ -2482,15 +2480,18 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   z_f.bin_val[2] = gyro_cliz[9];
   z_f.bin_val[3] = gyro_cliz[8];
 
-  x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
-  y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
-  z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
+  x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
+                    misalignment_cali_coe._f.g12 * y_f.float_val + 
+                    misalignment_cali_coe._f.g13 * z_f.float_val + 
+                    misalignment_cali_coe._f.gx;
+  y_cli.float_val = misalignment_cali_coe._f.g21 * x_f.float_val + 
+                    misalignment_cali_coe._f.g22 * y_f.float_val + 
+                    misalignment_cali_coe._f.g23 * z_f.float_val + 
+                    misalignment_cali_coe._f.gy;
+  z_cli.float_val = misalignment_cali_coe._f.g31 * x_f.float_val + 
+                    misalignment_cali_coe._f.g32 * y_f.float_val + 
+                    misalignment_cali_coe._f.g33 * z_f.float_val + 
+                    misalignment_cali_coe._f.gz;
 
   gyro_clix[11] = x_cli.bin_val[0];
   gyro_clix[10] = x_cli.bin_val[1];
@@ -2613,17 +2614,25 @@ void verify_output_fn(byte in)
   Serial.println("\nverifying output fn........" );
   Serial.print("Input function index: ");
   Serial.println(in);
+
+  Serial1.println("\nverifying output fn........" );
+  Serial1.println("Input function index: ");
+  Serial1.println(in);
   if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
-    in==MODE_NMEA | in==MODE_FOG_PARAMETER | in==MODE_AFI))
+    in==MODE_AFI | in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
   {
     Serial.println("verify output fn: fail");
     Serial.println("output of function range, go to reset!");
+
+    Serial1.println("verify output fn: fail");
+    Serial1.println("output of function range, go to reset!");
     select_fn = SEL_RST;
     rst_fn_flag = MODE_RST; 
     value = STOP_SYNC;
   } 
   else {
     Serial.println("verify output fn: pass");
+    Serial1.println("verify output fn: pass");
   }
 }
 
@@ -2631,18 +2640,27 @@ void verify_output_fn_reg_value(int in)
 {
   Serial.println("\nverifying output fn reg value........" );
   Serial.print("Input reg value: ");
+
+  Serial1.println("\nverifying output fn reg value........" );
+  Serial1.print("Input reg value: ");
+
   Serial.println(in);
   if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
     in==HP_TEST ))
     {
       Serial.println("verify output fn reg value: fail");
       Serial.println("output of reg value range, go to reset!");
+
+      Serial1.println("verify output fn reg value: fail");
+      Serial1.println("output of reg value range, go to reset!");
+
       select_fn = SEL_RST;
       rst_fn_flag = MODE_RST; 
       value = STOP_SYNC;
     } 
   else {
     Serial.println("verify output fn: pass");
+    Serial1.println("verify output fn: pass");
   }
 }
 
@@ -2651,16 +2669,24 @@ void verify_select_fn(int in)
   Serial.println("\nverifying select fn........" );
   Serial.print("Input select_fn: ");
   Serial.println(in);
-  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 |
-    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST |in==SEL_AFI)) 
+
+  Serial1.println("\nverifying select fn........" );
+  Serial1.print("Input select_fn: ");
+  Serial1.println(in);
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 | in==SEL_AFI |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
     {
       Serial.println("verify select_fn: fail");
       Serial.println("output of select_fn range, go to reset!");
+
+      Serial1.println("verify select_fn: fail");
+      Serial1.println("output of select_fn range, go to reset!");
       select_fn = SEL_RST;
       rst_fn_flag = MODE_RST; 
       value = STOP_SYNC;
     } 
   else {
     Serial.println("verify select_fn: pass");
+    Serial1.println("verify select_fn: pass");
   }
 }
