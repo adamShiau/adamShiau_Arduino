@@ -194,8 +194,8 @@
 #define REFILL_SERIAL1 1
 /*** MODE_FOG CTRL REG***/
 #define INT_SYNC	1
-#define EXT_SYNC 	1<<1
-#define STOP_SYNC 	1<<2
+#define EXT_SYNC 	2
+#define STOP_SYNC 	4
 #define NMEA_MODE   5
 #define HP_TEST     3
 

@@ -108,6 +108,10 @@ unsigned int MCU_cnt = 0;
 // The TinyGPSPlus object
 // TinyGPSPlus gps;
 unsigned int t_previous = 0;
+unsigned int t_start;
+
+// auto rst fn flag
+byte rst_fn_flag = MODE_RST;
 
 // char cali_para_dump[MAX_TOTAL_LENGTH] = "";
 
@@ -200,38 +204,48 @@ void setup() {
 
   parameter_init();
   Blink_MCU_LED();
-  printVersion();
+
 	/*** var initialization***/
 	// cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
 	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
-	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 
 
   /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
+  Serial.print("fog_op_status: ");
+  Serial.println(fog_op_status);
 
-  /***write EEPROM DVT test value*/
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
-  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
-
-	
-
-// /***
-  if(fog_op_status==1) // disconnected last time, send cmd again
+ if(fog_op_status==1) // disconnected last time, send cmd again
   {
-    Serial.println("AUTO RST");
+    Serial.println("\n-------AUTO RST---------");
+    Serial1.println("\n-------AUTO RST---------");
+
+    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
+    rst_fn_flag = my_f.int_val; 
+    // rst_fn_flag = 10; //test output fn output of range 
+    verify_output_fn(rst_fn_flag);// check if output function is valid
+    PRINT_OUTPUT_MODE(rst_fn_flag);
+    
+    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
+    uart_value = my_f.int_val;
+    // value = 10; //test fn reg output of range 
+    verify_output_fn_reg_value(uart_value);
+    PRINT_OUTPUT_REG(uart_value);
+
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
-    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);
-    output_fn = (fn_ptr)my_f.int_val; 
-    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-    value = my_f.int_val;
+    // select_fn = 10; //test select_fn output of range 
+    verify_select_fn(select_fn);
+    PRINT_SELECT_FN(select_fn);
+
     fog_channel = 2;
   }
-// */
+  PRINT_MUX_FLAG(mux_flag);
+  printVersion();
+  t_start = millis();
 }
 
 void loop() {
@@ -292,27 +306,27 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
-{
-  byte *cmd;
+// void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
+// {
+//   byte *cmd;
 
-    cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-    if(cmd){
-      uart_cmd = cmd[0];
-      uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-      fog_ch = cmd[5];
-      uart_complete = 1;
-      // printVal_0("uart_cmd", uart_cmd);
-      // printVal_0("uart_value", uart_value);
-      Serial.print("cmd, value, ch: ");
-      Serial.print(uart_cmd);
-      Serial.print(", ");
-      Serial.print(uart_value);
-      Serial.print(", ");
-      Serial.println(fog_ch);
-      // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
-    }
-}
+//     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+//     if(cmd){
+//       uart_cmd = cmd[0];
+//       uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+//       fog_ch = cmd[5];
+//       uart_complete = 1;
+//       // printVal_0("uart_cmd", uart_cmd);
+//       // printVal_0("uart_value", uart_value);
+//       Serial.print("cmd, value, ch: ");
+//       Serial.print(uart_cmd);
+//       Serial.print(", ");
+//       Serial.print(uart_value);
+//       Serial.print(", ");
+//       Serial.println(fog_ch);
+//       // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
+//     }
+// }
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 {
@@ -946,52 +960,92 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			case MODE_RST: {
 				output_fn = fn_rst;
 				select_fn = SEL_RST;
+        rst_fn_flag = MODE_RST;
 				break;
 			}
 			case MODE_FOG: {
 				output_fn = acq_fog;
 				select_fn = SEL_FOG_1;
+        rst_fn_flag = MODE_FOG;
 				break;
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
 				select_fn = SEL_IMU;
+        rst_fn_flag = MODE_IMU;
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
 				select_fn = SEL_HP_TEST;
+        rst_fn_flag = MODE_FOG_HP_TEST;
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
 				select_fn = SEL_NMEA;
+        rst_fn_flag = MODE_NMEA;
 				break;
       }
       case MODE_FOG_PARAMETER: {
         output_fn = acq_fog_parameter;
         select_fn = SEL_FOG_PARA;
+        rst_fn_flag = MODE_FOG_PARAMETER;
         break;
       }
       case MODE_AFI: {
         output_fn = acq_afi;
         select_fn = SEL_AFI;
+        rst_fn_flag = MODE_AFI;
         break;
       }
       default: break;
     }
 
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
-
-      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, (int)output_fn);
-
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
-      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);
-      // Serial.print("output_mode_setting - value: ");
-      // Serial.print((int)value);
-      // Serial.print(", ");
-      // Serial.println(my_f.int_val);
-
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
+	}
+  if(fog_op_status==1) // for auto reset
+  {
+    fog_op_status=0;
+    Serial.println("AUTO RST select function");
+		switch(rst_fn_flag) {
+			case MODE_RST: {
+				output_fn = fn_rst;
+				break;
+			}
+			case MODE_FOG: {
+				output_fn = acq_fog;
+        Serial.println("MODE_FOG");
+				break;
+			}
+			case MODE_IMU: {
+				output_fn = acq_imu; 
+				break;
+			}
+			case MODE_FOG_HP_TEST: {
+				output_fn = acq_HP_test; 
+				break;
+			}
+			case MODE_NMEA: {
+				output_fn = acq_nmea;
+				break;
+            }
+      case MODE_FOG_PARAMETER: {
+          output_fn = acq_fog_parameter;
+          break;
+      }
+      case MODE_AFI: {
+          output_fn = acq_afi;
+          break;
+      }
+      
+      default: break;
+      }
+      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
   
 }
@@ -999,13 +1053,18 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
 	clear_SEL_EN(select_fn);
-	// delay(100);
+  if((millis() - t_start)>=5000) 
+  {
+    t_start = millis();
+    Serial.println("IDLE");
+    Serial1.println("IDLE");
+  }
 }
 
 void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
+  Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
-    Serial.println("Enter fn_rst: ");
 		switch(CTRLREG) {
 			case REFILL_SERIAL1: {
 				for(int i=0; i<256; i++) Serial1.read();
@@ -1013,7 +1072,10 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-		disable_EXT_WDT(EXT_WDT_EN);
+  Serial.println("Set fog_op_status to 0");
+  eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+  Serial.println("Set fn_rst to temp_idle");
+  output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -1315,6 +1377,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
   my_acc_t my_ADXL357, ADXL357_cali;
 	uint8_t CRC32[4];
   my_float_t pd_temp_x, pd_temp_y, pd_temp_z;
+  // my_float_t tt;
 	
 	if(select_fn&SEL_AFI)
 	{
@@ -1376,15 +1439,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
     
-      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
-      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
-      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
-      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
-      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
-      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
-      // pd_temp_x.float_val = 31.2;
-      // pd_temp_y.float_val = 31.3;
-      // pd_temp_z.float_val = 31.4;
       if(ISR_PEDGE)
       {
         adxl357_i2c.readData_f(my_ADXL357.float_val);
@@ -1407,6 +1461,10 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+40, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 44, CRC32);
         free(imu_data);
+        // tt.bin_val[0] = reg_fog_x[11];
+        // tt.bin_val[1] = reg_fog_x[10];
+        // tt.bin_val[2] = reg_fog_x[9];
+        // tt.bin_val[3] = reg_fog_x[8];
 
         #ifdef UART_RS422_CMD
         if(data_cnt >= DELAY_CNT)
@@ -1422,6 +1480,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_z+12, 4);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
+          // Serial.println(tt.float_val);
         #endif
         }
         resetWDT();
@@ -2383,15 +2442,18 @@ void manual_Wait_FPGA_Wakeup_escape(byte fog_ch)
 
 void acc_cali(float acc_cli[3], float acc[3])
 {
-  acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a13*(misalignment_cali_coe._f.az + acc[2]);
-  acc_cli[1] = misalignment_cali_coe._f.a21*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a22*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a23*(misalignment_cali_coe._f.az + acc[2]);
-  acc_cli[2] = misalignment_cali_coe._f.a31*(misalignment_cali_coe._f.ax + acc[0]) + 
-               misalignment_cali_coe._f.a32*(misalignment_cali_coe._f.ay + acc[1]) + 
-               misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
+  acc_cli[0] = misalignment_cali_coe._f.a11 * acc[0] + 
+               misalignment_cali_coe._f.a12 * acc[1] + 
+               misalignment_cali_coe._f.a13 * acc[2] + 
+               misalignment_cali_coe._f.ax;
+  acc_cli[1] = misalignment_cali_coe._f.a21 * acc[0] + 
+               misalignment_cali_coe._f.a22 * acc[1] + 
+               misalignment_cali_coe._f.a23 * acc[2] + 
+               misalignment_cali_coe._f.ay;
+  acc_cli[2] = misalignment_cali_coe._f.a31 * acc[0] + 
+               misalignment_cali_coe._f.a32 * acc[1] + 
+               misalignment_cali_coe._f.a33 * acc[2] + 
+               misalignment_cali_coe._f.az;
 } 
 
 void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
@@ -2414,15 +2476,28 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   z_f.bin_val[2] = gyro_cliz[9];
   z_f.bin_val[3] = gyro_cliz[8];
 
-  x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
-  y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
-  z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
-                misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
-                misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
+  // x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
+  // y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
+  // z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+  //               misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+  //               misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
+
+  x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
+                    misalignment_cali_coe._f.g12 * y_f.float_val + 
+                    misalignment_cali_coe._f.g13 * z_f.float_val + 
+                    misalignment_cali_coe._f.gx;
+  y_cli.float_val = misalignment_cali_coe._f.g21 * x_f.float_val + 
+                    misalignment_cali_coe._f.g22 * y_f.float_val + 
+                    misalignment_cali_coe._f.g23 * z_f.float_val + 
+                    misalignment_cali_coe._f.gy;
+  z_cli.float_val = misalignment_cali_coe._f.g31 * x_f.float_val + 
+                    misalignment_cali_coe._f.g32 * y_f.float_val + 
+                    misalignment_cali_coe._f.g33 * z_f.float_val + 
+                    misalignment_cali_coe._f.gz;
 
   gyro_clix[11] = x_cli.bin_val[0];
   gyro_clix[10] = x_cli.bin_val[1];
@@ -2444,6 +2519,89 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   {
     Serial.print("Version:");
     Serial.println(MCU_VERSION);
+
     Serial1.print("Version:");
     Serial1.println(MCU_VERSION);
   }
+
+  void verify_output_fn(byte in)
+{
+  Serial.println("\nverifying output fn........" );
+  Serial.print("Input function index: ");
+  Serial.println(in);
+
+  Serial1.println("\nverifying output fn........" );
+  Serial1.println("Input function index: ");
+  Serial1.println(in);
+  if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
+    in==MODE_AFI | in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
+  {
+    Serial.println("verify output fn: fail");
+    Serial.println("output of function range, go to reset!");
+
+    Serial1.println("verify output fn: fail");
+    Serial1.println("output of function range, go to reset!");
+    select_fn = SEL_RST;
+    rst_fn_flag = MODE_RST; 
+    value = STOP_SYNC;
+  } 
+  else {
+    Serial.println("verify output fn: pass");
+    Serial1.println("verify output fn: pass");
+  }
+}
+
+void verify_output_fn_reg_value(int in)
+{
+  Serial.println("\nverifying output fn reg value........" );
+  Serial.print("Input reg value: ");
+
+  Serial1.println("\nverifying output fn reg value........" );
+  Serial1.print("Input reg value: ");
+
+  Serial.println(in);
+  if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
+    in==HP_TEST ))
+    {
+      Serial.println("verify output fn reg value: fail");
+      Serial.println("output of reg value range, go to reset!");
+
+      Serial1.println("verify output fn reg value: fail");
+      Serial1.println("output of reg value range, go to reset!");
+
+      select_fn = SEL_RST;
+      rst_fn_flag = MODE_RST; 
+      value = STOP_SYNC;
+    } 
+  else {
+    Serial.println("verify output fn: pass");
+    Serial1.println("verify output fn: pass");
+  }
+}
+
+void verify_select_fn(int in)
+{
+  Serial.println("\nverifying select fn........" );
+  Serial.print("Input select_fn: ");
+  Serial.println(in);
+
+  Serial1.println("\nverifying select fn........" );
+  Serial1.print("Input select_fn: ");
+  Serial1.println(in);
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 | in==SEL_AFI |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
+    {
+      Serial.println("verify select_fn: fail");
+      Serial.println("output of select_fn range, go to reset!");
+
+      Serial1.println("verify select_fn: fail");
+      Serial1.println("output of select_fn range, go to reset!");
+      select_fn = SEL_RST;
+      rst_fn_flag = MODE_RST; 
+      value = STOP_SYNC;
+    } 
+  else {
+    Serial.println("verify select_fn: pass");
+    Serial1.println("verify select_fn: pass");
+  }
+}
