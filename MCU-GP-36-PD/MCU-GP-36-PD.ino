@@ -2514,7 +2514,7 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
     Serial1.println(MCU_VERSION);
   }
 
-  void verify_output_fn(byte in)
+void verify_output_fn(byte in)
 {
   Serial.println("\nverifying output fn........" );
   Serial.print("Input function index: ");
