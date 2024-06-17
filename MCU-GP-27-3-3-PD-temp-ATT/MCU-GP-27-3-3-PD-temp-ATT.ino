@@ -1585,9 +1585,10 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
 void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
-  my_acc_t my_memsXLM, my_memsXLM_cali, my_memsGYRO;
+  my_acc_t my_memsGYRO;
   my_float_t pd_temp;
   static my_float_t myfog_GYRO;
+  static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
   float att_dt_f;
   static uint32_t att_dt;
@@ -1676,7 +1677,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-      // LC.update(my_GYRO.float_val); // substract gyro bias offset
+      LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
 
@@ -1707,7 +1708,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
       att_dt = micros();
-      my_ekf.run(att_dt_f, my_GYRO.float_val, my_memsXLM.float_val);
+      my_ekf.run(att_dt_f, my_GYRO_cali.float_val, my_memsXLM_cali.float_val);
       my_ekf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
     }
 	}
@@ -1716,9 +1717,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
 void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
 {
-  my_acc_t my_memsXLM, my_memsXLM_cali, my_memsGYRO;
+  my_acc_t my_memsGYRO;
   my_float_t pd_temp;
   static my_float_t myfog_GYRO;
+  static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
   float att_dt_f;
   static uint32_t att_dt;
@@ -1807,9 +1809,9 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-      // LC.update(my_GYRO.float_val); // substract gyro bias offset
+      LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
 
-      sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);
+      sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[1], my_att.float_val[0]);
       byte checksum = 0;
       for (int i = 0; i < strlen(nmeaSentence); i++) {
         checksum ^= nmeaSentence[i];
