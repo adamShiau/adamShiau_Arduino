@@ -84,8 +84,8 @@
 #define CMD_PD_MON_SW       48 //30
 #define CMD_FPGA_VERSION	101 //65
 #define CMD_DUMP_PARAMETERS	102 //66
-#define CMD_CONFI_BAUDRATE  103
-#define CMD_CONFI_DATARATE  104
+#define CMD_CONFI_BAUDRATE  103 //67
+#define CMD_CONFI_DATARATE  104 //68
 #define CMD_CALI_AX         105
 #define CMD_CALI_AY         106
 #define CMD_CALI_AZ         107

@@ -22,7 +22,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define MCU_LED A2
 
 /*** Attitude calculation*/
-LinearCorrection LC(10);
+LinearCorrection LC(100);
 KalmanFilter::EKF my_ekf;
 unsigned short count = 0;
 unsigned long pre_time = 0;
@@ -1634,6 +1634,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         my_ekf.setInitOri(0,0,0);
+        LC.reset();
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
       break;
@@ -1767,6 +1768,7 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         my_ekf.setInitOri(0,0,0);
+        LC.reset();
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
       break;
@@ -1811,7 +1813,8 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
       LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
 
-      sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[1], my_att.float_val[0]);
+      // sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[1], my_att.float_val[0]);
+      sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", 360 - my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);
       byte checksum = 0;
       for (int i = 0; i < strlen(nmeaSentence); i++) {
         checksum ^= nmeaSentence[i];

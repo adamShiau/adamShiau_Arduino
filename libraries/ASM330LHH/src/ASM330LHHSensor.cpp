@@ -82,7 +82,7 @@ void ASM330LHHSensor::init()
   Enable_X();
   Enable_G();
   Set_X_ODR(416.0);
-  Set_X_FS(4);  
+  Set_X_FS(16);  
   Set_G_ODR(416.0);
   Set_G_FS(500);
 

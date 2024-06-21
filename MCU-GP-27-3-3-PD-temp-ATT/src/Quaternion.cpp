@@ -54,11 +54,29 @@ namespace MyQuaternion{
     }
 
     void Quaternion::genQbyOri(const float &pitch, const float &roll, const float &yaw){
-        float q4 = cos(pitch/2) * cos(roll/2) * cos(yaw/2) + sin(pitch/2) * sin(roll/2) * sin(yaw/2);
-        float q1 = sin(pitch/2) * cos(roll/2) * cos(yaw/2) - cos(pitch/2) * sin(roll/2) * sin(yaw/2);
-        float q2 = cos(pitch/2) * sin(roll/2) * cos(yaw/2) + sin(pitch/2) * cos(roll/2) * sin(yaw/2);
-        float q3 = cos(pitch/2) * cos(roll/2) * sin(yaw/2) - sin(pitch/2) * sin(roll/2) * cos(yaw/2);
-        q << q1, q2, q3, q4;
+        // float q4 = cos(pitch/2) * cos(roll/2) * cos(yaw/2) + sin(pitch/2) * sin(roll/2) * sin(yaw/2);
+        // float q1 = sin(pitch/2) * cos(roll/2) * cos(yaw/2) - cos(pitch/2) * sin(roll/2) * sin(yaw/2);
+        // float q2 = cos(pitch/2) * sin(roll/2) * cos(yaw/2) + sin(pitch/2) * cos(roll/2) * sin(yaw/2);
+        // float q3 = cos(pitch/2) * cos(roll/2) * sin(yaw/2) - sin(pitch/2) * sin(roll/2) * cos(yaw/2);
+        // q << q1, q2, q3, q4;
+
+        Matrix3f ro_x;
+        ro_x << 1, 0, 0,
+            0, cos(-pitch), sin(-pitch),
+            0, -sin(-pitch), cos(-pitch);
+
+        Matrix3f ro_y;
+        ro_y << cos(-roll), 0, -sin(-roll),
+                0, 1, 0,
+                sin(-roll), 0, cos(-roll);
+
+        Matrix3f ro_z;
+        ro_z << cos(-yaw), sin(-yaw), 0,
+                -sin(-yaw), cos(-yaw), 0,
+                0, 0, 1;
+
+        // Combine the rotation matrices in the order roll, pitch, yaw
+        genQbyR(ro_z * ro_x * ro_y);
     }
 
     void Quaternion::rotate(const float &in_wx, const float &in_wy, const float &in_wz, const float &dt){

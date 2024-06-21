@@ -17,14 +17,14 @@ void KalmanFilter::KalmanFilter::genZ(const float (&acc)[3]){
     float ori[3];
     qut.getOri(ori);
     float d_pr[] = {ori[0] - new_pr(0), ori[1] - new_pr(1)};
-    normalizeAngle(d_pr, 2);
+    // normalizeAngle(d_pr, 2);
     Z << d_pr[0], d_pr[1];
     
     makeZList();
     
-    if (abs(ori[0]) > 0.785 || abs(ori[1]) > 0.785){
-        work = false;
-    }
+    // if (abs(ori[0]) > 0.785 || abs(ori[1]) > 0.785){
+    //     work = false;
+    // }
 
     if (work){
         float z2 = (Z(0) * Z(0) + Z(1) * Z(1));
@@ -32,11 +32,17 @@ void KalmanFilter::KalmanFilter::genZ(const float (&acc)[3]){
             work = false;
         }
     }
+    
 }
 
 void KalmanFilter::KalmanFilter::compensate(){
     if (work){
-        qut.rotate(-dx[0], -dx[1], 0, 1);
+        // qut.rotate(-dx[0], -dx[1], 0, 1);
+        float ori[3];
+        qut.getOri(ori);
+        float new_ori[] = {ori[0] - dx[0], ori[1] - dx[1]};
+        normalizeAngle(new_ori, 2);
+        qut = MyQuaternion::Quaternion(new_ori[0], new_ori[1], ori[2]);
     }
 }
 
