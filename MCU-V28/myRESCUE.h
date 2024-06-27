@@ -19,9 +19,9 @@
 #include "myI2C.h" 
 #include "myUART.h"
 
-#define VALID_RESCUE_CMD   0xFF
-#define VALID_RESCUE_VAL   0xFFFFFFFF 
-#define ESCAPE_CMD  0xFE
+#define VALID_RESCUE_CMD    0xFF
+#define VALID_RESCUE_VAL    0xFFFFFFFF 
+#define ESCAPE_CMD          0xFE
 
 #define RESCUR_ENTER            0
 #define RESCUR_WAITCMD          1     
