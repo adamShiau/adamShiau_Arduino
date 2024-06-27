@@ -1,6 +1,18 @@
 #ifndef MYRESCUE_H
 #define MYRESCUE_H
 
+/***
+ * This library is used to enter the rescue mode in setup() before entering the loop().
+ * After powering on, send cmd = [AB BA FF FF FF FF FF FF 55 56] to enter the rescue mode.
+ * Refer to the cmd list below to execute the predefined functions.
+ * After finishing the predefined funciton, follow the instructions to power cycle or send the escape cmd to leave rescue mode.
+ * 
+ * 1. Reset system clock to internal clock:
+ *      [AB BA FF FF FF FF 03 FF 55 56]
+ * 2. Escape rescue mode:
+ *      [AB BA FF FF FF FF 02 FF 55 56]
+ ***/
+
 #include "IMU_PIG_DEFINE.h"
 #include "EEPROM_MANAGE.h" 
 #include "wiring_private.h"
