@@ -37,13 +37,6 @@ unsigned long pre_time = 0;
 // bool trig_status[2] = {0, 0};
 unsigned int t_new, t_old=0;
 
-unsigned long gps_init_time = 0;
-unsigned int gps_date=0, gps_time=0;
-bool gps_valid = 0;
-
-// EEPROMM
-// EEPROM_24AA32A_I2C eeprom = EEPROM_24AA32A_I2C(myWire);
-
 
 
 my_time_t mcu_time;
@@ -56,7 +49,6 @@ unsigned char fog_op_status;
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd, fog_channel;
 int value;
-bool cmd_complete;
 
 /*** output mode flag***/
 byte mux_flag;
@@ -90,18 +82,12 @@ volatile bool ISR_PEDGE;
 
 int t_adc = millis();
 
-// /*** * Watch dog  * **/
-// static void   WDTsync() {
-//   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
-// }
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
 unsigned long data_cnt = 0;
 
 unsigned int MCU_cnt = 0;
 
-// The TinyGPSPlus object
-TinyGPSPlus gps;
 
 byte *reg_fog;
 byte *t_reg_fog;
@@ -175,13 +161,14 @@ void setup() {
   Blink_MCU_LED();
 
   parameter_init();
+  // rescue_mode(uart_cmd, uart_value);
+  rescue_mode();
   Blink_MCU_LED();
 	
   IMU.init(); //setting MEMS IMU parameters 
   
     
 	/*** var initialization***/
-	cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 
 	select_fn = SEL_DEFAULT; 	
 	run_fog_flag = 0;
@@ -203,10 +190,10 @@ void setup() {
     PRINT_OUTPUT_MODE(rst_fn_flag);
     
     eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
-    value = my_f.int_val;
+    uart_value = my_f.int_val;
     // value = 10; //test fn reg output of range 
-    verify_output_fn_reg_value(value);
-    PRINT_OUTPUT_REG(value);
+    verify_output_fn_reg_value(uart_value);
+    PRINT_OUTPUT_REG(uart_value);
 
     eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
     select_fn = my_f.int_val;
@@ -224,11 +211,11 @@ void setup() {
 
 void loop() {
 
-	getCmdValue(cmd, value, fog_channel, cmd_complete);
-	cmd_mux(cmd_complete, cmd, mux_flag);
-	parameter_setting(mux_flag, cmd, value, fog_channel);
-	output_mode_setting(mux_flag, cmd, select_fn);
-	output_fn(select_fn, value, fog_channel);
+	// getCmdValue(cmd, value, fog_channel, cmd_complete);
+	cmd_mux(cmd_complete, uart_cmd, mux_flag);
+	parameter_setting(mux_flag, uart_cmd, uart_value, fog_channel);
+	output_mode_setting(mux_flag, uart_cmd, select_fn);
+	output_fn(select_fn, uart_value, fog_channel);
 
   // readADC();
 }
@@ -279,29 +266,6 @@ void printVal_0(char name[], int val)
 void printVal_0(char name[])
 {
 	Serial.println(name);
-}
-
-void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
-{
-  byte *cmd;
-
-    cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-
-    if(cmd){
-      uart_cmd = cmd[0];
-      uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-      fog_ch = cmd[5];
-      uart_complete = 1;
-      // printVal_0("uart_cmd", uart_cmd);
-      // printVal_0("uart_value", uart_value);
-      Serial.print("cmd, value, ch: ");
-      Serial.print(uart_cmd);
-      Serial.print(", ");
-      Serial.print(uart_value);
-      Serial.print(", ");
-      Serial.println(fog_ch);
-      // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
-    }
 }
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
@@ -967,7 +931,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
 
   if(fog_op_status==1) // for auto reset
@@ -1008,7 +972,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
-      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, value);
+      eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
 }
 
@@ -2389,6 +2353,7 @@ void Blink_MCU_LED()
    delay(100);
 }
 
+
 void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
 {
   PIG *sp;
@@ -2414,12 +2379,22 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
   flag = (SER->readStringUntil('\n'))[0];
   int t0=millis();
   while(!flag){
+
     if((millis()-t0)>500){
       times++;
       for(int i=0; i<255; i++) SER->read();//clear serial buffer
       sp->updateParameter(myCmd_header, FPGA_WAKEUP_ADDR, myCmd_trailer, 5, 0xCC);
+      delay(10);
+      // Serial.print("flag: ");
+      // Serial.println(flag);
+      // Serial.print("fog_woke_flag: ");
+      // Serial.println(fog_woke_flag);
+      flag = (SER->readStringUntil('\n'))[0];
+      if(fog_woke_flag) flag = 1; //manual wake up
       Serial.print("FPGA Sleeping: ");
+      Serial1.print("FPGA Sleeping: ");
       Serial.println(times);
+      Serial1.println(times);
       t0 = millis();
     }
   } 
@@ -2433,7 +2408,7 @@ void reset_SYNC()
 
  void printVersion()
   {
-    Serial.print("Version:");
+    Serial.print("\nVersion:");
     Serial.println(MCU_VERSION);
   }
 

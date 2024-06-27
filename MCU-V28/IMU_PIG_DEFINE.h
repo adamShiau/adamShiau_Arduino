@@ -1,3 +1,6 @@
+#ifndef IMU_PIG_DEFINE_H
+#define IMU_PIG_DEFINE_H
+
 /*** VERSION */
 #define MCU_VERSION "MCU-28"
 
@@ -107,6 +110,8 @@
 #define CMD_CALI_G33        128
 #define CMD_DUMP_CALI_PARAMETERS	129 //81
 #define CMD_CONFI_CLK       130 //82
+// rescue mode
+#define CMD_RESCUE          255 //FF
 
 
 #define MUX_OUTPUT		    0
@@ -348,3 +353,4 @@
 // int EEPROM_BIAS_COMP_T1; int EEPROM_BIAS_COMP_T2; int EEPROM_SFB_1_SLOPE; int EEPROM_SFB_1_OFFSET; 
 // int EEPROM_SFB_2_SLOPE; int EEPROM_SFB_2_OFFSET; int EEPROM_SFB_3_SLOPE; int EEPROM_SFB_3_OFFSET;  
 
+#endif

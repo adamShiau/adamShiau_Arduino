@@ -37,22 +37,7 @@ my_misalignment_cali_t misalignment_cali_coe;
 
 unsigned char fog_op_status;
 
-//EXT WDT
-// #define WDI 5
-// #define EXT_WDT_EN 4
-// bool wdi_status = 0;
 
-
-/** Move Serial1 definition from variant.cpp to here*/
-// Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
-
-// void SERCOM5_Handler()
-// {
-//   Serial1.IrqHandler();
-// }
-
-// bool g_sp9_ready = false, g_sp13_ready = false, g_sp14_ready = false;
-// byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
 byte reg_fog_x[16] = {0}, reg_fog_y[16] = {0}, reg_fog_z[16] = {0};
 byte *reg_fog;
 
@@ -60,7 +45,7 @@ byte *reg_fog;
 /*** serial data from PC***/
 byte rx_cnt = 0, cmd, fog_channel;
 int value;
-// bool cmd_complete;
+
 
 /*** output mode flag***/
 byte mux_flag;
@@ -105,11 +90,7 @@ unsigned long data_cnt = 0;
 
 unsigned int MCU_cnt = 0;
 
-// The TinyGPSPlus object
-// TinyGPSPlus gps;
 unsigned int t_previous = 0;
-
-// char cali_para_dump[MAX_TOTAL_LENGTH] = "";
 
 DumpParameter my_cali_para[PARAMETER_CNT];
 
@@ -205,7 +186,6 @@ void setup() {
   Blink_MCU_LED();
 
 	/*** var initialization***/
-	// cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
 	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
 	run_fog_flag = 0;
@@ -305,27 +285,6 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-// void getCmdValue(byte &uart_cmd, int &uart_value, byte &fog_ch, bool &uart_complete)
-// {
-//   byte *cmd;
-
-//     cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-//     if(cmd){
-//       uart_cmd = cmd[0];
-//       uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-//       fog_ch = cmd[5];
-//       uart_complete = 1;
-//       // printVal_0("uart_cmd", uart_cmd);
-//       // printVal_0("uart_value", uart_value);
-//       Serial.print("cmd, value, ch: ");
-//       Serial.print(uart_cmd);
-//       Serial.print(", ");
-//       Serial.print(uart_value);
-//       Serial.print(", ");
-//       Serial.println(fog_ch);
-//       // eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
-//     }
-// }
 
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
 {
