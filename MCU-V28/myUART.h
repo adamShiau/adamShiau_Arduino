@@ -63,6 +63,11 @@ void SERCOM5_Handler()
   }
 }
 
+void msg_out(char *msg)
+{
+  Serial.println(msg);
+  Serial1.println(msg);
+}
 
 #include "pig_v2.h"
 PIG sp13(Serial2, 16); //SP13

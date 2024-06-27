@@ -5,14 +5,16 @@
 #include "EEPROM_MANAGE.h" 
 #include "wiring_private.h"
 #include "myI2C.h" 
+#include "myUART.h"
 
 #define VALID_RESCUE_CMD   0xFF
 #define VALID_RESCUE_VAL   0xFFFFFFFF 
 #define ESCAPE_CMD  0xFE
 
-#define RESCUR_ENTER    0
-#define RESCUR_WAITCMD  1  
-#define RESCUR_ESCAPE   2 
+#define RESCUR_ENTER            0
+#define RESCUR_WAITCMD          1     
+#define RESCUR_ESCAPE           2 
+#define RESCUR_RESET_SYSCLK     3 
 
 extern int uart_value;
 extern byte uart_cmd;
@@ -21,6 +23,8 @@ uint8_t sm = RESCUR_ENTER;
 bool rescue_flag = false;
 
 // void rescue_mode(byte cmd, int val)
+
+extern void write_fog_parameter_to_eeprom(int& , unsigned int , int );
 
 void update_SM()
 {
@@ -33,7 +37,7 @@ void update_SM()
 }
 void catch_rescue_flag()
 {
-    if(uart_cmd==VALID_RESCUE_CMD & uart_value==VALID_RESCUE_VAL) {
+    if(uart_cmd==VALID_RESCUE_CMD && uart_value==VALID_RESCUE_VAL) {
         uart_cmd = ESCAPE_CMD;
         rescue_flag = true;
     }
@@ -48,11 +52,20 @@ void rescue_mode()
         switch(sm) 
         {
             case RESCUR_ENTER: {
-                Serial.println("------enter rescue_mode-------");
-                Serial1.println("------enter rescue_mode-------");
+                // Serial.println("------enter rescue_mode-------");
+                // Serial1.println("------enter rescue_mode-------");
+                msg_out("\n------enter rescue_mode-------");
                 sm = RESCUR_WAITCMD;
                 break;
-            }    
+            }  
+            case RESCUR_RESET_SYSCLK: {
+                msg_out("\nenter RESCUR_RESET_SYSCLK:");
+                msg_out("reset sys clock to internal");
+                write_fog_parameter_to_eeprom(EEPROM_SYSCLK, EEPROM_ADDR_CLOCK, INTERNAL_CLK);
+                msg_out("power cycling to reset the sys clock.");
+                sm = RESCUR_WAITCMD;
+                break;
+            }
             case RESCUR_WAITCMD: {
                 // Serial.println(sm);
                 // Serial.println(uart_value);
@@ -61,8 +74,9 @@ void rescue_mode()
                 break;
             }
             case RESCUR_ESCAPE: {
-                Serial.println("------escape rescue_mode-------");
-                Serial1.println("------escape rescue_mode-------");
+                // Serial.println("------escape rescue_mode-------");
+                // Serial1.println("------escape rescue_mode-------");
+                msg_out("\n------escape rescue_mode-------");
                 rescue_flag = false;
                 break;
             }
