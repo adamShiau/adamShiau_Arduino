@@ -28,8 +28,8 @@
 #define RESCUR_ESCAPE           2 
 #define RESCUR_RESET_SYSCLK     3 
 
-extern int uart_value;
-extern byte uart_cmd;
+extern int uart_value;  // define in myUART.h
+extern byte uart_cmd;   // define in myUART.h
 
 uint8_t sm = RESCUR_ENTER;
 bool rescue_flag = false;
@@ -49,6 +49,8 @@ void update_SM()
 }
 void catch_rescue_flag()
 {
+    Serial.println(uart_cmd, HEX);
+    Serial.println(uart_value, HEX);
     if(uart_cmd==VALID_RESCUE_CMD && uart_value==VALID_RESCUE_VAL) {
         uart_cmd = ESCAPE_CMD;
         rescue_flag = true;
@@ -92,8 +94,12 @@ void rescue_mode()
                 rescue_flag = false;
                 break;
             }
-
-            default: break;
+            default: {
+                // Serial.println("SM default"); 
+                // delay(500);
+                sm = RESCUR_WAITCMD;
+                break;
+            }
         }
     }
 }

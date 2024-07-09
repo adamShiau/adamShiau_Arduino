@@ -160,9 +160,8 @@ void setup() {
   Wait_FPGA_Wakeup(FPGA_wakeup_flag, 2);
   Blink_MCU_LED();
 
-  parameter_init();
-  // rescue_mode(uart_cmd, uart_value);
   rescue_mode();
+  parameter_init();
   Blink_MCU_LED();
 	
   IMU.init(); //setting MEMS IMU parameters 
@@ -205,7 +204,6 @@ void setup() {
   }
   PRINT_MUX_FLAG(mux_flag);
   printVersion();
-  // print_clock_configuration();
   t_start = millis();
 }
 
@@ -2231,11 +2229,11 @@ void update_datarate(byte eeprom_var)
 
 void set_output_configuration_init()
 {
-  Serial.println("Setting output configuration!");
+  msg_out("\nSetting output configuration!");
   update_baudrate(EEPROM_BAUDRATE);
   update_datarate(EEPROM_DATARATE);
   set_system_clk(EEPROM_SYSCLK);
-  Serial.println("Setting output configuration done");
+  msg_out("Setting output configuration done");
 }
 
 
@@ -2391,8 +2389,9 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
       // Serial.println(fog_woke_flag);
       flag = (SER->readStringUntil('\n'))[0];
       if(fog_woke_flag) flag = 1; //manual wake up
-      Serial.print("FPGA Sleeping: ");
-      Serial1.print("FPGA Sleeping: ");
+      // Serial.print("FPGA Sleeping: ");
+      // Serial1.print("FPGA Sleeping: ");
+      msg_out("FPGA Sleeping: ");
       Serial.println(times);
       Serial1.println(times);
       t0 = millis();

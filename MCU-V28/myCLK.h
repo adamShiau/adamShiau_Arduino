@@ -5,6 +5,8 @@
 #define EXTERNAL_CLK     1
 #define EXTERNAL_CRYSTAL 2
 
+extern void msg_out(char *msg);
+
 void XOSC32K_CLK_SET()
 {
   /* Set the correct number of wait states for 48 MHz @ 3.3v */
@@ -197,21 +199,29 @@ void set_system_clk(uint8_t sel)
 {
     if(sel == 0){
         clock_status = 0;
-        Serial.println("Set internal clock");
-        Serial1.println("Set internal clock");
+        // Serial.println("Set internal clock");
+        // Serial1.println("Set internal clock");
+        msg_out("Set internal clock");
     }
     else if(sel == 1){
         clock_status = 1;
+        msg_out("Set external clock");
         XOSC32K_CLK_SET();
-        Serial.println("Set external clock");
-        Serial1.println("Set external clock");
+        // Serial.println("Set external clock");
+        // Serial1.println("Set external clock");
     }
     else if(sel == 2){
         clock_status = 2;
+        msg_out("Set external crystal");
         XOSC32K_SET();
-        Serial.println("Set external crystal");
-        Serial1.println("Set external crystal");
+        // Serial.println("Set external crystal");
+        // Serial1.println("Set external crystal");
     } 
+    else{
+        Serial.print("value:");
+        Serial.println(sel);
+        msg_out("System clock setting value invalid");
+    }
 }
 
 void print_clock_configuration()

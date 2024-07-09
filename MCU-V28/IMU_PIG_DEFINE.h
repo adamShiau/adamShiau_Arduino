@@ -111,6 +111,7 @@
 #define CMD_DUMP_CALI_PARAMETERS	129 //81
 #define CMD_CONFI_CLK       130 //82
 // rescue mode
+#define CMD_ESCAPE_RESCUE   255 //FE
 #define CMD_RESCUE          255 //FF
 
 
