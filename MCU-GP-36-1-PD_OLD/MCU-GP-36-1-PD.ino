@@ -12,7 +12,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 ***/
 // interrupt for EXT_SYNC to FPGA
 #define PIG_SYNC 29 //PA22
-#define EXTT 26
+#define EXTT 5 //PA05
 // RST to FPGA nConfig
 #define nCONFIG 12
 //MCU LED
@@ -79,6 +79,8 @@ unsigned int CtrlReg=-1;
 const unsigned char KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 const unsigned char PIG_HEADER[2] = {0xAB, 0xBA};
 
+unsigned int t_start;
+
 typedef void (*fn_ptr) (byte &, unsigned int, byte);
 fn_ptr output_fn;
 
@@ -94,10 +96,8 @@ volatile bool ISR_PEDGE;
 
 int t_adc = millis();
 
-/*** * Watch dog  * **/
-// static void   WDTsync() {
-//   while (WDT->STATUS.bit.SYNCBUSY == 1); //Just wait till WDT is free
-// }
+// auto rst fn flag
+byte rst_fn_flag = MODE_RST;
 
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
@@ -108,11 +108,6 @@ unsigned int MCU_cnt = 0;
 // The TinyGPSPlus object
 // TinyGPSPlus gps;
 unsigned int t_previous = 0;
-unsigned long t_previous_us = 0;
-unsigned int t_start;
-
-// auto rst fn flag
-byte rst_fn_flag = MODE_RST;
 
 // char cali_para_dump[MAX_TOTAL_LENGTH] = "";
 
@@ -126,6 +121,9 @@ void my_parameter_f(const char *parameter_name, float input_value, DumpParameter
 }
 
 void setup() {
+
+  XOSC32K_CLK_SET();
+
   pwm_init();
   myWDT_init(); //disable all WDT
   
@@ -161,7 +159,7 @@ void setup() {
  * ***/
 // set interrupt mode to None
   /***----- for PIG MCU & IMU_V4 EXINT[15]----- ***/
-  EIC->CONFIG[1].bit.SENSE7 = 0;  // set ISR no NONE
+  EIC->CONFIG[0].bit.SENSE5 = 0;  // set ISR no NONE
 
 
 
@@ -210,43 +208,50 @@ void setup() {
 	// cmd_complete = 0;
 	mux_flag = MUX_ESCAPE; 		//default set mux_flag to 2
 	select_fn = SEL_DEFAULT; 	//default set select_fn to 128
+	// select_fn = SEL_IMU;
 	run_fog_flag = 0;
 	output_fn = temp_idle;
 
 
   /***read eeprom current status*/
   eeprom.Read(EEPROM_ADDR_FOG_STATUS, &fog_op_status);
+
+  /***write EEPROM DVT test value*/
+  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_1, 0xABAAABAA);
+  // eeprom.Parameter_Write(EEPROM_ADDR_DVT_TEST_2, 0xFFFF0000);
+
   Serial.print("fog_op_status: ");
   Serial.println(fog_op_status);
 
- if(fog_op_status==1) // disconnected last time, send cmd again
-  {
-    Serial.println("\n-------AUTO RST---------");
-    Serial1.println("\n-------AUTO RST---------");
+  if(fog_op_status==1) // disconnected last time, send cmd again
+    {
+      Serial.println("\n-------AUTO RST---------");
 
-    eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
-    rst_fn_flag = my_f.int_val; 
-    // rst_fn_flag = 10; //test output fn output of range 
-    verify_output_fn(rst_fn_flag);// check if output function is valid
-    PRINT_OUTPUT_MODE(rst_fn_flag);
-    
-    eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
-    uart_value = my_f.int_val;
-    // value = 10; //test fn reg output of range 
-    verify_output_fn_reg_value(uart_value);
-    PRINT_OUTPUT_REG(uart_value);
+      eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
+      rst_fn_flag = my_f.int_val; 
+      // rst_fn_flag = 10; //test output fn output of range 
+      verify_output_fn(rst_fn_flag);// check if output function is valid
+      PRINT_OUTPUT_MODE(rst_fn_flag);
+      
+      eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
+      uart_value = my_f.int_val;
+      // value = 10; //test fn reg output of range 
+      verify_output_fn_reg_value(uart_value);
+      PRINT_OUTPUT_REG(uart_value);
 
-    eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
-    select_fn = my_f.int_val;
-    // select_fn = 10; //test select_fn output of range 
-    verify_select_fn(select_fn);
-    PRINT_SELECT_FN(select_fn);
+      eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+      select_fn = my_f.int_val;
+      // select_fn = 10; //test select_fn output of range 
+      verify_select_fn(select_fn);
+      PRINT_SELECT_FN(select_fn);
 
-    fog_channel = 2;
-  }
-  PRINT_MUX_FLAG(mux_flag);
-  printVersion();
-  t_start = millis();
+      fog_ch = 2;
+    }
+    PRINT_MUX_FLAG(mux_flag);
+    printVersion();
+    t_start = millis();
+
+
 }
 
 void loop() {
@@ -1002,11 +1007,26 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
       }
       default: break;
     }
-
-      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+      
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
+      eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
+
+      // eeprom.Parameter_Read(EEPROM_ADDR_OUTPUT_FN, my_f.bin_val);// read output function index from eeprom
+      // rst_fn_flag = my_f.int_val; 
+      // PRINT_OUTPUT_MODE(rst_fn_flag);
+      
+      // eeprom.Parameter_Read(EEPROM_ADDR_REG_VALUE, my_f.bin_val);//read reg value of output function
+      // uart_value = my_f.int_val;
+      // Serial.println(uart_value);
+      // PRINT_OUTPUT_REG(uart_value);
+
+      // eeprom.Parameter_Read(EEPROM_ADDR_SELECT_FN, my_f.bin_val);
+      // select_fn = my_f.int_val;
+      // PRINT_SELECT_FN(select_fn);
+      
 	}
+
   if(fog_op_status==1) // for auto reset
   {
     fog_op_status=0;
@@ -1014,6 +1034,7 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 		switch(rst_fn_flag) {
 			case MODE_RST: {
 				output_fn = fn_rst;
+        Serial.println("MODE_RST");
 				break;
 			}
 			case MODE_FOG: {
@@ -1023,46 +1044,53 @@ void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn)
 			}
 			case MODE_IMU: {
 				output_fn = acq_imu; 
+        Serial.println("MODE_IMU");
 				break;
 			}
 			case MODE_FOG_HP_TEST: {
 				output_fn = acq_HP_test; 
+        Serial.println("MODE_FOG_HP_TEST");
 				break;
 			}
 			case MODE_NMEA: {
 				output_fn = acq_nmea;
+        Serial.println("select MODE_NMEA");
 				break;
             }
       case MODE_FOG_PARAMETER: {
           output_fn = acq_fog_parameter;
+          Serial.println("MODE_FOG_PARAMETER");
           break;
       }
       case MODE_AFI: {
-          output_fn = acq_afi;
-          break;
+        output_fn = acq_afi;
+        Serial.println("MODE_AFI");
+        break;
       }
-      
       default: break;
       }
       eeprom.Parameter_Write(EEPROM_ADDR_SELECT_FN, select_fn);
       eeprom.Parameter_Write(EEPROM_ADDR_OUTPUT_FN, rst_fn_flag);
       eeprom.Parameter_Write(EEPROM_ADDR_REG_VALUE, uart_value);
 	}
-  
 }
 
-void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
-	clear_SEL_EN(select_fn);
-  if((millis() - t_start)>=5000) 
-  {
-    t_start = millis();
-    Serial.println("IDLE");
-    Serial1.println("IDLE");
+  if(select_fn==SEL_DEFAULT) {
+    if((millis() - t_start)>=5000) 
+    {
+      t_start = millis();
+      Serial.println("IDLE");
+      Serial1.println("IDLE");
+      // disable_EXT_WDT(EXT_WDT_EN);
+      // disableWDT();
+    }
   }
+	clear_SEL_EN(select_fn);
 }
 
-void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
+static void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 {
   Serial.println("Enter fn_rst!");
 	if(select_fn&SEL_RST) {
@@ -1073,16 +1101,15 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 			}
 			default: break;
 		}
-  Serial.println("Set fog_op_status to 0");
-  eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-  Serial.println("Set fn_rst to temp_idle");
-  output_fn = temp_idle; 
+    Serial.println("Set fog_op_status to 0");
+    eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
+    Serial.println("Set fn_rst to temp_idle");
+		output_fn = temp_idle; 
 	}
 	clear_SEL_EN(select_fn);
 }
 
-
-void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
+static void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
 	uint8_t CRC32[4];
@@ -1103,7 +1130,7 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
@@ -1113,14 +1140,14 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
 
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
 
       case STOP_SYNC:
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
       break;
@@ -1194,7 +1221,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
@@ -1205,7 +1232,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         // Serial.println("Set EXTT to RISING");
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
@@ -1214,7 +1241,7 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
       case STOP_SYNC:
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
@@ -1293,7 +1320,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     switch(CtrlReg){
       case INT_SYNC:
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         
@@ -1303,14 +1330,14 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to CHANGE");
 
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
 
       break;
       case STOP_SYNC:
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
       break;
@@ -1378,7 +1405,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
   my_acc_t my_ADXL357, ADXL357_cali;
 	uint8_t CRC32[4];
   my_float_t pd_temp_x, pd_temp_y, pd_temp_z;
-  // my_float_t tt;
 	
 	if(select_fn&SEL_AFI)
 	{
@@ -1396,7 +1422,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
@@ -1407,7 +1433,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
@@ -1416,7 +1442,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
 
       case STOP_SYNC:
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
@@ -1425,8 +1451,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       default:
       break;
     }
-    // t_previous = millis();
-    t_previous_us = micros();
+    t_previous = millis();
 	}
 
 
@@ -1441,6 +1466,15 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(fog_y) memcpy(reg_fog_y, fog_y, sizeof(reg_fog_y));
       if(fog_z) memcpy(reg_fog_z, fog_z, sizeof(reg_fog_z));
     
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z);
+      // pd_temp_x.float_val = convert_PDtemp(reg_fog_x[12], reg_fog_x[13]);
+      // pd_temp_y.float_val = convert_PDtemp(reg_fog_y[12], reg_fog_y[13]);
+      // pd_temp_z.float_val = convert_PDtemp(reg_fog_z[12], reg_fog_z[13]);
+      // pd_temp_x.float_val = 31.2;
+      // pd_temp_y.float_val = 31.3;
+      // pd_temp_z.float_val = 31.4;
       if(ISR_PEDGE)
       {
         adxl357_i2c.readData_f(my_ADXL357.float_val);
@@ -1448,8 +1482,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
         data_cnt++;
-        // mcu_time.ulong_val = millis() - t_previous;
-        mcu_time.ulong_val = micros() - t_previous_us;
+        mcu_time.ulong_val = millis() - t_previous;
         
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
@@ -1464,10 +1497,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+40, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 44, CRC32);
         free(imu_data);
-        // tt.bin_val[0] = reg_fog_x[11];
-        // tt.bin_val[1] = reg_fog_x[10];
-        // tt.bin_val[2] = reg_fog_x[9];
-        // tt.bin_val[3] = reg_fog_x[8];
 
         #ifdef UART_RS422_CMD
         if(data_cnt >= DELAY_CNT)
@@ -1483,7 +1512,6 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_z+12, 4);
           Serial1.write(mcu_time.bin_val, 4);
           Serial1.write(CRC32, 4);
-          // Serial.println(tt.float_val);
         #endif
         }
         resetWDT();
@@ -1515,7 +1543,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
       case INT_SYNC:
         data_cnt = 0;
         Serial.println("Enter INT_SYNC mode");
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
@@ -1524,7 +1552,7 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to RISING");
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
@@ -1533,13 +1561,13 @@ void acq_nmea(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC NMEA_MODE mode");
         Serial.println("Set EXTT to RISING");
         data_cnt = 0;
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
       break;
 
       case STOP_SYNC:
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         data_cnt = 0;
         disableWDT();
@@ -1595,7 +1623,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
     switch(CtrlReg){
       case INT_SYNC:
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         
@@ -1605,7 +1633,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Set EXTT to RISING");
         Serial.println("Write SYNC to LOW\n");
 
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
@@ -1613,7 +1641,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
 
       break;
       case STOP_SYNC:
-        EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
+        EIC->CONFIG[0].bit.SENSE5 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         MCU_cnt = 0;
         disableWDT();
@@ -1623,7 +1651,7 @@ void acq_HP_test(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter HP_TEST mode");
         Serial.println("Set EXTT to CHANGE");
         
-        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        EIC->CONFIG[0].bit.SENSE5 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
 
@@ -1748,7 +1776,7 @@ void ISR_EXTT()
   ISR_Coming = !ISR_Coming;
   if(ISR_Coming == true) ISR_PEDGE = true;
 
-  // EIC->CONFIG[1].bit.SENSE7 = 0; ////set interrupt condition to NONE
+  // EIC->CONFIG[0].bit.SENSE5 = 0; ////set interrupt condition to NONE
   }
 
 
@@ -2445,18 +2473,15 @@ void manual_Wait_FPGA_Wakeup_escape(byte fog_ch)
 
 void acc_cali(float acc_cli[3], float acc[3])
 {
-  acc_cli[0] = misalignment_cali_coe._f.a11 * acc[0] + 
-               misalignment_cali_coe._f.a12 * acc[1] + 
-               misalignment_cali_coe._f.a13 * acc[2] + 
-               misalignment_cali_coe._f.ax;
-  acc_cli[1] = misalignment_cali_coe._f.a21 * acc[0] + 
-               misalignment_cali_coe._f.a22 * acc[1] + 
-               misalignment_cali_coe._f.a23 * acc[2] + 
-               misalignment_cali_coe._f.ay;
-  acc_cli[2] = misalignment_cali_coe._f.a31 * acc[0] + 
-               misalignment_cali_coe._f.a32 * acc[1] + 
-               misalignment_cali_coe._f.a33 * acc[2] + 
-               misalignment_cali_coe._f.az;
+  acc_cli[0] = misalignment_cali_coe._f.a11*(misalignment_cali_coe._f.ax + acc[0]) + 
+               misalignment_cali_coe._f.a12*(misalignment_cali_coe._f.ay + acc[1]) + 
+               misalignment_cali_coe._f.a13*(misalignment_cali_coe._f.az + acc[2]);
+  acc_cli[1] = misalignment_cali_coe._f.a21*(misalignment_cali_coe._f.ax + acc[0]) + 
+               misalignment_cali_coe._f.a22*(misalignment_cali_coe._f.ay + acc[1]) + 
+               misalignment_cali_coe._f.a23*(misalignment_cali_coe._f.az + acc[2]);
+  acc_cli[2] = misalignment_cali_coe._f.a31*(misalignment_cali_coe._f.ax + acc[0]) + 
+               misalignment_cali_coe._f.a32*(misalignment_cali_coe._f.ay + acc[1]) + 
+               misalignment_cali_coe._f.a33*(misalignment_cali_coe._f.az + acc[2]);
 } 
 
 void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
@@ -2479,18 +2504,15 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   z_f.bin_val[2] = gyro_cliz[9];
   z_f.bin_val[3] = gyro_cliz[8];
 
-  x_cli.float_val = misalignment_cali_coe._f.g11 * x_f.float_val + 
-                    misalignment_cali_coe._f.g12 * y_f.float_val + 
-                    misalignment_cali_coe._f.g13 * z_f.float_val + 
-                    misalignment_cali_coe._f.gx;
-  y_cli.float_val = misalignment_cali_coe._f.g21 * x_f.float_val + 
-                    misalignment_cali_coe._f.g22 * y_f.float_val + 
-                    misalignment_cali_coe._f.g23 * z_f.float_val + 
-                    misalignment_cali_coe._f.gy;
-  z_cli.float_val = misalignment_cali_coe._f.g31 * x_f.float_val + 
-                    misalignment_cali_coe._f.g32 * y_f.float_val + 
-                    misalignment_cali_coe._f.g33 * z_f.float_val + 
-                    misalignment_cali_coe._f.gz;
+  x_cli.float_val = misalignment_cali_coe._f.g11*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g12*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g13*(misalignment_cali_coe._f.gz + z_f.float_val);
+  y_cli.float_val = misalignment_cali_coe._f.g21*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g22*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g23*(misalignment_cali_coe._f.gz + z_f.float_val);
+  z_cli.float_val = misalignment_cali_coe._f.g31*(misalignment_cali_coe._f.gx + x_f.float_val) + 
+                misalignment_cali_coe._f.g32*(misalignment_cali_coe._f.gy + y_f.float_val) + 
+                misalignment_cali_coe._f.g33*(misalignment_cali_coe._f.gz + z_f.float_val);
 
   gyro_clix[11] = x_cli.bin_val[0];
   gyro_clix[10] = x_cli.bin_val[1];
@@ -2512,35 +2534,118 @@ void gyro_cali(byte gyro_clix[14], byte gyro_cliy[14], byte gyro_cliz[14])
   {
     Serial.print("Version:");
     Serial.println(MCU_VERSION);
-
     Serial1.print("Version:");
     Serial1.println(MCU_VERSION);
   }
+
+  void XOSC32K_CLK_SET()
+{
+  /* Set the correct number of wait states for 48 MHz @ 3.3v */
+NVMCTRL->CTRLB.bit.RWS = 1;
+SYSCTRL->XOSC32K.reg =
+  /* Crystal oscillators can take a long time to startup. This
+      waits the maximum amount of time (4 seconds). This can be
+      reduced depending on your crystal oscillator. */
+  SYSCTRL_XOSC32K_STARTUP(0x5) |
+  SYSCTRL_XOSC32K_EN32K;
+
+/* This has to be a separate write as per datasheet section 17.6.3 */
+SYSCTRL->XOSC32K.bit.ENABLE = 1;
+
+/* Wait for the external crystal to be ready */
+while(!SYSCTRL->PCLKSR.bit.XOSC32KRDY);
+/* Configure GCLK1's divider - in this case, no division - so just divide by one */
+GCLK->GENDIV.reg =
+    GCLK_GENDIV_ID(1) |
+    GCLK_GENDIV_DIV(1);
+
+/* Setup GCLK1 using the external 32.768 kHz oscillator */
+GCLK->GENCTRL.reg =
+GCLK_GENCTRL_ID(1) |
+GCLK_GENCTRL_SRC_XOSC32K |
+/* Improve the duty cycle. */
+GCLK_GENCTRL_IDC |
+GCLK_GENCTRL_GENEN;
+
+/* Wait for the write to complete */
+while(GCLK->STATUS.bit.SYNCBUSY);
+
+GCLK->CLKCTRL.reg =
+    GCLK_CLKCTRL_ID_DFLL48 |
+    GCLK_CLKCTRL_GEN_GCLK1 |
+    GCLK_CLKCTRL_CLKEN;
+
+/* This works around a quirk in the hardware (errata 1.2.1) -
+   the DFLLCTRL register must be manually reset to this value before
+   configuration. */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_ENABLE;
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+/* Set up the multiplier. This tells the DFLL to multiply the 32.768 kHz
+   reference clock to 48 MHz */
+SYSCTRL->DFLLMUL.reg =
+    /* This value is output frequency / reference clock frequency,
+       so 48 MHz / 32.768 kHz = 1465*/
+    // SYSCTRL_DFLLMUL_MUL(48000) |
+    SYSCTRL_DFLLMUL_MUL(1465) |
+    /* The coarse and fine step are used by the DFLL to lock
+       on to the target frequency. These are set to half
+       of the maximum value. Lower values mean less overshoot,
+       whereas higher values typically result in some overshoot but
+       faster locking. */
+    SYSCTRL_DFLLMUL_FSTEP(511) | // max value: 1023
+    SYSCTRL_DFLLMUL_CSTEP(31);  // max value: 63
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+uint32_t coarse = (*((uint32_t *)FUSES_DFLL48M_COARSE_CAL_ADDR) & FUSES_DFLL48M_COARSE_CAL_Msk) >> FUSES_DFLL48M_COARSE_CAL_Pos;
+
+SYSCTRL->DFLLVAL.bit.COARSE = coarse;
+
+/* Wait for the write to finish */
+while(!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+SYSCTRL->DFLLCTRL.reg |=
+    /* Closed loop mode */
+    SYSCTRL_DFLLCTRL_MODE |
+    /* Wait for the frequency to be locked before outputting the clock */
+    SYSCTRL_DFLLCTRL_WAITLOCK |
+    /* Enable it */
+    SYSCTRL_DFLLCTRL_ENABLE;
+
+/* Wait for the frequency to lock */
+while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {}
+
+/* Setup GCLK0 using the DFLL @ 48 MHz */
+GCLK->GENCTRL.reg =
+    GCLK_GENCTRL_ID(0) |
+    GCLK_GENCTRL_SRC_DFLL48M |
+    /* Improve the duty cycle. */
+    GCLK_GENCTRL_IDC |
+    GCLK_GENCTRL_GENEN;
+
+/* Wait for the write to complete */
+while(GCLK->STATUS.bit.SYNCBUSY);
+}
 
 void verify_output_fn(byte in)
 {
   Serial.println("\nverifying output fn........" );
   Serial.print("Input function index: ");
   Serial.println(in);
-
-  Serial1.println("\nverifying output fn........" );
-  Serial1.println("Input function index: ");
-  Serial1.println(in);
   if(!( in==MODE_RST |in==MODE_FOG | in==MODE_IMU | in==MODE_FOG_HP_TEST |
-    in==MODE_AFI | in==MODE_NMEA | in==MODE_FOG_PARAMETER ))
+    in==MODE_NMEA | in==MODE_FOG_PARAMETER | in==MODE_AFI))
   {
     Serial.println("verify output fn: fail");
     Serial.println("output of function range, go to reset!");
-
-    Serial1.println("verify output fn: fail");
-    Serial1.println("output of function range, go to reset!");
     select_fn = SEL_RST;
     rst_fn_flag = MODE_RST; 
     value = STOP_SYNC;
   } 
   else {
     Serial.println("verify output fn: pass");
-    Serial1.println("verify output fn: pass");
   }
 }
 
@@ -2548,27 +2653,18 @@ void verify_output_fn_reg_value(int in)
 {
   Serial.println("\nverifying output fn reg value........" );
   Serial.print("Input reg value: ");
-
-  Serial1.println("\nverifying output fn reg value........" );
-  Serial1.print("Input reg value: ");
-
   Serial.println(in);
   if(!( in==INT_SYNC |in==EXT_SYNC | in==STOP_SYNC | in==NMEA_MODE |
     in==HP_TEST ))
     {
       Serial.println("verify output fn reg value: fail");
       Serial.println("output of reg value range, go to reset!");
-
-      Serial1.println("verify output fn reg value: fail");
-      Serial1.println("output of reg value range, go to reset!");
-
       select_fn = SEL_RST;
       rst_fn_flag = MODE_RST; 
       value = STOP_SYNC;
     } 
   else {
     Serial.println("verify output fn: pass");
-    Serial1.println("verify output fn: pass");
   }
 }
 
@@ -2577,24 +2673,16 @@ void verify_select_fn(int in)
   Serial.println("\nverifying select fn........" );
   Serial.print("Input select_fn: ");
   Serial.println(in);
-
-  Serial1.println("\nverifying select fn........" );
-  Serial1.print("Input select_fn: ");
-  Serial1.println(in);
-  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 | in==SEL_AFI |
-    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST))
+  if(!( in==SEL_DEFAULT |in==SEL_RST | in==SEL_FOG_1 | in==SEL_FOG_2 |
+    in==SEL_FOG_3 |in==SEL_IMU |in==SEL_NMEA |in==SEL_FOG_PARA |in==SEL_HP_TEST |in==SEL_AFI)) 
     {
       Serial.println("verify select_fn: fail");
       Serial.println("output of select_fn range, go to reset!");
-
-      Serial1.println("verify select_fn: fail");
-      Serial1.println("output of select_fn range, go to reset!");
       select_fn = SEL_RST;
       rst_fn_flag = MODE_RST; 
       value = STOP_SYNC;
     } 
   else {
     Serial.println("verify select_fn: pass");
-    Serial1.println("verify select_fn: pass");
   }
 }

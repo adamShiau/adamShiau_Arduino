@@ -2,8 +2,10 @@
 #define MYWDT_H
 
 //EXT WDT
-#define WDI 5
-#define EXT_WDT_EN 4
+// #define WDI 5        //PA05
+// #define EXT_WDT_EN 4 //PA07
+#define WDI 26        //PA27
+#define EXT_WDT_EN 28 //PA28
 
 
 namespace MYWDT {
