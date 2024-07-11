@@ -47,7 +47,8 @@ unsigned char fog_op_status;
 
 
 /*** serial data from PC***/
-byte rx_cnt = 0, cmd, fog_channel;
+byte rx_cnt = 0, cmd;
+extern byte fog_ch;
 int value;
 
 /*** output mode flag***/
@@ -200,7 +201,7 @@ void setup() {
     verify_select_fn(select_fn);
     PRINT_SELECT_FN(select_fn);
 
-    fog_channel = 2;
+    fog_ch = 2;
   }
   PRINT_MUX_FLAG(mux_flag);
   printVersion();
@@ -211,9 +212,9 @@ void loop() {
 
 	// getCmdValue(cmd, value, fog_channel, cmd_complete);
 	cmd_mux(cmd_complete, uart_cmd, mux_flag);
-	parameter_setting(mux_flag, uart_cmd, uart_value, fog_channel);
+	parameter_setting(mux_flag, uart_cmd, uart_value, fog_ch);
 	output_mode_setting(mux_flag, uart_cmd, select_fn);
-	output_fn(select_fn, uart_value, fog_channel);
+	output_fn(select_fn, uart_value, fog_ch);
 
   // readADC();
 }
