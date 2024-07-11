@@ -1678,7 +1678,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-      LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
+      if(data_cnt >= DELAY_CNT)
+      {
+        LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
+      }
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
 
@@ -1811,7 +1814,10 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
       my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-      LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
+      if(data_cnt >= DELAY_CNT)
+      {
+        LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
+      }
 
       // sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", my_att.float_val[2], my_att.float_val[1], my_att.float_val[0]);
       sprintf(nmeaSentence, "SEN,%06.2f,%+06.2f,%+07.2f", 360 - my_att.float_val[2], my_att.float_val[0], my_att.float_val[1]);

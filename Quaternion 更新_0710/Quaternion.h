@@ -49,6 +49,9 @@ namespace MyQuaternion {
 
         // generate 4 params of Quternion and transport
         std::vector<float> getQ() const;
+        
+        // force Euler angle between +- 180
+        void normalizeAngle(float (&ori)[3]);
     };
 }
 

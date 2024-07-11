@@ -16,7 +16,9 @@ namespace MyQuaternion{
     }
 
     Quaternion::Quaternion(const float &pitch, const float &roll, const float &yaw){
-        genQbyOri(pitch, roll, yaw);
+        float ori[3] = {pitch, roll, yaw};
+        // normalizeAngle(ori);
+        genQbyOri(ori[0], ori[1], ori[2]);
     }
 
     Quaternion::Quaternion(const Vector4f &q) : q(q){}
@@ -43,10 +45,23 @@ namespace MyQuaternion{
     }
 
     void Quaternion::genQbyR(const Matrix3f &R_b2l){
-        float q4 = 0.5 * sqrt(1 + R_b2l(0, 0) + R_b2l(1, 1) + R_b2l(2, 2));
+        float trace = R_b2l(0, 0) + R_b2l(1, 1) + R_b2l(2, 2);
+        float q4;
+        if (trace > 0){
+            q4 = 0.5 * sqrt(1 + trace);
+        }
+        else{
+            float t1 = (R_b2l(2, 1) - R_b2l(1, 2)) * (R_b2l(2, 1) - R_b2l(1, 2));
+            float t2 = (R_b2l(0, 2) - R_b2l(2, 0)) * (R_b2l(0, 2) - R_b2l(2, 0));
+            float t3 = (R_b2l(1, 0) - R_b2l(0, 1)) * (R_b2l(1, 0) - R_b2l(0, 1));
+            q4 = 0.5 * sqrt( t1 + t2 + t3) / sqrt(3 - trace);
+        }
+            
+
         if (q4 < -1 || q4 > 1) {
             q4 = std::min(std::max(q4, -1.0f), 1.0f);
         }
+
         float q1 = 0.25 * (R_b2l(2, 1) - R_b2l(1, 2)) / q4;
         float q2 = 0.25 * (R_b2l(0, 2) - R_b2l(2, 0)) / q4;
         float q3 = 0.25 * (R_b2l(1, 0) - R_b2l(0, 1)) / q4;
@@ -54,12 +69,6 @@ namespace MyQuaternion{
     }
 
     void Quaternion::genQbyOri(const float &pitch, const float &roll, const float &yaw){
-        // float q4 = cos(pitch/2) * cos(roll/2) * cos(yaw/2) + sin(pitch/2) * sin(roll/2) * sin(yaw/2);
-        // float q1 = sin(pitch/2) * cos(roll/2) * cos(yaw/2) - cos(pitch/2) * sin(roll/2) * sin(yaw/2);
-        // float q2 = cos(pitch/2) * sin(roll/2) * cos(yaw/2) + sin(pitch/2) * cos(roll/2) * sin(yaw/2);
-        // float q3 = cos(pitch/2) * cos(roll/2) * sin(yaw/2) - sin(pitch/2) * sin(roll/2) * cos(yaw/2);
-        // q << q1, q2, q3, q4;
-
         Matrix3f ro_x;
         ro_x << 1, 0, 0,
             0, cos(-pitch), sin(-pitch),
@@ -127,19 +136,6 @@ namespace MyQuaternion{
         float yaw = -atan2(R_b2l(0, 1), R_b2l(1, 1));
         float roll = -atan2(R_b2l(2, 0), R_b2l(2, 2));
 
-        // float q1 = q(0);
-        // float q2 = q(1);
-        // float q3 = q(2);
-        // float q4 = q(3);
-
-        // double pitch = std::atan2(2 * (q4 * q1), 1 - 2 * (q1 * q1 + q2 * q2));
-        
-        // float temp = 2 * (q4 * q2 - q1 * q3);
-        // temp = std::min(std::max(temp, -1.0f), 1.0f); // Clip to [-1, 1]
-        // double roll = -M_PI/2 + 2 * std::atan2(std::sqrt(1 + temp), std::sqrt(1 - temp));
-        
-        // double yaw = std::atan2(2 * (q4 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3));
-
         ori[0] = pitch;
         ori[1] = roll;
         ori[2] = yaw;
@@ -151,6 +147,19 @@ namespace MyQuaternion{
             qq[i] = q(i);
         }
         return qq;
+    }
+
+    void Quaternion::normalizeAngle(float (&ori)[3]){
+        for (int i=0;i<3;i++){
+            ori[i] = fmod(ori[i] + M_PI, 2 * M_PI) - M_PI;
+
+            if (ori[i] > M_PI) {
+                ori[i] -= 2 * M_PI;
+            }
+            else if (ori[i] <= -M_PI) {
+                ori[i] += 2 * M_PI;
+            }
+        }
     }
 }
 

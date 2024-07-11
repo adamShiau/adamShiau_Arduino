@@ -26,7 +26,6 @@ namespace KalmanFilter{
             void genQ(const float dt);
             Vector2f AccLeveling(const float &fx, const float &fy, const float &fz);
             void makeZList();
-            float normalizeAngle(float *angle, int size);
             void normalizeAcc(const float (&ori_acc)[3], float (&new_acc)[3]) const;
         public:
             KalmanFilter();

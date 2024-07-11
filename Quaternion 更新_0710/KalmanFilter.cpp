@@ -17,7 +17,6 @@ void KalmanFilter::KalmanFilter::genZ(const float (&acc)[3]){
     float ori[3];
     qut.getOri(ori);
     float d_pr[] = {ori[0] - new_pr(0), ori[1] - new_pr(1)};
-    // normalizeAngle(d_pr, 2);
     Z << d_pr[0], d_pr[1];
     
     makeZList();
@@ -32,7 +31,6 @@ void KalmanFilter::KalmanFilter::genZ(const float (&acc)[3]){
             work = false;
         }
     }
-    
 }
 
 void KalmanFilter::KalmanFilter::compensate(){
@@ -41,7 +39,6 @@ void KalmanFilter::KalmanFilter::compensate(){
         float ori[3];
         qut.getOri(ori);
         float new_ori[] = {ori[0] - dx[0], ori[1] - dx[1]};
-        normalizeAngle(new_ori, 2);
         qut = MyQuaternion::Quaternion(new_ori[0], new_ori[1], ori[2]);
     }
 }
@@ -98,20 +95,6 @@ Vector2f KalmanFilter::KalmanFilter::AccLeveling(const float &fx, const float &f
     float roll = atan2(-fx, fz);
     Vector2f pr(pitch, roll);
     return pr;
-}
-
-float KalmanFilter::KalmanFilter::normalizeAngle(float *angle, int size){
-    for (int i=0;i<size;i++){
-        angle[i] = fmod(angle[i] + M_PI, 2 * M_PI) - M_PI;
-
-        if (angle[i] > M_PI) {
-            angle[i] -= 2 * M_PI;
-        }
-
-        if (angle[i] <= -M_PI) {
-            angle[i] += 2 * M_PI;
-        }
-    }
 }
 
 
