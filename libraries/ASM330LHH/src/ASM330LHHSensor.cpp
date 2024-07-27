@@ -1217,13 +1217,6 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_G_Axes_rps_f(float AngularRate[3])
   AngularRate[1] = (float)data_raw.i16bit[1] * sensitivity * DEG_TO_RAD;
   AngularRate[2] = (float)data_raw.i16bit[2] * sensitivity * DEG_TO_RAD;
 
-  // Serial.print("Gyro: ");
-  // Serial.print(AngularRate[0]);
-  // Serial.print(", ");
-  // Serial.print(AngularRate[1]);
-  // Serial.print(", ");
-  // Serial.println(AngularRate[2]);
-
   return ASM330LHH_OK;
 }
 
