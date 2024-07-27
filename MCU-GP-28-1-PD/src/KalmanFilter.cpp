@@ -1,5 +1,7 @@
 #include "KalmanFilter.h"
 
+#define DEG_TO_RAD  0.017453292519943295769236907684886
+
 using namespace Eigen;
 
 KalmanFilter::KalmanFilter::KalmanFilter(){}
@@ -103,7 +105,7 @@ KalmanFilter::EKF::EKF(){}
 void KalmanFilter::EKF::run(const float &dt, const float (&omg)[3], const float (&acc)[3]){
     genQ(dt);
     predict();
-    qut.rotate(omg[0], omg[1], omg[2], dt);
+    qut.rotate(omg[0]*DEG_TO_RAD, omg[1]*DEG_TO_RAD, omg[2]*DEG_TO_RAD, dt);
     work = true;
     
     genZ(acc);

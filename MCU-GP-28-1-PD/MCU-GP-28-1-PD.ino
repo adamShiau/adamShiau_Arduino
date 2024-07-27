@@ -21,7 +21,6 @@ LinearCorrection LC(100);
 KalmanFilter::EKF my_ekf;
 unsigned short count = 0;
 unsigned long pre_time = 0;
-// #define DEG_TO_RAD 0.0174532925;
 /***End of Attitude calculation*/
 
 /*** global var***/
@@ -1280,10 +1279,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       acc_cali(my_memsXLM_cali.float_val, my_memsXLM.float_val);
 
       /*** ------get gyro raw data -----***/
-      IMU.Get_G_Axes_rps_f(my_memsGYRO.float_val);// get mems GYRO data in radian/s
+      IMU.Get_G_Axes_f(my_memsGYRO.float_val);// get mems GYRO data in degree/s
       my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
-      my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
+      my_GYRO.float_val[2] = myfog_GYRO.float_val;
+      // my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
       if(data_cnt >= DELAY_CNT)
@@ -1291,7 +1291,6 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
       }
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
-
 
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_GYRO_cali.bin_val, 12);//wx, wy, wz
