@@ -6,7 +6,7 @@
 #include "wiring_private.h"
 #include "myUART.h"
 
-extern void read_fog_parameter_from_eeprom(int&, unsigned int);
+// extern void read_fog_parameter_from_eeprom(int&, unsigned int);
 
 
 //EXT WDT
@@ -89,8 +89,6 @@ void enable_EXT_WDT(char en_pin){
 
 void myWDT_init()
 {
-  read_fog_parameter_from_eeprom(EEPROM_EXTWDT,   EEPROM_ADDR_EXTWDT);
-
   pinMode(WDI, OUTPUT);
   pinMode(EXT_WDT_EN, OUTPUT);
 

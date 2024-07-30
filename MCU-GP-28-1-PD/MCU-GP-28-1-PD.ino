@@ -14,6 +14,8 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define PIG_SYNC 29 //PA22
 // RST to FPGA nConfig
 #define nCONFIG 12
+/*** MCU LED***/
+#define MCU_LED A2
 
 
 /*** Attitude calculation*/
@@ -98,8 +100,10 @@ void my_parameter_f(const char *parameter_name, float input_value, DumpParameter
 }
 
 void setup() {
+  // delay(5000);
 
   // set_system_clk(EXTERNAL_CRYSTAL);
+  // Blink_MCU_LED();
 
   /*** pwm ***/
     pwm_init();
@@ -2188,7 +2192,7 @@ void update_datarate(byte eeprom_var)
   switch(eeprom_var)
   {
     case SET_DATARATE_400: {
-      pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
+      pwm.timer(1, 2, int(15000), false); //12M/2/15000 = 400Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 400 Hz");
       Serial1.println("Data rate set to 400 Hz");
@@ -2196,7 +2200,7 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_200: {
-      pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
+      pwm.timer(1, 2, int(30000), false); //12M/2/30000 = 200Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 200 Hz");
       Serial1.println("Data rate set to 200 Hz");
@@ -2204,7 +2208,7 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_100: {
-      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.timer(1, 2, int(60000), false); //12M/2/60000 = 100Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
@@ -2212,7 +2216,8 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_10: {
-      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
+      // pwm.timer(1, 2, int(600000), false); //12M/2/600000 = 10Hz
+      pwm.timer(1, 2, int(375000), false); //12M/2/375000 = 16Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
@@ -2220,7 +2225,7 @@ void update_datarate(byte eeprom_var)
       break;
     }
     default:{
-      pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
+      pwm.timer(1, 2, int(60000), false); //12M/2/60000 = 100Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");

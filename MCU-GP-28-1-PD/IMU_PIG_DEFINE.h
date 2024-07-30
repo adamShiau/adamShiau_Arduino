@@ -20,7 +20,7 @@
 #define PWM_SYNC
 
 /*** MCU LED***/
-#define MCU_LED A2
+// #define MCU_LED A2
 
 /*** ADC PIN***/
 #define ADC_CONV 3.3/4096.0
