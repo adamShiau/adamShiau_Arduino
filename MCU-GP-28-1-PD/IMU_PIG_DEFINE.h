@@ -114,6 +114,7 @@
 #define CMD_DUMP_CALI_PARAMETERS	129 //81
 #define CMD_CONFI_CLK       130 //82
 #define CMD_EXT_WDT         131 //83
+#define CMD_RST_FOG         132 //84
 // rescue mode
 #define CMD_RESCUE          255 //FF
 
@@ -236,7 +237,7 @@
 #define PLUS80  0x42A00000
 
 /***FOG INIT VALUE*/
-#define MOD_FREQ_INIT       104
+#define MOD_FREQ_INIT       100
 #define WAIT_CNT_INIT       20
 #define ERR_AVG_INIT        6
 #define MOD_AMP_H_INIT      9100

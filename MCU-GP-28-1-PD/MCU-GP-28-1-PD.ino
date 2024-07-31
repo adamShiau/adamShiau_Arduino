@@ -34,7 +34,7 @@ my_time_t mcu_time;
 my_float_t my_f;
 my_misalignment_cali_t misalignment_cali_coe;
 
-unsigned char fog_op_status;
+unsigned char fog_op_status, rst_fog_para_flag=0;
 
 
 /*** serial data from PC***/
@@ -554,6 +554,31 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         }
       break;}
 
+      case CMD_RST_FOG: {
+        if(value == 0xFF) {
+          msg_out("Sure to reset fog to initial value? ");
+          msg_out("don't forget to save current parameters.");
+          rst_fog_para_flag = 1;
+        }
+        else if(value == 0xFE) {
+          if(rst_fog_para_flag == 1){
+            msg_out("resetting fog parameters, please wait...");
+            write_fog_parameter_to_eeprom_all(2);
+            update_fpga_fog_parameter_init(100, 2);
+            update_imu_misalignment_init();
+            rst_fog_para_flag = 0;
+          }
+          else{
+            msg_out("Resetting fog parameters process invalid, ");
+            msg_out("request first.");
+          }
+        }
+        else{
+          msg_out("Resetting fog parameters error.");
+        }
+        break;
+      }
+
       case CMD_CALI_AX: {
         if(value != EEPROM_CALI_AX){
           Serial.println("CALI_AX changed!");
@@ -980,7 +1005,7 @@ void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch)
   if((millis() - t_start)>=5000) 
   {
     t_start = millis();
-    Serial.println("IDLE");
+    // Serial.println("IDLE");
     Serial1.println("IDLE");
   }
 }
@@ -1796,57 +1821,8 @@ void parameter_init(void)
     /***end of output configuration*/
 
     /*** IMU misalignment calibration*/
-    Serial.println("\nStart setting IMU misalignment calibration.");
-    write_fog_parameter_to_eeprom(EEPROM_CALI_AX, EEPROM_ADDR_CALI_AX, CALI_AX_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_AY, EEPROM_ADDR_CALI_AY, CALI_AY_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_AZ, EEPROM_ADDR_CALI_AZ, CALI_AZ_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A11, EEPROM_ADDR_CALI_A11, CALI_A11_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A12, EEPROM_ADDR_CALI_A12, CALI_A12_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A13, EEPROM_ADDR_CALI_A13, CALI_A13_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A21, EEPROM_ADDR_CALI_A21, CALI_A21_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A22, EEPROM_ADDR_CALI_A22, CALI_A22_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A23, EEPROM_ADDR_CALI_A23, CALI_A23_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A31, EEPROM_ADDR_CALI_A31, CALI_A31_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A32, EEPROM_ADDR_CALI_A32, CALI_A32_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_A33, EEPROM_ADDR_CALI_A33, CALI_A33_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_GX, EEPROM_ADDR_CALI_GX, CALI_GX_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_GY, EEPROM_ADDR_CALI_GY, CALI_GY_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_GZ, EEPROM_ADDR_CALI_GZ, CALI_GZ_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G11, EEPROM_ADDR_CALI_G11, CALI_G11_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G12, EEPROM_ADDR_CALI_G12, CALI_G12_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G13, EEPROM_ADDR_CALI_G13, CALI_G13_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G21, EEPROM_ADDR_CALI_G21, CALI_G21_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G22, EEPROM_ADDR_CALI_G22, CALI_G22_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G23, EEPROM_ADDR_CALI_G23, CALI_G23_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G31, EEPROM_ADDR_CALI_G31, CALI_G31_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G32, EEPROM_ADDR_CALI_G32, CALI_G32_INIT);
-    write_fog_parameter_to_eeprom(EEPROM_CALI_G33, EEPROM_ADDR_CALI_G33, CALI_G33_INIT);
-    misalignment_cali_coe._d.ax = CALI_AX_INIT;
-    misalignment_cali_coe._d.ay = CALI_AY_INIT;
-    misalignment_cali_coe._d.az = CALI_AZ_INIT;
-    misalignment_cali_coe._d.a11 = CALI_A11_INIT;
-    misalignment_cali_coe._d.a12 = CALI_A12_INIT;
-    misalignment_cali_coe._d.a13 = CALI_A13_INIT;
-    misalignment_cali_coe._d.a21 = CALI_A21_INIT;
-    misalignment_cali_coe._d.a22 = CALI_A22_INIT;
-    misalignment_cali_coe._d.a23 = CALI_A23_INIT;
-    misalignment_cali_coe._d.a31 = CALI_A31_INIT;
-    misalignment_cali_coe._d.a32 = CALI_A32_INIT;
-    misalignment_cali_coe._d.a33 = CALI_A33_INIT;
-    misalignment_cali_coe._d.gx = CALI_GX_INIT;
-    misalignment_cali_coe._d.gy = CALI_GY_INIT;
-    misalignment_cali_coe._d.gz = CALI_GZ_INIT;
-    misalignment_cali_coe._d.g11 = CALI_G11_INIT;
-    misalignment_cali_coe._d.g12 = CALI_G12_INIT;
-    misalignment_cali_coe._d.g13 = CALI_G13_INIT;
-    misalignment_cali_coe._d.g21 = CALI_G21_INIT;
-    misalignment_cali_coe._d.g22 = CALI_G22_INIT;
-    misalignment_cali_coe._d.g23 = CALI_G23_INIT;
-    misalignment_cali_coe._d.g31 = CALI_G31_INIT;
-    misalignment_cali_coe._d.g32 = CALI_G32_INIT;
-    misalignment_cali_coe._d.g33 = CALI_G33_INIT;
-    // my_parameter_f("AX", sf_b, &my_para[35]);
-    Serial.println("\nSetting IMU misalignment calibration done.");
+    update_imu_misalignment_init();
+    
     /***end of IMU misalignment calibration*/
 
     /***fog parameters*/
@@ -1882,6 +1858,62 @@ void parameter_init(void)
     /***end of IMU misalignment calibration*/
 
   }
+}
+
+void update_imu_misalignment_init()
+{
+  // Serial.println("\nStart setting IMU misalignment calibration.");
+  msg_out("\nStart setting IMU misalignment calibration.");
+  write_fog_parameter_to_eeprom(EEPROM_CALI_AX, EEPROM_ADDR_CALI_AX, CALI_AX_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_AY, EEPROM_ADDR_CALI_AY, CALI_AY_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_AZ, EEPROM_ADDR_CALI_AZ, CALI_AZ_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A11, EEPROM_ADDR_CALI_A11, CALI_A11_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A12, EEPROM_ADDR_CALI_A12, CALI_A12_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A13, EEPROM_ADDR_CALI_A13, CALI_A13_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A21, EEPROM_ADDR_CALI_A21, CALI_A21_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A22, EEPROM_ADDR_CALI_A22, CALI_A22_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A23, EEPROM_ADDR_CALI_A23, CALI_A23_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A31, EEPROM_ADDR_CALI_A31, CALI_A31_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A32, EEPROM_ADDR_CALI_A32, CALI_A32_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_A33, EEPROM_ADDR_CALI_A33, CALI_A33_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_GX, EEPROM_ADDR_CALI_GX, CALI_GX_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_GY, EEPROM_ADDR_CALI_GY, CALI_GY_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_GZ, EEPROM_ADDR_CALI_GZ, CALI_GZ_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G11, EEPROM_ADDR_CALI_G11, CALI_G11_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G12, EEPROM_ADDR_CALI_G12, CALI_G12_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G13, EEPROM_ADDR_CALI_G13, CALI_G13_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G21, EEPROM_ADDR_CALI_G21, CALI_G21_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G22, EEPROM_ADDR_CALI_G22, CALI_G22_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G23, EEPROM_ADDR_CALI_G23, CALI_G23_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G31, EEPROM_ADDR_CALI_G31, CALI_G31_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G32, EEPROM_ADDR_CALI_G32, CALI_G32_INIT);
+  write_fog_parameter_to_eeprom(EEPROM_CALI_G33, EEPROM_ADDR_CALI_G33, CALI_G33_INIT);
+  misalignment_cali_coe._d.ax = CALI_AX_INIT;
+  misalignment_cali_coe._d.ay = CALI_AY_INIT;
+  misalignment_cali_coe._d.az = CALI_AZ_INIT;
+  misalignment_cali_coe._d.a11 = CALI_A11_INIT;
+  misalignment_cali_coe._d.a12 = CALI_A12_INIT;
+  misalignment_cali_coe._d.a13 = CALI_A13_INIT;
+  misalignment_cali_coe._d.a21 = CALI_A21_INIT;
+  misalignment_cali_coe._d.a22 = CALI_A22_INIT;
+  misalignment_cali_coe._d.a23 = CALI_A23_INIT;
+  misalignment_cali_coe._d.a31 = CALI_A31_INIT;
+  misalignment_cali_coe._d.a32 = CALI_A32_INIT;
+  misalignment_cali_coe._d.a33 = CALI_A33_INIT;
+  misalignment_cali_coe._d.gx = CALI_GX_INIT;
+  misalignment_cali_coe._d.gy = CALI_GY_INIT;
+  misalignment_cali_coe._d.gz = CALI_GZ_INIT;
+  misalignment_cali_coe._d.g11 = CALI_G11_INIT;
+  misalignment_cali_coe._d.g12 = CALI_G12_INIT;
+  misalignment_cali_coe._d.g13 = CALI_G13_INIT;
+  misalignment_cali_coe._d.g21 = CALI_G21_INIT;
+  misalignment_cali_coe._d.g22 = CALI_G22_INIT;
+  misalignment_cali_coe._d.g23 = CALI_G23_INIT;
+  misalignment_cali_coe._d.g31 = CALI_G31_INIT;
+  misalignment_cali_coe._d.g32 = CALI_G32_INIT;
+  misalignment_cali_coe._d.g33 = CALI_G33_INIT;
+  // Serial.println("\nSetting IMU misalignment calibration done.");
+  msg_out("\nSetting IMU misalignment calibration done.");
 }
 
 void report_current_output_configuration()
@@ -1973,7 +2005,7 @@ void write_fog_parameter_to_eeprom_all(byte fog_ch)
   if(fog_ch==1) eeprom_obj_ptr = &eeprom_z;
   else if(fog_ch==2) eeprom_obj_ptr = &eeprom_x;
   else if(fog_ch==3) eeprom_obj_ptr = &eeprom_y;
-  Serial.print("write_fog_parameter_to_eeprom_all, ch");
+  msg_out("write_fog_parameter_to_eeprom_all, ch");
   Serial.println(fog_ch);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_Mod_freq, eeprom_obj_ptr->EEPROM_ADDR_MOD_FREQ, MOD_FREQ_INIT);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_Wait_cnt, eeprom_obj_ptr->EEPROM_ADDR_WAIT_CNT, WAIT_CNT_INIT);
@@ -1992,16 +2024,16 @@ void write_fog_parameter_to_eeprom_all(byte fog_ch)
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_DAC_gain, eeprom_obj_ptr->EEPROM_ADDR_DAC_GAIN, DAC_GAIN_INIT);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_Data_delay, eeprom_obj_ptr->EEPROM_ADDR_DATA_DELAY, DATA_INT_DELAY_INIT);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF0, eeprom_obj_ptr->EEPROM_ADDR_SF_0, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF1, eeprom_obj_ptr->EEPROM_ADDR_SF_1, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF2, eeprom_obj_ptr->EEPROM_ADDR_SF_2, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF3, eeprom_obj_ptr->EEPROM_ADDR_SF_3, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF4, eeprom_obj_ptr->EEPROM_ADDR_SF_4, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF5, eeprom_obj_ptr->EEPROM_ADDR_SF_5, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF6, eeprom_obj_ptr->EEPROM_ADDR_SF_6, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF7, eeprom_obj_ptr->EEPROM_ADDR_SF_7, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF8, eeprom_obj_ptr-> EEPROM_ADDR_SF_8, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF9, eeprom_obj_ptr->EEPROM_ADDR_SF_9, SF_INIT);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB, eeprom_obj_ptr->EEPROM_ADDR_SFB, SFB_INIT);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF1, eeprom_obj_ptr->EEPROM_ADDR_SF_1, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF2, eeprom_obj_ptr->EEPROM_ADDR_SF_2, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF3, eeprom_obj_ptr->EEPROM_ADDR_SF_3, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF4, eeprom_obj_ptr->EEPROM_ADDR_SF_4, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF5, eeprom_obj_ptr->EEPROM_ADDR_SF_5, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF6, eeprom_obj_ptr->EEPROM_ADDR_SF_6, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF7, eeprom_obj_ptr->EEPROM_ADDR_SF_7, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF8, eeprom_obj_ptr-> EEPROM_ADDR_SF_8, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SF9, eeprom_obj_ptr->EEPROM_ADDR_SF_9, 0);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB, eeprom_obj_ptr->EEPROM_ADDR_SFB, 0);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_CUTOFF, eeprom_obj_ptr->EEPROM_ADDR_CUTOFF, CUTOFF_INIT);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_TMIN, eeprom_obj_ptr->EEPROM_ADDR_TMIN, MINUS20);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_TMAX, eeprom_obj_ptr->EEPROM_ADDR_TMAX, PLUS80);
@@ -2009,11 +2041,11 @@ void write_fog_parameter_to_eeprom_all(byte fog_ch)
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_BIAS_COMP_T1, eeprom_obj_ptr->EEPROM_ADDR_BIAS_COMP_T1, 0);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_BIAS_COMP_T2, eeprom_obj_ptr->EEPROM_ADDR_BIAS_COMP_T2, FLOAT_40);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_1_SLOPE, eeprom_obj_ptr->EEPROM_ADDR_SFB_1_SLOPE, 0);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_1_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_1_OFFSET, FLOAT_1);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_1_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_1_OFFSET, 0);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_2_SLOPE, eeprom_obj_ptr->EEPROM_ADDR_SFB_2_SLOPE, 0);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_2_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_2_OFFSET, FLOAT_1);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_2_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_2_OFFSET, 0);
   write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_3_SLOPE, eeprom_obj_ptr->EEPROM_ADDR_SFB_3_SLOPE, 0);
-  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_3_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_3_OFFSET, FLOAT_1);
+  write_fog_parameter_to_eeprom(eeprom_obj_ptr->EEPROM_SFB_3_OFFSET, eeprom_obj_ptr->EEPROM_ADDR_SFB_3_OFFSET, 0);
 
 }
 
@@ -2028,7 +2060,8 @@ void write_fog_parameter_to_eeprom(int& eeprom_var, unsigned int eeprom_addr, in
 
 void read_misalignment_calibration_from_eeprom()
 {
-  Serial.println("\nread_misalignment_calibration_from_eeprom");
+  // Serial.println("\nread_misalignment_calibration_from_eeprom");
+  msg_out("\nread_misalignment_calibration_from_eeprom");
   read_fog_parameter_from_eeprom(EEPROM_CALI_AX, EEPROM_ADDR_CALI_AX);
   read_fog_parameter_from_eeprom(EEPROM_CALI_AY, EEPROM_ADDR_CALI_AY);
   read_fog_parameter_from_eeprom(EEPROM_CALI_AZ, EEPROM_ADDR_CALI_AZ);
@@ -2077,7 +2110,8 @@ void read_misalignment_calibration_from_eeprom()
   misalignment_cali_coe._d.g31 = EEPROM_CALI_G31;
   misalignment_cali_coe._d.g32 = EEPROM_CALI_G32;
   misalignment_cali_coe._d.g33 = EEPROM_CALI_G33;
-  Serial.println("read_misalignment_calibration_from_eeprom done");
+  // Serial.println("read_misalignment_calibration_from_eeprom done");
+  msg_out("read_misalignment_calibration_from_eeprom done");
 }
 
 
@@ -2089,9 +2123,9 @@ void read_fog_parameter_from_eeprom_all(byte fog_ch)
   else if(fog_ch==2) eeprom_obj_ptr = &eeprom_x;
   else if(fog_ch==3) eeprom_obj_ptr = &eeprom_y;
 
-  Serial.print("read_fog_parameter_from_eeprom_all, ch");
+  msg_out("read_fog_parameter_from_eeprom_all, ch");
   Serial.println(fog_ch);
-
+  
   read_fog_parameter_from_eeprom(eeprom_obj_ptr->EEPROM_Mod_freq, eeprom_obj_ptr->EEPROM_ADDR_MOD_FREQ);
   read_fog_parameter_from_eeprom(eeprom_obj_ptr->EEPROM_Wait_cnt, eeprom_obj_ptr->EEPROM_ADDR_WAIT_CNT);
   read_fog_parameter_from_eeprom(eeprom_obj_ptr->EEPROM_Err_avg, eeprom_obj_ptr->EEPROM_ADDR_ERR_AVG);
@@ -2216,8 +2250,8 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_10: {
-      // pwm.timer(1, 2, int(600000), false); //12M/2/600000 = 10Hz
-      pwm.timer(1, 2, int(375000), false); //12M/2/375000 = 16Hz
+      pwm.timer(1, 2, int(600000), false); //12M/2/600000 = 10Hz
+      // pwm.timer(1, 2, int(375000), false); //12M/2/375000 = 16Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
@@ -2248,7 +2282,9 @@ void set_output_configuration_init()
 
 void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
 {
-  Serial.print("Setting SP initail parameters, ch");
+  // Serial.print("Setting SP initail parameters, ch");
+  // Serial.println(fog_ch);
+  msg_out("Updating FOG initail parameters, ch");
   Serial.println(fog_ch);
 
   PIG *sp;
@@ -2344,7 +2380,8 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   sp->sendCmd(myCmd_header, SFB_3_OFFSET_ADDR, myCmd_trailer, eeprom_ptr->EEPROM_SFB_3_OFFSET);
   delay(dly_time);
 
-  Serial.println("Setting SP parameters done");
+  // Serial.println("Setting SP parameters done");
+  msg_out("Setting SP parameters done");
 }
 
 
