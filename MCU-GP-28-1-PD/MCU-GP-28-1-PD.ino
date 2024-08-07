@@ -119,6 +119,7 @@ void setup() {
     /*** for IMU_V4  : EXTT = PA27, Variant pin = 26, EXINT[15]
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
      *  ****/
+  pinMode(26, INPUT_PULLUP);
   attachInterrupt(26, ISR_EXTT, CHANGE);
 
   // disableWDT();
