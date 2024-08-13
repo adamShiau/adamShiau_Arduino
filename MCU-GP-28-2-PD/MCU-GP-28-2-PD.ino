@@ -1034,9 +1034,7 @@ void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch)
 void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 {
   byte *fog;
-  uint8_t buf[14];
 	uint8_t CRC32[4];
-  String fpga_version;
 	
 	if(select_fn&SEL_FOG_PARA)
 	{
@@ -1123,102 +1121,6 @@ void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch)
 	}
 	clear_SEL_EN(select_fn);	
 }
-
-
-// void acq_fog(byte &select_fn, unsigned int value, byte ch)
-// {
-//   byte *fog;
-// 	uint8_t CRC32[4];
-//   my_float_t pd_temp;
-	
-// 	if(select_fn&SEL_FOG_1)
-// 	{
-//     Serial.print("Enter acq_fog mode, fog channel: ");
-//     Serial.println(ch);
-//     CtrlReg = value;
-//     if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-//     else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-//     else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-
-//     switch(CtrlReg){
-//       case INT_SYNC:
-//         data_cnt = 0;
-//         Serial.println("Enter INT_SYNC mode");
-//         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-//         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-//         setupWDT(11);
-//       break;
-
-//       case EXT_SYNC:
-//         Serial.println("Enter EXT_SYNC mode");
-//         Serial.println("Set EXTT to RISING");
-//         data_cnt = 0;
-//         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
-//         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
-//         setupWDT(11);
-//         enable_EXT_WDT(EXT_WDT_EN);
-//         reset_EXT_WDI(WDI);
-//       break;
-
-//       case STOP_SYNC:
-//         data_cnt = 0;
-//         reset_SYNC();
-//         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
-//         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-//         disableWDT();
-//         disable_EXT_WDT(EXT_WDT_EN);
-//       break;
-
-//       default:
-//       break;
-//     }
-//     t_previous = millis();
-// 	}
-
-
-// 	if(run_fog_flag) {
-// 	    t_new = micros();
-      
-//            if(ch==1) fog = sp13.readData(header, sizeofheader, &try_cnt);
-//       else if(ch==2) fog = sp14.readData(header, sizeofheader, &try_cnt);
-//       else if(ch==3) fog = sp9.readData(header, sizeofheader, &try_cnt);
-      
-//       if(fog) reg_fog = fog;
-//       // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
-//       if(ISR_PEDGE)
-//       {
-//         // reg_fog = fog;
-//         // pd_temp.float_val = convert_PDtemp(reg_fog[12], reg_fog[13]);
-//         uint8_t* imu_data = (uint8_t*)malloc(16); // KVH_HEADER:4 + pig:14
-//         data_cnt++;
-//         mcu_time.ulong_val = millis() - t_previous;
-        
-//         ISR_PEDGE = false;
-//         memcpy(imu_data, KVH_HEADER, 4);
-//         memcpy(imu_data+4, reg_fog+8, 4); //fog
-//         memcpy(imu_data+8, reg_fog+12, 4);// PD temp
-//         memcpy(imu_data+12, mcu_time.bin_val, 4);
-//         myCRC.crc_32(imu_data, 16, CRC32);
-//         free(imu_data);
-
-//         #ifdef UART_RS422_CMD
-//         if(data_cnt >= DELAY_CNT)
-//         {
-//           Serial1.write(KVH_HEADER, 4);
-//           Serial1.write(reg_fog+8, 4);
-//           Serial1.write(reg_fog+12, 4);
-//           Serial1.write(mcu_time.bin_val, 4);
-//           Serial1.write(CRC32, 4);
-//         #endif
-//         }
-//         resetWDT();
-//         reset_EXT_WDI(WDI);
-//       }
-//       t_old = t_new;  
-// 	}
-// 	clear_SEL_EN(select_fn);	
-// }
-
 
 void acq_fog(byte &select_fn, unsigned int value, byte ch)
 {
@@ -1309,7 +1211,6 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
 
         memcpy(imu_data, KVH_HEADER, 4);
         memcpy(imu_data+4, cali_fog, 4); //fog
-        // memcpy(imu_data+4, reg_fog+8, 4); //fog
         memcpy(imu_data+8, reg_fog+12, 4);// PD temp
         memcpy(imu_data+12, mcu_time.bin_val, 4);
         myCRC.crc_32(imu_data, 16, CRC32);
@@ -1319,7 +1220,6 @@ void acq_fog(byte &select_fn, unsigned int value, byte ch)
         if(data_cnt >= DELAY_CNT)
         {
           Serial1.write(KVH_HEADER, 4);
-          // Serial1.write(reg_fog+8, 4);
           Serial1.write(cali_fog, 4);
           Serial1.write(reg_fog+12, 4);
           Serial1.write(mcu_time.bin_val, 4);
