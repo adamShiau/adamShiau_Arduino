@@ -1331,10 +1331,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       // my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-      if(data_cnt >= DELAY_CNT)
-      {
-        LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
-      }
+      // if(data_cnt >= DELAY_CNT)
+      // {
+      //   LC.update(my_GYRO_cali.float_val); // substract gyro bias offset
+      // }
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
       memcpy(imu_data, KVH_HEADER, 4);
