@@ -1,25 +1,6 @@
-/*
-  Using the Qwiic PT100
-  By: Paul Clark (PaulZC)
-  Date: May 5th, 2020
-
-  When the ADS122C04 is initialised by .begin, it is configured for raw mode (which disables the IDAC).
-  If you want to manually configure the chip, you can. This example demonstrates how.
-
-  The IDAC current source is disabled, the gain is set to 1 and the internal 2.048V reference is selected.
-  The conversion is started manually using .start.
-  DRDY is checked manually using .checkDataReady.
-  The ADC result is read using .readADC.
-
-  readADC returns a uint32_t. The ADC data is returned in the least-significant 24-bits.
-
-  Hardware Connections:
-  Plug a Qwiic cable into the PT100 and a BlackBoard
-  If you don't have a platform with a Qwiic connection use the SparkFun Qwiic Breadboard Jumper (https://www.sparkfun.com/products/14425)
-  Open the serial monitor at 115200 baud to see the output
-*/
-
 #include <Wire.h>
+// #include <Arduino.h>
+#include "wiring_private.h"
 
 #include <SparkFun_ADS122C04_ADC_Arduino_Library.h> // Click here to get the library: http://librarymanager/All#SparkFun_ADS122C0
 
@@ -39,6 +20,12 @@
 #define SFA_T 4.44701E-05
 #define SFB_T -273.15
 
+TwoWire myWire(&sercom0, 27, 20);
+void SERCOM0_Handler()
+{
+  myWire.onService();
+}
+
 
 
 SFE_ADS122C04 mySensor, mySensor_temp;
@@ -52,18 +39,22 @@ void setup(void)
     ; //Wait for user to open terminal
   Serial.println(F("XLM550 ACCL read Example"));
 
-  Wire.begin();
-  Wire.setClock(I2C_FAST_MODE);
+  // Wire.begin();
+  // Wire.setClock(I2C_FAST_MODE);
   // Wire.setClock(720000);
+  myWire.begin();
+  myWire.setClock(I2C_FAST_MODE);
+  pinPeripheral(27, PIO_SERCOM);
+  pinPeripheral(20, PIO_SERCOM);
 
-  if (mySensor.begin(0x40, Wire) == false) //SIG: 0x40, TEMP: 0x41
+  if (mySensor.begin(0x40, myWire) == false) //SIG: 0x40, TEMP: 0x41
   {
     Serial.println(F("Qwiic PT100 not detected at default I2C address. Please check wiring. Freezing."));
     while (1)
       ;
   }
 
-  if (mySensor_temp.begin(0x41, Wire) == false) //SIG: 0x40, TEMP: 0x41
+  if (mySensor_temp.begin(0x41, myWire) == false) //SIG: 0x40, TEMP: 0x41
   {
     Serial.println(F("Qwiic PT100 not detected at default I2C address. Please check wiring. Freezing."));
     while (1)
@@ -183,18 +174,18 @@ void XLM550_readData_f(float acc[3], float temp[3])
   // Serial.print(temp_int[2]);
   // Serial.print(", ");
 
-  // Serial.print(acc[0], 5);
-  // Serial.print(", ");
-  // Serial.print(acc[1], 5);
-  // Serial.print(", ");
-  // Serial.print(acc[2], 5);
-  // Serial.print(", ");
-  // Serial.print(temp[0], 5);
-  // Serial.print(", ");
-  // Serial.print(temp[1], 5);
-  // Serial.print(", ");
-  // Serial.print(temp[2], 5);
-  // Serial.print(", ");
+  Serial.print(acc[0], 5);
+  Serial.print(", ");
+  Serial.print(acc[1], 5);
+  Serial.print(", ");
+  Serial.print(acc[2], 5);
+  Serial.print(", ");
+  Serial.print(temp[0], 5);
+  Serial.print(", ");
+  Serial.print(temp[1], 5);
+  Serial.print(", ");
+  Serial.print(temp[2], 5);
+  Serial.print(", ");
 
 }
 
