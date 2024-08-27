@@ -7,7 +7,7 @@
 #include "wiring_private.h"
 #include "crcCalculator.h"
 #include <TinyGPSPlus.h>
-#include "myI2C.h"
+// #include "myI2C.h"
 #include "mySPI.h"
 #include "myUART.h"
 #include "myPWM.h"
