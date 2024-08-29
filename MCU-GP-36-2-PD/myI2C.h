@@ -15,8 +15,8 @@ void SERCOM0_Handler()
   myWire.onService();
 }
 
-#include "adxl357_I2C.h"
-Adxl357_I2C adxl357_i2c(myWire);
+// #include "adxl357_I2C.h"
+// Adxl357_I2C adxl357_i2c(myWire);
 
 #include <SparkFun_ADS122C04_ADC_Arduino_Library.h> 
 SFE_ADS122C04 mySensor, mySensor_temp;

@@ -13,6 +13,8 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
   
 ***/
 #define I2C_FAST_MODE       400000
+#define ACC_MV_WINDOW 16
+#define ACC_MV_SHIFT 4
 // interrupt for EXT_SYNC to FPGA
 #define PIG_SYNC 29 //PA22
 #define EXTT 26
@@ -1449,7 +1451,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
   byte *fog_x, *fog_y, *fog_z;
   my_acc_t my_ADXL357, ADXL357_cali;
 	uint8_t CRC32[4];
-  my_acc_t pd_temp;
+  my_acc_t acc_temp, acc_temp2;
   // my_float_t tt;
 	
 	if(select_fn&SEL_AFI)
@@ -1515,7 +1517,19 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         // adxl357_i2c.readData_f(my_ADXL357.float_val);
-        XLM550_readData_f(my_ADXL357.float_val, pd_temp.float_val);
+        XLM550_readData_f(my_ADXL357.float_val, acc_temp.float_val);
+        acc_temp2.bin_val[0] = acc_temp.bin_val[3]; 
+        acc_temp2.bin_val[1] = acc_temp.bin_val[2]; 
+        acc_temp2.bin_val[2] = acc_temp.bin_val[1]; 
+        acc_temp2.bin_val[3] = acc_temp.bin_val[0]; 
+        acc_temp2.bin_val[4] = acc_temp.bin_val[7]; 
+        acc_temp2.bin_val[5] = acc_temp.bin_val[6]; 
+        acc_temp2.bin_val[6] = acc_temp.bin_val[5]; 
+        acc_temp2.bin_val[7] = acc_temp.bin_val[4]; 
+        acc_temp2.bin_val[8] = acc_temp.bin_val[11]; 
+        acc_temp2.bin_val[9] = acc_temp.bin_val[10]; 
+        acc_temp2.bin_val[10] = acc_temp.bin_val[9]; 
+        acc_temp2.bin_val[11] = acc_temp.bin_val[8]; 
         acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
         gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
@@ -1528,7 +1542,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+ 8, reg_fog_y+8, 4); //fog_y
         memcpy(imu_data+12, reg_fog_z+8, 4); //fog_z
         memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
-        memcpy(imu_data+28, pd_temp.bin_val, 12); //Tx, Ty, Tz
+        memcpy(imu_data+28, acc_temp2.bin_val, 12); //Tx, Ty, Tz
         // memcpy(imu_data+28, reg_fog_x+12, 4); //Temp_x
         // memcpy(imu_data+32, reg_fog_y+12, 4); //Temp_y
         // memcpy(imu_data+36, reg_fog_z+12, 4); //Temp_z
@@ -1548,7 +1562,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_y+8, 4);
           Serial1.write(reg_fog_z+8, 4);
           Serial1.write(ADXL357_cali.bin_val, 12);
-          Serial1.write(pd_temp.bin_val, 12);
+          Serial1.write(acc_temp2.bin_val, 12);
           // Serial1.write(reg_fog_x+12, 4);
           // Serial1.write(reg_fog_y+12, 4);
           // Serial1.write(reg_fog_z+12, 4);
@@ -2673,6 +2687,8 @@ void verify_select_fn(int in)
 void XLM550_readData_f(float acc[3], float temp[3])
 {
   uint32_t acc_int[3], temp_int[3];
+  static uint32_t acc_sum[3]={0}, acc_container_x[ACC_MV_WINDOW], acc_container_y[ACC_MV_WINDOW], acc_container_z[ACC_MV_WINDOW];
+  static uint32_t i=0;
 
   mySensor.start(); // Start the SIG conversion
   mySensor_temp.start(); // Start the TEMP conversion
@@ -2702,12 +2718,34 @@ void XLM550_readData_f(float acc[3], float temp[3])
   while(!mySensor.checkDataReady()){} //wait SIG data ready
   acc_int[2] = mySensor.readADC(); //read Sig_Z data
 
+  /** MV implementation */
+  //substract old data
+  acc_sum[0] -= acc_container_x[i]; //x
+  acc_sum[1] -= acc_container_y[i]; //y
+  acc_sum[2] -= acc_container_z[i]; //z
+  
+  //add new data to sum
+  acc_sum[0] += acc_int[0]; //x
+  acc_sum[1] += acc_int[1]; //y
+  acc_sum[2] += acc_int[2]; //z
+
+  //update container data
+  acc_container_x[i] = acc_int[0]; //x
+  acc_container_y[i] = acc_int[1]; //x
+  acc_container_z[i] = acc_int[2]; //x
+
+  if(++i >= ACC_MV_WINDOW) i=0;
+
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
   temp_int[2] = mySensor_temp.readADC();//read Temp_Z data
 
-  acc[0] = (float)acc_int[0]*SFA_X + SFB_X;
-  acc[1] = (float)acc_int[1]*SFA_Y + SFB_Y;
-  acc[2] = (float)acc_int[2]*SFA_Z + SFB_Z; 
+  // acc[0] = (float)acc_int[0]*SFA_X + SFB_X;
+  // acc[1] = (float)acc_int[1]*SFA_Y + SFB_Y;
+  // acc[2] = (float)acc_int[2]*SFA_Z + SFB_Z; 
+  
+  acc[0] = (float)(acc_sum[0]>>ACC_MV_SHIFT)*SFA_X + SFB_X;
+  acc[1] = (float)(acc_sum[1]>>ACC_MV_SHIFT)*SFA_Y + SFB_Y;
+  acc[2] = (float)(acc_sum[2]>>ACC_MV_SHIFT)*SFA_Z + SFB_Z; 
   temp[0] = (float)temp_int[0]*SFA_T + SFB_T;
   temp[1] = (float)temp_int[1]*SFA_T + SFB_T;
   temp[2] = (float)temp_int[2]*SFA_T + SFB_T;
