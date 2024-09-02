@@ -229,7 +229,7 @@ void setup() {
   }
   mySensor.setGain(ADS122C04_GAIN_1); // Set the gain to 1
   mySensor.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
-  mySensor.setDataRate(ADS122C04_DATA_RATE_1000SPS); // Set the data rate (samples per second) to 20
+  mySensor.setDataRate(ADS122C04_DATA_RATE_20SPS); // Set the data rate (samples per second) to 20
   mySensor.setOperatingMode(ADS122C04_OP_MODE_TURBO); // Turbo mode
   mySensor.setConversionMode(ADS122C04_CONVERSION_MODE_SINGLE_SHOT);
   mySensor.setVoltageReference(ADS122C04_VREF_INTERNAL); // Use the internal 2.048V reference
@@ -246,7 +246,7 @@ void setup() {
 
   mySensor_temp.setGain(ADS122C04_GAIN_1); // Set the gain to 1
   mySensor_temp.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
-  mySensor_temp.setDataRate(ADS122C04_DATA_RATE_1000SPS); // Set the data rate (samples per second) to 20
+  mySensor_temp.setDataRate(ADS122C04_DATA_RATE_20SPS); // Set the data rate (samples per second) to 20
   mySensor_temp.setOperatingMode(ADS122C04_OP_MODE_TURBO); // Turbo mode
   mySensor_temp.setConversionMode(ADS122C04_CONVERSION_MODE_SINGLE_SHOT);
   mySensor_temp.setVoltageReference(ADS122C04_VREF_INTERNAL); // Use the internal 2.048V reference
@@ -1519,7 +1519,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
       if(ISR_PEDGE)
       {
         // adxl357_i2c.readData_f(my_ADXL357.float_val);
-        XLM550_readData_f(my_ADXL357.float_val, acc_temp.float_val);
+        XLM550_readData_f(my_ADXL357.int_val, acc_temp.float_val);
         acc_temp2.bin_val[0] = acc_temp.bin_val[3]; 
         acc_temp2.bin_val[1] = acc_temp.bin_val[2]; 
         acc_temp2.bin_val[2] = acc_temp.bin_val[1]; 
@@ -1532,7 +1532,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         acc_temp2.bin_val[9] = acc_temp.bin_val[10]; 
         acc_temp2.bin_val[10] = acc_temp.bin_val[9]; 
         acc_temp2.bin_val[11] = acc_temp.bin_val[8]; 
-        acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
+        // acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
         gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
         data_cnt++;
@@ -1543,7 +1543,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+ 4, reg_fog_x+8, 4); //fog_x
         memcpy(imu_data+ 8, reg_fog_y+8, 4); //fog_y
         memcpy(imu_data+12, reg_fog_z+8, 4); //fog_z
-        memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
+        // memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
+        memcpy(imu_data+16, my_ADXL357.bin_val, 12); //ax, ay, az
         memcpy(imu_data+28, acc_temp2.bin_val, 12); //Tx, Ty, Tz
         // memcpy(imu_data+28, reg_fog_x+12, 4); //Temp_x
         // memcpy(imu_data+32, reg_fog_y+12, 4); //Temp_y
@@ -1564,7 +1565,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_x+8, 4);
           Serial1.write(reg_fog_y+8, 4);
           Serial1.write(reg_fog_z+8, 4);
-          Serial1.write(ADXL357_cali.bin_val, 12);
+          Serial1.write(my_ADXL357.bin_val, 12);
           Serial1.write(acc_temp2.bin_val, 12);
           // Serial1.write(reg_fog_x+12, 4);
           // Serial1.write(reg_fog_y+12, 4);
@@ -2688,9 +2689,9 @@ void verify_select_fn(int in)
   }
 }
 
-void XLM550_readData_f(float acc[3], float temp[3])
+void XLM550_readData_f(int acc[3], float temp[3])
 {
-  uint32_t acc_int[3], temp_int[3];
+  int32_t acc_int[3], temp_int[3];
   static uint32_t acc_sum[3]={0}, acc_container_x[ACC_MV_WINDOW], acc_container_y[ACC_MV_WINDOW], acc_container_z[ACC_MV_WINDOW];
   static uint32_t i=0;
 
@@ -2701,16 +2702,19 @@ void XLM550_readData_f(float acc[3], float temp[3])
   
   while(!mySensor.checkDataReady()){} //wait SIG data ready
   acc_int[0] = mySensor.readADC(); //read Sig_X data
+  if(acc_int[0]>>23) acc_int[0] |= 0xFF000000;
   mySensor.start(); // Start the SIG conversion
   mySensor.setInputMultiplexer(ADS122C04_MUX_AIN3_AVSS); // SIGY
 
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
   temp_int[0] = mySensor_temp.readADC();//read Temp_X data
+
   mySensor_temp.start(); // Start the SIG conversion
   mySensor_temp.setInputMultiplexer(ADS122C04_MUX_AIN0_AVSS); // SIGY
 
   while(!mySensor.checkDataReady()){} //wait SIG data ready
   acc_int[1] = mySensor.readADC(); //read Sig_Y data
+  if(acc_int[1]>>23) acc_int[1] |= 0xFF000000;
   mySensor.start(); // Start the SIG conversion
   mySensor.setInputMultiplexer(ADS122C04_MUX_AIN0_AVSS); // SIGZ
 
@@ -2721,6 +2725,7 @@ void XLM550_readData_f(float acc[3], float temp[3])
 
   while(!mySensor.checkDataReady()){} //wait SIG data ready
   acc_int[2] = mySensor.readADC(); //read Sig_Z data
+  if(acc_int[2]>>23) acc_int[2] |= 0xFF000000;
 
   /** MV implementation */
   //substract old data
@@ -2743,9 +2748,12 @@ void XLM550_readData_f(float acc[3], float temp[3])
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
   temp_int[2] = mySensor_temp.readADC();//read Temp_Z data
 
-  acc[0] = (float)acc_int[0]*SFA_X + SFB_X;
-  acc[1] = (float)acc_int[1]*SFA_Y + SFB_Y;
-  acc[2] = (float)acc_int[2]*SFA_Z + SFB_Z; 
+  // acc[0] = (float)acc_int[0]*SFA_X + SFB_X;
+  // acc[1] = (float)acc_int[1]*SFA_Y + SFB_Y;
+  // acc[2] = (float)acc_int[2]*SFA_Z + SFB_Z; 
+  acc[0] = acc_int[0];
+  acc[1] = acc_int[1];
+  acc[2] = acc_int[2]; 
   
   // acc[0] = (float)(acc_sum[0]>>ACC_MV_SHIFT)*SFA_X + SFB_X;
   // acc[1] = (float)(acc_sum[1]>>ACC_MV_SHIFT)*SFA_Y + SFB_Y;
@@ -2754,9 +2762,9 @@ void XLM550_readData_f(float acc[3], float temp[3])
   temp[1] = (float)temp_int[1]*SFA_T + SFB_T;
   temp[2] = (float)temp_int[2]*SFA_T + SFB_T;
 
-  // Serial1.print(acc_int[0]);
+  // Serial1.print(acc_int[0], HEX);
   // Serial1.print(", ");
-  // Serial1.print(acc_int[1]);
+  // Serial1.print(acc_int[1], HEX);
   // Serial1.print(", ");
   // Serial1.print(acc_int[2]);
   // Serial1.print(", ");
