@@ -213,7 +213,7 @@ void setup() {
   }
   mySensor.setGain(ADS122C04_GAIN_1); // Set the gain to 1
   mySensor.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
-  mySensor.setDataRate(ADS122C04_DATA_RATE_20SPS); // Set the data rate (samples per second) to 20
+  mySensor.setDataRate(ADS122C04_DATA_RATE_1000SPS); // Set the data rate (samples per second) to 20
   mySensor.setOperatingMode(ADS122C04_OP_MODE_TURBO); // Turbo mode
   mySensor.setConversionMode(ADS122C04_CONVERSION_MODE_SINGLE_SHOT);
   mySensor.setVoltageReference(ADS122C04_VREF_INTERNAL); // Use the internal 2.048V reference
@@ -230,7 +230,7 @@ void setup() {
 
   mySensor_temp.setGain(ADS122C04_GAIN_1); // Set the gain to 1
   mySensor_temp.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
-  mySensor_temp.setDataRate(ADS122C04_DATA_RATE_20SPS); // Set the data rate (samples per second) to 20
+  mySensor_temp.setDataRate(ADS122C04_DATA_RATE_1000SPS); // Set the data rate (samples per second) to 20
   mySensor_temp.setOperatingMode(ADS122C04_OP_MODE_TURBO); // Turbo mode
   mySensor_temp.setConversionMode(ADS122C04_CONVERSION_MODE_SINGLE_SHOT);
   mySensor_temp.setVoltageReference(ADS122C04_VREF_INTERNAL); // Use the internal 2.048V reference
