@@ -72,7 +72,7 @@
 #define CMD_FOG_TMIN     	36
 #define CMD_FOG_TMAX     	37
 #define CMD_FOG_SFB     	38
-#define CMD_FOG_CUTOFF     	39
+#define CMD_FOG_CUTOFF     	39 //27
 // Bias Temp. Compensation
 #define CMD_BIAS_COMP_T1    40 //28
 #define CMD_BIAS_COMP_T2    41 //29
@@ -230,7 +230,8 @@
 #define FLOAT_3 0x40400000  
 #define FLOAT_4 0x40800000  
 #define FLOAT_40 0x42200000
-#define FLOAT_650 0x44228000
+
+#define INT_650 0X0000028A
 
 #define MINUS20 0xC1A00000
 #define PLUS60  0x42700000
@@ -255,7 +256,7 @@
 #define DATA_INT_DELAY_INIT 2000
 #define SF_INIT             FLOAT_0P0001   
 #define SFB_INIT            0
-#define CUTOFF_INIT         FLOAT_650
+#define CUTOFF_INIT         INT_650
 
 /*** CONFIGURATION PARAMETER*/
 #define BAUDRATE_INIT SET_BAUDRATE_230400
