@@ -38,7 +38,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 #define SFA_Z 1.680407E-06
 #define SFB_Z -0.002624
 
-#define SFA_T 4.447006E-05
+#define SFA_T 4.44701E-05
 #define SFB_T -273.15
 
 /*** Attitude calculation*/
@@ -53,7 +53,7 @@ void SERCOM0_Handler()
 {
   myWire.onService();
 }
-SFE_ADS122C04 mySensor, mySensor2, mySensor_temp;
+SFE_ADS122C04 mySensor, mySensor_temp;
 /*** for XLM550 test*/
 
 /*** global var***/
@@ -207,14 +207,7 @@ void setup() {
   pinPeripheral(27, PIO_SERCOM);
   pinPeripheral(20, PIO_SERCOM);
   Serial.println("End of myWire_init");
-  if (mySensor.begin(0x40, myWire) == false) //SIGX, SIGY: 0x40, SIGZ: 0x45, TEMP: 0x41
-  {
-    Serial.println(F("Qwiic PT100 not detected at default I2C address. Please check wiring. Freezing."));
-    while (1)
-      ;
-  }
-
-  if (mySensor2.begin(0x45, myWire) == false) //SIGX, SIGY: 0x40, SIGZ: 0x45, TEMP: 0x41
+  if (mySensor.begin(0x40, myWire) == false) //SIG: 0x40, TEMP: 0x41
   {
     Serial.println(F("Qwiic PT100 not detected at default I2C address. Please check wiring. Freezing."));
     while (1)
@@ -243,23 +236,6 @@ void setup() {
   mySensor.enableDebugging(Serial); //Enable debug messages on Serial
   mySensor.printADS122C04config(); //Print the configuration
   mySensor.disableDebugging(); //Enable debug messages on Serial
-
-  mySensor2.setGain(ADS122C04_GAIN_1); // Set the gain to 1
-  mySensor2.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
-  mySensor2.setDataRate(ADS122C04_DATA_RATE_1000SPS); // Set the data rate (samples per second) to 20
-  mySensor2.setOperatingMode(ADS122C04_OP_MODE_TURBO); // Turbo mode
-  mySensor2.setConversionMode(ADS122C04_CONVERSION_MODE_SINGLE_SHOT);
-  mySensor2.setVoltageReference(ADS122C04_VREF_INTERNAL); // Use the internal 2.048V reference
-  mySensor2.enableInternalTempSensor(ADS122C04_TEMP_SENSOR_OFF); // Disable the temperature sensor
-  mySensor2.setDataCounter(ADS122C04_DCNT_DISABLE); // Disable the data counter (Note: the library does not currently support the data count)
-  mySensor2.setDataIntegrityCheck(ADS122C04_CRC_DISABLED); // Disable CRC checking (Note: the library does not currently support data integrity checking)
-  mySensor2.setBurnOutCurrent(ADS122C04_BURN_OUT_CURRENT_OFF); // Disable the burn-out current
-  mySensor2.setIDACcurrent(ADS122C04_IDAC_CURRENT_OFF); // Disable the IDAC current
-  mySensor2.setIDAC1mux(ADS122C04_IDAC1_DISABLED); // Disable IDAC1
-  mySensor2.setIDAC2mux(ADS122C04_IDAC2_DISABLED); // Disable IDAC2
-  mySensor2.enableDebugging(Serial); //Enable debug messages on Serial
-  mySensor2.printADS122C04config(); //Print the configuration
-  mySensor2.disableDebugging(); //Enable debug messages on Serial
 
   mySensor_temp.setGain(ADS122C04_GAIN_1); // Set the gain to 1
   mySensor_temp.enablePGA(ADS122C04_PGA_DISABLED); // Disable the Programmable Gain Amplifier
@@ -1694,6 +1670,7 @@ void acq_afi_att(byte &select_fn, unsigned int value, byte ch)
         uint8_t* imu_data = (uint8_t*)malloc(56);
         data_cnt++;
         mcu_time.ulong_val = millis() - t_previous;
+        
         ISR_PEDGE = false;
         memcpy(imu_data, KVH_HEADER, 4);
         // memcpy(imu_data+ 4, reg_fog_x+8, 4); //fog_x
@@ -2499,7 +2476,6 @@ void update_datarate(byte eeprom_var)
     }
     case SET_DATARATE_100: {
       pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
-      // pwm.timer(1, 2, int(120000*PWM_FIX), false); //12M/2/120000 = 50Hz
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
@@ -2507,13 +2483,10 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_10: {
-      // pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
-      pwm.timer(1, 2, int(120000*PWM_FIX), false); //12M/2/120000 = 50Hz
+      pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
       pwm.analogWrite(PWM100, 500);  
-      // Serial.println("Data rate set to 10 Hz");
-      // Serial1.println("Data rate set to 10 Hz");
-      Serial.println("Data rate set to 50 Hz");
-      Serial1.println("Data rate set to 50 Hz");
+      Serial.println("Data rate set to 10 Hz");
+      Serial1.println("Data rate set to 10 Hz");
       delay(100);
       break;
     }
@@ -3023,26 +2996,19 @@ void XLM550_readData_f(float acc[3], float temp[3])
   int32_t acc_int[3], temp_int[3];
 
   mySensor.start(); // Start the SIG conversion
-  mySensor2.start(); // Start the SIG conversion
   mySensor_temp.start(); // Start the TEMP conversion
-  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN1_AIN0); // SIGX
-  mySensor2.setInputMultiplexer(ADS122C04_MUX_AIN3_AIN2); // SIGZ
+  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN2_AVSS); // SIGX
   mySensor_temp.setInputMultiplexer(ADS122C04_MUX_AIN3_AVSS); // TEMPX
   
   while(!mySensor.checkDataReady()){} //wait SIG data ready
   acc_int[0] = mySensor.readADC(); //read Sig_X data
   if(acc_int[0]>>23) acc_int[0] |= 0xFF000000;
   mySensor.start(); // Start the SIG conversion
-  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN3_AIN2); // SIGY
-
-  while(!mySensor2.checkDataReady()){} //wait SIG data ready
-  acc_int[2] = mySensor2.readADC(); //read Sig_Z data
-  if(acc_int[2]>>23) acc_int[2] |= 0xFF000000;
-  // mySensor2.start(); // Start the SIG conversion
-  // mySensor2.setInputMultiplexer(ADS122C04_MUX_AIN3_AIN2); // SIGZ
+  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN3_AVSS); // SIGY
 
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
   temp_int[0] = mySensor_temp.readADC();//read Temp_X data
+
   mySensor_temp.start(); // Start the TEMP conversion
   mySensor_temp.setInputMultiplexer(ADS122C04_MUX_AIN0_AVSS); // TEMPY
 
@@ -3050,16 +3016,16 @@ void XLM550_readData_f(float acc[3], float temp[3])
   acc_int[1] = mySensor.readADC(); //read Sig_Y data
   if(acc_int[1]>>23) acc_int[1] |= 0xFF000000;
   mySensor.start(); // Start the SIG conversion
-  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN1_AIN0); // SIGX
+  mySensor.setInputMultiplexer(ADS122C04_MUX_AIN0_AVSS); // SIGZ
 
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
   temp_int[1] = mySensor_temp.readADC();//read Temp_Y data
   mySensor_temp.start(); // Start the TEMP conversion
   mySensor_temp.setInputMultiplexer(ADS122C04_MUX_AIN1_AVSS); // TEMPZ
 
-  // while(!mySensor.checkDataReady()){} //wait SIG data ready
-  // acc_int[2] = mySensor.readADC(); //read Sig_Z data
-  // if(acc_int[2]>>23) acc_int[2] |= 0xFF000000;
+  while(!mySensor.checkDataReady()){} //wait SIG data ready
+  acc_int[2] = mySensor.readADC(); //read Sig_Z data
+  if(acc_int[2]>>23) acc_int[2] |= 0xFF000000;
 
 
   while(!mySensor_temp.checkDataReady()){} //wait TEMP data ready
@@ -3077,17 +3043,17 @@ void XLM550_readData_f(float acc[3], float temp[3])
   temp[1] = (float)temp_int[1]*SFA_T + SFB_T;
   temp[2] = (float)temp_int[2]*SFA_T + SFB_T;
 
-  // Serial.print(acc_int[0]);
-  // Serial.print(", ");
-  // Serial.print(acc_int[1]);
-  // Serial.print(", ");
-  // Serial.print(acc_int[2]);
-  // Serial.print(", ");
-  // Serial.print(temp_int[0]);
-  // Serial.print(", ");
-  // Serial.print(temp_int[1]);
-  // Serial.print(", ");
-  // Serial.println(temp_int[2]);
+  // Serial1.print(acc_int[0], HEX);
+  // Serial1.print(", ");
+  // Serial1.print(acc_int[1], HEX);
+  // Serial1.print(", ");
+  // Serial1.print(acc_int[2]);
+  // Serial1.print(", ");
+  // Serial1.print(temp_int[0]);
+  // Serial1.print(", ");
+  // Serial1.print(temp_int[1]);
+  // Serial1.print(", ");
+  // Serial1.println(temp_int[2]);
 
 
   // Serial.print(acc[0], 5);
@@ -3100,7 +3066,8 @@ void XLM550_readData_f(float acc[3], float temp[3])
   // Serial.print(", ");
   // Serial.print(temp[1], 5);
   // Serial.print(", ");
-  // Serial.println(temp[2], 5);
+  // Serial.print(temp[2], 5);
+  // Serial.print(", ");
 
 }
 
