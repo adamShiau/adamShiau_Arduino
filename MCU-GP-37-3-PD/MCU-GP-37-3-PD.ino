@@ -1540,7 +1540,7 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         acc_temp2.bin_val[9] = acc_temp.bin_val[10]; 
         acc_temp2.bin_val[10] = acc_temp.bin_val[9]; 
         acc_temp2.bin_val[11] = acc_temp.bin_val[8]; 
-        // acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
+        acc_cali(ADXL357_cali.float_val, my_ADXL357.float_val);
         gyro_cali(reg_fog_x, reg_fog_y, reg_fog_z);
         uint8_t* imu_data = (uint8_t*)malloc(44); // KVH_HEADER:4 + wx:4 + wy:4 +wz:4 +ax:4 +ay:4 +az:4 +Tz:4 +Ty:4 +Tz:4 + time:4
         data_cnt++;
@@ -1551,8 +1551,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
         memcpy(imu_data+ 4, reg_fog_x+8, 4); //fog_x
         memcpy(imu_data+ 8, reg_fog_y+8, 4); //fog_y
         memcpy(imu_data+12, reg_fog_z+8, 4); //fog_z
-        // memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
-        memcpy(imu_data+16, my_ADXL357.bin_val, 12); //ax, ay, az
+        memcpy(imu_data+16, ADXL357_cali.bin_val, 12); //ax, ay, az
+        // memcpy(imu_data+16, my_ADXL357.bin_val, 12); //ax, ay, az
         // memcpy(imu_data+28, acc_temp2.bin_val, 12); //XLM550 Tx, Ty, Tz
         memcpy(imu_data+28, reg_fog_x+12, 4); //Temp_x
         memcpy(imu_data+32, reg_fog_y+12, 4); //Temp_y
@@ -1573,7 +1573,8 @@ void acq_afi(byte &select_fn, unsigned int value, byte ch)
           Serial1.write(reg_fog_x+8, 4);
           Serial1.write(reg_fog_y+8, 4);
           Serial1.write(reg_fog_z+8, 4);
-          Serial1.write(my_ADXL357.bin_val, 12);
+          Serial1.write(ADXL357_cali.bin_val, 12);
+          // Serial1.write(my_ADXL357.bin_val, 12);
           // Serial1.write(acc_temp2.bin_val, 12); //XLM550 Tx, Ty, Tz
           Serial1.write(reg_fog_x+12, 4);
           Serial1.write(reg_fog_y+12, 4);
@@ -1743,8 +1744,8 @@ void acq_afi_att(byte &select_fn, unsigned int value, byte ch)
 
         att_dt_f = (float)(micros()-att_dt)*1e-6; // unit:sec
         att_dt = micros();
-        // my_ekf.run(att_dt_f, my_GYRO_cali.float_val, ADXL357_cali.float_val);
-        my_ekf.run(att_dt_f, my_GYRO_cali.float_val, {0.0, 0.0, 9.8});
+        my_ekf.run(att_dt_f, my_GYRO_cali.float_val, ADXL357_cali.float_val);
+        // my_ekf.run(att_dt_f, my_GYRO_cali.float_val, {0.0, 0.0, 9.8});
         my_ekf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
         // Serial.print(my_GYRO_cali.float_val[0], 5);
         // Serial.print(',');
