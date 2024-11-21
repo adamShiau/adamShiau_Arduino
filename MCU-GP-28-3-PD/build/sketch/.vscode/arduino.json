@@ -1,0 +1,7 @@
+#line 1 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\.vscode\\arduino.json"
+{
+    "port": "COM8",
+    "board": "arduino:samd:nano_33_iot",
+    "sketch": "MCU-GP-28-3-PD.ino",
+    "output": "build"
+}
