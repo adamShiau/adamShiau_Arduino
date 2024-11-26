@@ -3,7 +3,7 @@
 #define IMU_PIG_DEFINE_H
 
 /*** VERSION */
-#define MCU_VERSION "MCU-GP-28-2-PD"
+#define MCU_VERSION "MCU-GP-28-3-PD"
 
 /*** adxl355 conversion factor***/
 #define ADXL355_8G 0.0000156
@@ -203,6 +203,7 @@
 /*** MODE_FOG CTRL REG***/
 #define INT_SYNC	1
 #define EXT_SYNC 	2
+#define EXT_SYNC2 	3
 #define STOP_SYNC 	4
 #define NMEA_MODE   5
 #define HP_TEST     3

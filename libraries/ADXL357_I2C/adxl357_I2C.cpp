@@ -209,8 +209,9 @@ void Adxl357_I2C::init()
 	int rt;
 	/*** set adxl357 parameters ***/
 	setRegVal(RST_ADDR, POR);
-	setRegVal(RANGE_ADDR, F_MODE | RANGE_40G);
+	setRegVal(RANGE_ADDR, F_MODE | INT_POL_H | RANGE_40G);
 	setRegVal(FILTER_ADDR, ODR_500);
+	setRegVal(INTERRUPT_ADDR, 0x10);
 	setRegVal(SYNC_ADDR, EXT_SYNC); 
 	// setRegVal(SYNC_ADDR, INT_SYNC); 
 	setRegVal(POWER_CTL_ADDR, MEASURE_MODE);
@@ -220,7 +221,7 @@ void Adxl357_I2C::init()
 	// validateReg(SYNC_ADDR, INT_SYNC);
 
 	Serial.println("Validating RANGE_ADDR: ");
-	validateReg(RANGE_ADDR, F_MODE | RANGE_40G);
+	validateReg(RANGE_ADDR, F_MODE | INT_POL_H | RANGE_40G);
 
 	Serial.println("Validating FILTER_ADDR: ");
 	validateReg(FILTER_ADDR, ODR_500);

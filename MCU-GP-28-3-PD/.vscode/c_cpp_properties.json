@@ -51,6 +51,8 @@
                 "C:\\Users\\user\\Documents\\Arduino\\libraries\\SAMD21_turbo_PWM\\src",
                 "C:\\Users\\user\\Documents\\Arduino\\libraries\\Eigen",
                 "C:\\Users\\user\\Documents\\Arduino\\libraries\\ArxTypeTraits",
+                "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src",
+                "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src",
                 "c:\\users\\user\\appdata\\local\\arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4\\arm-none-eabi\\include\\c++\\7.2.1",
                 "c:\\users\\user\\appdata\\local\\arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4\\arm-none-eabi\\include\\c++\\7.2.1\\arm-none-eabi",
                 "c:\\users\\user\\appdata\\local\\arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4\\arm-none-eabi\\include\\c++\\7.2.1\\backward",

@@ -22,15 +22,16 @@ namespace Navigation{
             int count;
             float sum[3];
             float bias[3];
-            bool is_biasCalculated = false;
+            bool is_biasCalculated = true;
 
         public:
             LinearCorrection(const int ws);
-            void update(float (&data)[3]);
-            bool isBiasAvailable(const float (&data)[3]);
+            bool isBiasAvailable(float (&data)[3]);
             bool isReady() const;
             void setBias(float* bias_omg);
-            void reset();
+            void start();
+            void stop();
+            void resetWindowSize(int ws);
     };
 
     
@@ -40,13 +41,12 @@ namespace Navigation{
 
     class ComplementaryFilter{
         private:
-            // MyQuaternion::Quaternion qut;
             MyDirectCosineMatrix::DirectCosineMatrix dcm;
-            // Matrix2f weight = Matrix2f::Identity();
+            LinearCorrection LC = LinearCorrection(12000);
             float weight[2] = {1, 1};
             float pre_time = -1;
             float g0 = 9.7895;
-            float threshold = 0.1;  //degree
+            float threshold[3] = {0, 0, 0};  //degree
             Vector3f WE_IE_L = Vector3f::Zero();
             bool enable_check_acc = false;
             std::vector<Vector2f> pr_list; 
@@ -66,6 +66,11 @@ namespace Navigation{
             void setPOS(float (&pos)[3]);
             void setWE_IE_L_Zero();
             void resetEuler(float pitch, float roll, float yaw);
+            void setThreshold(float x_axis, float y_axis, float z_axis);
+            void setThresholdBySTD();
+            void startLC();
+            void stopLC();
+            void setWindowSizeLC(int wf);
     };
 
     //----------------------------------------------------------------//

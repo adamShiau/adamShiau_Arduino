@@ -35,6 +35,7 @@
 /*** range reg parameter***/
 #define H_MODE		0x80
 #define F_MODE		0x00
+#define INT_POL_H	0x40
 #define RANGE_10G 	0x01
 #define RANGE_20G 	0x02
 #define RANGE_40G 	0x03

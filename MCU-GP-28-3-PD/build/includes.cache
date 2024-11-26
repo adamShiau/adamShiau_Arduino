@@ -80,6 +80,21 @@
     "Includepath": null
   },
   {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "LSM6DS3Sensor.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "Arduino_BMI270_BMM150.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
     "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\build\\sketch\\src\\Orientation.cpp",
     "Include": "",
     "Includepath": null
@@ -136,6 +151,56 @@
   },
   {
     "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\SAMD21_turbo_PWM\\src\\SAMD21turboPWM.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src\\LSM6DS3Sensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src\\LSM6DS3_ACC_GYRO_Driver.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\BMI270.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi2.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_context.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_legacy.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_maximum_fifo.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi2_ois.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMM150-Sensor-API\\bmm150.c",
     "Include": "",
     "Includepath": null
   }

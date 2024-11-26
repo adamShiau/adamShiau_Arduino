@@ -29,7 +29,7 @@ enum Sensor_ID{
     Nano33,
     Nano33Sense,
     AR_1A_EC,
-    AR_1C_UY,
+    AR_1A_UY,
     MU_1A_AC,
     MU_2A_AC
 };

@@ -22,6 +22,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 
 /*** Attitude calculation*/
 Navigation::ComplementaryFilter my_cpf;
+
 unsigned short count = 0;
 unsigned long pre_time = 0;
 /***End of Attitude calculation*/
@@ -93,107 +94,107 @@ byte rst_fn_flag = MODE_RST;
 
 DumpParameter my_cali_para[PARAMETER_CNT];
 
-#line 94 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 95 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data);
-#line 101 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 102 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void setup();
-#line 198 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 199 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void loop();
-#line 209 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 210 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void printAdd(char name[], void* addr);
-#line 216 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 217 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void print_adxl355Data(byte *temp_a);
-#line 238 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 239 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void printVal_1(char name[], int val);
-#line 245 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 246 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void printVal_0(char name[], int val);
-#line 252 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 253 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void printVal_0(char name[]);
-#line 257 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 258 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag);
-#line 267 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 268 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch);
-#line 898 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 899 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void output_mode_setting(byte &mux_flag, byte mode, byte &select_fn);
-#line 996 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 997 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void temp_idle(byte &select_fn, unsigned int CTRLREG, byte ch);
-#line 1007 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1008 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void fn_rst(byte &select_fn, unsigned int CTRLREG, byte ch);
-#line 1027 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1028 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_fog_parameter(byte &select_fn, unsigned int value, byte ch);
-#line 1118 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1119 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_fog(byte &select_fn, unsigned int value, byte ch);
-#line 1231 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1232 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_imu(byte &select_fn, unsigned int value, byte ch);
-#line 1357 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1370 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_att_nmea(byte &select_fn, unsigned int value, byte ch);
-#line 1487 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1511 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_nmea(byte &select_fn, unsigned int value, byte ch);
-#line 1577 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1601 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acq_HP_test(byte &select_fn, unsigned int value, byte ch);
-#line 1681 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1705 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 float convert_PDtemp(byte dataH, byte dataL);
-#line 1686 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1710 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void convertGyro(byte data[6]);
-#line 1708 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1732 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void print_nano33XlmData(byte *data);
-#line 1725 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1749 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void clear_SEL_EN(byte &select_fn);
-#line 1730 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1754 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void ISR_EXTT();
-#line 1742 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1766 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void readEEPROM(byte data[4]);
-#line 1758 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1782 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void MCU_counter(byte data[4]);
-#line 1767 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1791 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void readADC(byte data[8]);
-#line 1798 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1822 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void parameter_init(void);
-#line 1858 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1882 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void update_imu_misalignment_init();
-#line 1914 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 1938 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void report_current_output_configuration();
-#line 2021 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2052 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void write_fog_parameter_to_eeprom_all(byte fog_ch);
-#line 2072 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2103 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void write_fog_parameter_to_eeprom(int& eeprom_var, unsigned int eeprom_addr, int value);
-#line 2081 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2112 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void read_misalignment_calibration_from_eeprom();
-#line 2138 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2169 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void read_fog_parameter_from_eeprom_all(byte fog_ch);
-#line 2192 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2223 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void read_fog_parameter_from_eeprom(int& eeprom_var, unsigned int eeprom_addr);
-#line 2201 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2232 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void update_baudrate(byte eeprom_var);
-#line 2243 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2274 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void update_datarate(byte eeprom_var);
-#line 2292 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2323 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void set_output_configuration_init();
-#line 2303 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2334 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch);
-#line 2408 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2439 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void Blink_MCU_LED();
-#line 2421 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2452 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void Wait_FPGA_Wakeup(byte &flag, byte fog_ch);
-#line 2468 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
-void reset_SYNC();
-#line 2474 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
-void printVersion();
-#line 2480 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
-void verify_output_fn(byte in);
 #line 2499 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+void reset_SYNC();
+#line 2505 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+void printVersion();
+#line 2511 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+void verify_output_fn(byte in);
+#line 2530 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void verify_output_fn_reg_value(int in);
-#line 2518 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2549 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void verify_select_fn(int in);
-#line 2537 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2568 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void acc_cali(float acc_cli[3], float acc[3]);
-#line 2553 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2584 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void gyro_cali(float gyro_cli[3], float gyro[3]);
-#line 2569 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2600 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void print_imu_data(bool on, float acc[3], float gyro[3]);
-#line 2587 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 2618 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void print_ext_WDT_configuration(int sel);
-#line 94 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+#line 95 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
 void my_parameter_f(const char *parameter_name, float input_value, DumpParameter *output_data) 
 {
   snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
@@ -1372,8 +1373,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
-
       break;
+
+      case EXT_SYNC2:
+        data_cnt = 0;
+        Serial.println("Enter EXT_SYNC2 mode");
+        Serial.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
+      break;
+
       case STOP_SYNC:
         reset_SYNC();
         data_cnt = 0;
@@ -1500,6 +1513,17 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
 
+      break;
+      case EXT_SYNC2:
+        data_cnt = 0;
+        Serial.println("Enter EXT_SYNC2 mode");
+        Serial.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
       case STOP_SYNC:
         reset_SYNC();
@@ -2054,7 +2078,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
       
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 400);
+      my_cpf.setIMUError(AR_1A_UY, 400);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 400 Hz");
@@ -2067,7 +2092,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 200);
+      my_cpf.setIMUError(AR_1A_UY, 200);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 200 Hz");
@@ -2080,7 +2106,10 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.3,0.3,0.1);
+      Serial.println("my_cpf.setThreshold(0.3,0.3,0.1)");
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");
@@ -2093,7 +2122,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 10);
+      my_cpf.setIMUError(AR_1A_UY, 10);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 10 Hz");
@@ -2106,7 +2136,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");

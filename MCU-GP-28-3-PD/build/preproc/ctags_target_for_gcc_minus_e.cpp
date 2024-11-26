@@ -30,6 +30,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 
 /*** Attitude calculation*/
 Navigation::ComplementaryFilter my_cpf;
+
 unsigned short count = 0;
 unsigned long pre_time = 0;
 /***End of Attitude calculation*/
@@ -124,7 +125,7 @@ void setup() {
      *   for PIG MCU : EXTT = PA27, Variant pin = 26, EXINT[15]
 
      *  ****/
-# 115 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
+# 116 "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-3-PD\\MCU-GP-28-3-PD.ino"
   pinMode(26, INPUT_PULLUP);
   attachInterrupt(26, ISR_EXTT, CHANGE);
 
@@ -826,8 +827,8 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
         if(SER->available()) fpga_version = SER->readStringUntil('\n');
         SerialUSB.print("CH: ");
         SerialUSB.println(fog_ch);
-        SerialUSB.print("MCU-GP-28-2-PD");
-        Serial1.print("MCU-GP-28-2-PD");
+        SerialUSB.print("MCU-GP-28-3-PD");
+        Serial1.print("MCU-GP-28-3-PD");
         SerialUSB.print(',');
         Serial1.print(',');
         SerialUSB.println(fpga_version);
@@ -1282,8 +1283,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         setupWDT(11);
         enable_EXT_WDT(4);
         reset_EXT_WDI(5);
-
       break;
+
+      case 3:
+        data_cnt = 0;
+        SerialUSB.println("Enter EXT_SYNC2 mode");
+        SerialUSB.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        ((Eic *)0x40001800UL) /**< \brief (EIC) APB Base Address */->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(4095, 1);
+        setupWDT(11);
+        enable_EXT_WDT(4);
+        reset_EXT_WDI(5);
+      break;
+
       case 4:
         reset_SYNC();
         data_cnt = 0;
@@ -1410,6 +1423,17 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
         enable_EXT_WDT(4);
         reset_EXT_WDI(5);
 
+      break;
+      case 3:
+        data_cnt = 0;
+        SerialUSB.println("Enter EXT_SYNC2 mode");
+        SerialUSB.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        ((Eic *)0x40001800UL) /**< \brief (EIC) APB Base Address */->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(4095, 1);
+        setupWDT(11);
+        enable_EXT_WDT(4);
+        reset_EXT_WDI(5);
       break;
       case 4:
         reset_SYNC();
@@ -1964,7 +1988,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 400);
+      my_cpf.setIMUError(AR_1A_UY, 400);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       SerialUSB.println("Data rate set to 400 Hz");
@@ -1977,7 +2002,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 200);
+      my_cpf.setIMUError(AR_1A_UY, 200);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       SerialUSB.println("Data rate set to 200 Hz");
@@ -1990,7 +2016,10 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.3,0.3,0.1);
+      SerialUSB.println("my_cpf.setThreshold(0.3,0.3,0.1)");
       /*** End of Kalman Filter Initialize***/
 
       SerialUSB.println("Data rate set to 100 Hz");
@@ -2003,7 +2032,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 10);
+      my_cpf.setIMUError(AR_1A_UY, 10);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       SerialUSB.println("Data rate set to 10 Hz");
@@ -2016,7 +2046,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       SerialUSB.println("Data rate set to 100 Hz");
@@ -2487,7 +2518,7 @@ void reset_SYNC()
  void printVersion()
   {
     SerialUSB.print("\nVersion:");
-    SerialUSB.println("MCU-GP-28-2-PD");
+    SerialUSB.println("MCU-GP-28-3-PD");
   }
 
 void verify_output_fn(byte in)

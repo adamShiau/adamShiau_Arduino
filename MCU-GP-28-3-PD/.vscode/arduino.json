@@ -1,5 +1,5 @@
 {
-    "port": "COM8",
+    "port": "COM33",
     "board": "arduino:samd:nano_33_iot",
     "sketch": "MCU-GP-28-3-PD.ino",
     "output": "build"

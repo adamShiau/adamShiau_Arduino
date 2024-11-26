@@ -25,8 +25,9 @@
 
 #define INT_SYNC	1
 #define EXT_SYNC 	1<<1
+#define EXT_SYNC2 	3
 #define STOP_SYNC 	1<<2
-#define HP_TEST 	3
+#define HP_TEST 	3 // not use now, 11/22/2024
 #define NMEA_MODE	5
 
 // 
@@ -127,11 +128,16 @@ char PIG::setSyncMode(unsigned int CTRLREG)
 			run_fog_flag = 1;
 			break;
 		}
-		case HP_TEST: {
-			sendCmd(DATA_OUT_START_ADDR, 3);
+		case EXT_SYNC2: {
+			sendCmd(DATA_OUT_START_ADDR, 2);
 			run_fog_flag = 1;
 			break;
 		}
+		// case HP_TEST: {
+		// 	sendCmd(DATA_OUT_START_ADDR, 3);
+		// 	run_fog_flag = 1;
+		// 	break;
+		// }
 		case NMEA_MODE: {
 			sendCmd(DATA_OUT_START_ADDR, 4);
 			run_fog_flag = 1;

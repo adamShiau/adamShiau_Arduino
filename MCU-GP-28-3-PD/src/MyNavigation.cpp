@@ -7,17 +7,11 @@ namespace Navigation{
     //----------------------------------------------------------------//
 
     ComplementaryFilter::ComplementaryFilter(){
-        // qut = MyQuaternion::Quaternion(0,0,0);
         dcm = MyDirectCosineMatrix::DirectCosineMatrix();
-        float pos[] = {25.013050879816202, 121.22192489586787, 0};
-        setPOS(pos);
     }
 
     ComplementaryFilter::ComplementaryFilter(float ini_ori[3]){
-        // qut = MyQuaternion::Quaternion(ini_ori[0], ini_ori[1], ini_ori[2]);
         dcm = MyDirectCosineMatrix::DirectCosineMatrix(ini_ori[0], ini_ori[1], ini_ori[2]);
-        float pos[] = {25.013050879816202, 121.22192489586787, 0};
-        setPOS(pos);
     }
 
     void ComplementaryFilter::setIMUError(Sensor_ID sensor_id, int fs){
@@ -34,6 +28,12 @@ namespace Navigation{
 
         weight[0] = error_gyro[0] / (error_gyro[0] + error_accl[0]);
         weight[1] = error_gyro[1] / (error_gyro[1] + error_accl[1]);
+
+        LC.resetWindowSize(120 * fs);
+    }
+
+    void ComplementaryFilter::setWindowSizeLC(int wf){
+        LC.resetWindowSize(wf);
     }
 
     void ComplementaryFilter::enableCheckACC(bool enable_check_acc){
@@ -82,37 +82,42 @@ namespace Navigation{
     }
 
     void ComplementaryFilter::run(const float t, const float (&omg)[3], const float (&acc)[3]){
-        if (pre_time >=0){
-            Vector3f vec = Vector3f::Zero();
-            if (abs(omg[0]) > threshold || abs(omg[1]) > threshold || abs(omg[2]) > threshold){
-                vec << omg[0], omg[1], omg[2];
+        float LC_omg[3] = {omg[0], omg[1], omg[2]};
+        if (LC.isBiasAvailable(LC_omg)){
+            if (pre_time >=0){
+                Vector3f vec = Vector3f::Zero();
+                for (int i=0;i<3;i++){
+                    if (abs(LC_omg[i]) > threshold[i]){
+                        vec[i] = LC_omg[i];
+                    }
+                }
+
                 vec = (radians(vec) - dcm.getR_b2l().transpose() * WE_IE_L) * (t - pre_time);
+                dcm.rotate(vec);
+
+                Vector2f pr_acc = accLeveling(acc[0], acc[1], acc[2]);
+                if (checkALByAutocorrelation(pr_acc)){
+                    float ori_temp[3];
+                    dcm.getOri(ori_temp);
+
+                    float new_pr[2];
+                    new_pr[0] = ori_temp[0] - weight[0] * (ori_temp[0] - pr_acc(0));
+                    new_pr[1] = ori_temp[1] - weight[1] * (ori_temp[1] - pr_acc(1));
+                    
+                    dcm.resetOri(new_pr[0], new_pr[1], ori_temp[2]);
+                }
             }
-            
-            dcm.rotate(vec);
-            // qut.rotate(omg[0]*DEG_TO_RAD, omg[1]*DEG_TO_RAD, omg[2]*DEG_TO_RAD, dt);
 
-            Vector2f pr_acc = accLeveling(acc[0], acc[1], acc[2]);
-            if (checkALByAutocorrelation(pr_acc)){
-                float ori_temp[3];
-                dcm.getOri(ori_temp);
-                // qut.getOri(ori_temp);
-                // Vector2f ori_omg;
-                // ori_omg << ori_temp[0], ori_temp[1];
-
-                float new_pr[2];
-                new_pr[0] = ori_temp[0] - weight[0] * (ori_temp[0] - pr_acc(0));
-                new_pr[1] = ori_temp[1] - weight[1] * (ori_temp[1] - pr_acc(1));
-                
-                dcm.resetOri(new_pr[0], new_pr[1], ori_temp[2]);
-                // qut = MyQuaternion::Quaternion(new_pr(0), new_pr(1), ori_temp[2]);
+            else{
+                Vector2f pr_acc = accLeveling(acc[0], acc[1], acc[2]);
+                dcm.resetOri(pr_acc(0), pr_acc(1), 0);
             }
         }
+
         else{
-            Vector2f pr_acc = accLeveling(acc[0], acc[1], acc[2]);
-            dcm.resetOri(pr_acc(0), pr_acc(1), 0);
-            // qut = MyQuaternion::Quaternion(pr_acc(0), pr_acc(1), 0);
+            dcm.resetOri(0, 0, 0);
         }
+
         pre_time = t;
     }
 
@@ -138,6 +143,27 @@ namespace Navigation{
 
     void ComplementaryFilter::resetEuler(float pitch, float roll, float yaw){
         dcm.resetOri(pitch, roll, yaw);
+    }
+
+    void ComplementaryFilter::setThreshold(float x_axis, float y_axis, float z_axis){
+        threshold[0] = x_axis;
+        threshold[1] = y_axis;
+        threshold[2] = z_axis;
+    }
+
+    void ComplementaryFilter::setThresholdBySTD(){
+        IMUParams sensor_params = getSensorParams(my_sensor);
+        for (int i=0;i<3;i++){
+            threshold[i] = degrees(3 * sensor_params.getGYRO_STD()[i]);
+        }
+    }
+
+    void ComplementaryFilter::startLC(){
+        LC.start();
+    }
+
+    void ComplementaryFilter::stopLC(){
+        LC.stop();
     }
 
     //----------------------------------------------------------------//
@@ -466,37 +492,26 @@ namespace Navigation{
         
     }
 
-    void LinearCorrection::update(float (&data)[3]) {
-        if (count < window_size) {
-            for(int i=0;i<3;i++){
-                sum[i] += data[i];
-            }
-            count++;
-        }
-        
-        else if (count == window_size && bias[0] == 0) {
-            float n = static_cast<float>(window_size);
-            for(int i=0;i<3;i++){
-                bias[i] = sum[i] / n;
-            }
-        }
-        if (bias[0] != 0){
-            for(int i=0; i<3; i++){
-            data[i] -= bias[i];
-            }
-        }
-    }
-
-    void LinearCorrection::reset() {
+    void LinearCorrection::start() {
         for(int i=0;i<3;i++){
             sum[i] = 0;
             bias[i] = 0;
         }
         count = 0;
+        is_biasCalculated = false;
+    }
+
+    void LinearCorrection::stop(){
+        for(int i=0;i<3;i++){
+            sum[i] = 0;
+            bias[i] = 0;
+        }
+        count = 0;
+        is_biasCalculated = true;
     }
 
 
-    bool LinearCorrection::isBiasAvailable(const float (&data)[3]) {
+    bool LinearCorrection::isBiasAvailable(float (&data)[3]) {
         if (!is_biasCalculated){
             if (bias[0] == 0){
                 if (count < window_size) {
@@ -511,12 +526,17 @@ namespace Navigation{
                         bias[i] = sum[i] / n;
                     }
                     is_biasCalculated = true;
-                    return true;
                 }
             }
-        
         }
-        return false;
+
+        if (is_biasCalculated){
+            for(int i=0; i<3; i++){
+                data[i] -= bias[i];
+            }
+        }
+
+        return is_biasCalculated;
     }
 
 
@@ -528,6 +548,11 @@ namespace Navigation{
 
     bool LinearCorrection::isReady() const{
         return is_biasCalculated;
+    }
+
+    void LinearCorrection::resetWindowSize(const int ws){
+        window_size = ws;
+        stop();
     }
 
 }

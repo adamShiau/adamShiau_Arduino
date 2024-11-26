@@ -20,6 +20,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 
 /*** Attitude calculation*/
 Navigation::ComplementaryFilter my_cpf;
+
 unsigned short count = 0;
 unsigned long pre_time = 0;
 /***End of Attitude calculation*/
@@ -1269,8 +1270,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         setupWDT(11);
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
-
       break;
+
+      case EXT_SYNC2:
+        data_cnt = 0;
+        Serial.println("Enter EXT_SYNC2 mode");
+        Serial.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
+      break;
+
       case STOP_SYNC:
         reset_SYNC();
         data_cnt = 0;
@@ -1397,6 +1410,17 @@ void acq_att_nmea(byte &select_fn, unsigned int value, byte ch)
         enable_EXT_WDT(EXT_WDT_EN);
         reset_EXT_WDI(WDI);
 
+      break;
+      case EXT_SYNC2:
+        data_cnt = 0;
+        Serial.println("Enter EXT_SYNC2 mode");
+        Serial.println("Set EXTT to CHANGE");
+        my_cpf.startLC();
+        EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
+        eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
+        setupWDT(11);
+        enable_EXT_WDT(EXT_WDT_EN);
+        reset_EXT_WDI(WDI);
       break;
       case STOP_SYNC:
         reset_SYNC();
@@ -1951,7 +1975,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
       
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 400);
+      my_cpf.setIMUError(AR_1A_UY, 400);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 400 Hz");
@@ -1964,7 +1989,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 200);
+      my_cpf.setIMUError(AR_1A_UY, 200);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 200 Hz");
@@ -1977,7 +2003,11 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      my_cpf.setThresholdBySTD();
+      // my_cpf.setThreshold(0.33, 0.33, 0.017);
+      // my_cpf.setThreshold(0.5, 0.5, 0.017);
+      Serial.println("my_cpf.setThreshold");
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");
@@ -1990,7 +2020,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 10);
+      my_cpf.setIMUError(AR_1A_UY, 10);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 10 Hz");
@@ -2003,7 +2034,8 @@ void report_current_output_configuration()
       // pwm.analogWrite(PWM100, 500);  
 
       /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1C_UY, 100);
+      my_cpf.setIMUError(AR_1A_UY, 100);
+      my_cpf.setThresholdBySTD();
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");

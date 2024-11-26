@@ -135,17 +135,17 @@ std::array<float, 12> IMUParams::getIMU_12params() const {
 IMUParams getSensorParams(Sensor_ID id) {
     switch (id) {
         case Nano33:{
-            SensorParams ASM330_GYRO(250, 0.5, 45, 250, 250, "gyro");
-            SensorParams ASM330_ACCL(2000, 220, 8, 3000, 2000, "accl");
-            IMUParams ASM330_params(ASM330_GYRO, ASM330_ACCL);
-            return ASM330_params;
+            SensorParams GYRO(250, 0.5, 45, 250, 250, "gyro");
+            SensorParams ACCL(2000, 220, 8, 3000, 2000, "accl");
+            IMUParams IMU(GYRO, ACCL);
+            return IMU;
         }
 
         case Nano33Sense:{
             SensorParams GYRO(50, 0.366, 15, 150, 50, "gyro");
             SensorParams ACCL(560, 100, 15, 2, 560, "accl");
-            IMUParams IMG(GYRO, ACCL);
-            return IMG;
+            IMUParams IMU(GYRO, ACCL);
+            return IMU;
         }
            
         case Xsens:{
@@ -159,8 +159,20 @@ IMUParams getSensorParams(Sensor_ID id) {
             SensorParams ASM330_GYRO(0, 0.4, 7, 300, 20, "gyro");
             SensorParams ASM330_ACCL(0, 85, 3.4, 1000, 350, "accl");
             IMUParams ASM330_params(ASM330_GYRO, ASM330_ACCL);
+            // SensorParams wz(0, 0.05, 2.7, 20.46, 2.5, "gyro");
+            // ASM330_params.setGYRO(wz, 3);
             return ASM330_params;
         }
+
+        case AR_1A_UY:{
+            SensorParams ASM330_GYRO(0, 0.4, 7, 300, 20, "gyro");
+            SensorParams ASM330_ACCL(0, 85, 3.4, 1000, 350, "accl");
+            IMUParams ASM330_params(ASM330_GYRO, ASM330_ACCL);
+            SensorParams wz(0, 0.05, 2.7, 20.46, 2.5, "gyro");
+            ASM330_params.setGYRO(wz, 3);
+            return ASM330_params;
+        }
+
             
         default:{
             SensorParams old_nano33_gyro(0, degrees(0.001) * 60, 0, 0, 0, "gyro");
