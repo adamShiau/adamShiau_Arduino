@@ -2004,8 +2004,8 @@ void report_current_output_configuration()
 
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 100);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
+      my_cpf.setThresholdBySTD();
+      // my_cpf.setThreshold(0.38, 0.38, 0.025);
       // my_cpf.setThreshold(0.5, 0.5, 0.034);
       Serial.println("my_cpf.setThreshold");
       /*** End of Kalman Filter Initialize***/
