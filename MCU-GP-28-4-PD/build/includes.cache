@@ -1,0 +1,207 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\cores\\arduino"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\variants\\nano_33_iot"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "Wire.h",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\libraries\\Wire"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "EEPROM_24AA32A_I2C.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\EEPROM_24AA32A_I2C-master"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "uartRT.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\uartRT"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "pig_v2.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\PIG_V2"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "crcCalculator.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\crcCalulator"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "TinyGPSPlus.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\TinyGPSPlus-master\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "SPI.h",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\libraries\\SPI"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "ASM330LHHSensor.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\ASM330LHH\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "SAMD21turboPWM.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\SAMD21_turbo_PWM\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "ArduinoEigenDense.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Eigen"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "ArxTypeTraits.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\ArxTypeTraits"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\MCU-GP-28-4-PD.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\DataOutput.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\MyNavigation.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "LSM6DS3Sensor.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "Arduino_BMI270_BMM150.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\MySensorSetting.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\Orientation.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\MCU-GP-28-4-PD\\build\\sketch\\src\\SensorParams.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\libraries\\Wire\\Wire.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\EEPROM_24AA32A_I2C-master\\EEPROM_24AA32A_I2C.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\uartRT\\uartRT.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\PIG_V2\\pig_v2.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\crcCalulator\\crcCalculator.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\TinyGPSPlus-master\\src\\TinyGPS++.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.14\\libraries\\SPI\\SPI.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\ASM330LHH\\src\\ASM330LHHSensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\ASM330LHH\\src\\asm330lhh_reg.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\SAMD21_turbo_PWM\\src\\SAMD21turboPWM.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src\\LSM6DS3Sensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\STM32duino_LSM6DS3\\src\\LSM6DS3_ACC_GYRO_Driver.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\BMI270.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi2.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_context.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_legacy.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi270_maximum_fifo.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMI270-Sensor-API\\bmi2_ois.c",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\Arduino_BMI270_BMM150\\src\\utilities\\BMM150-Sensor-API\\bmm150.c",
+    "Include": "",
+    "Includepath": null
+  }
+]
