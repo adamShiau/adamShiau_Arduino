@@ -33,7 +33,7 @@
 0~7 for output mode setting,
 8~100 for parameter setting
 ***************************/
-#define MODE_RST 	        0
+#define MODE_IDLE 	        0
 #define MODE_FOG	        1
 #define MODE_IMU	        2
 #define MODE_FOG_HP_TEST	3

@@ -65,22 +65,26 @@ void setup() {
   myWire.setClock(I2C_FAST_MODE);
   pinPeripheral(27, PIO_SERCOM);
   pinPeripheral(20, PIO_SERCOM);
-  eprom.Parameter_Write(0,MOD_FREQ_INIT_SP13);
-  eprom.Parameter_Write(1,WAIT_CNT_INIT_SP13);
-  eprom.Parameter_Write(2,ERR_AVG_INIT_SP13);
-  eprom.Parameter_Write(3,MOD_AMP_H_INIT_SP13);
-  eprom.Parameter_Write(4,MOD_AMP_L_INIT_SP13);
-  eprom.Parameter_Write(5,ERR_TH_INIT_SP13);
-  eprom.Parameter_Write(6,ERR_OFFSET_INIT_SP13);
-  eprom.Parameter_Write(7,POLARITY_INIT_SP13);
-  eprom.Parameter_Write(8,CONST_STEP_INIT_SP13);
-  eprom.Parameter_Write(9,FPGA_Q_INIT_SP13);
-  eprom.Parameter_Write(10,FPGA_R_INIT_SP13);
-  eprom.Parameter_Write(11,GAIN1_INIT_SP13);
-  eprom.Parameter_Write(12,GAIN2_INIT_SP13);
-  eprom.Parameter_Write(13,FB_ON_INIT_SP13);
-  eprom.Write(TEST_ADD1, 1);
-  eprom.Write(TEST_ADD2, 0);
+  eprom.Parameter_Write(0,0xAB);
+   eprom.Parameter_Read(0,my_f.bin_val);
+   delay(1);
+  eprom.Parameter_Write(1,0xBA);
+ 
+  eprom.Parameter_Read(1,my_f.bin_val);
+  // eprom.Parameter_Write(2,ERR_AVG_INIT_SP13);
+  // eprom.Parameter_Write(3,MOD_AMP_H_INIT_SP13);
+  // eprom.Parameter_Write(4,MOD_AMP_L_INIT_SP13);
+  // eprom.Parameter_Write(5,ERR_TH_INIT_SP13);
+  // eprom.Parameter_Write(6,ERR_OFFSET_INIT_SP13);
+  // eprom.Parameter_Write(7,POLARITY_INIT_SP13);
+  // eprom.Parameter_Write(8,CONST_STEP_INIT_SP13);
+  // eprom.Parameter_Write(9,FPGA_Q_INIT_SP13);
+  // eprom.Parameter_Write(10,FPGA_R_INIT_SP13);
+  // eprom.Parameter_Write(11,GAIN1_INIT_SP13);
+  // eprom.Parameter_Write(12,GAIN2_INIT_SP13);
+  // eprom.Parameter_Write(13,FB_ON_INIT_SP13);
+  // eprom.Write(TEST_ADD1, 1);
+  // eprom.Write(TEST_ADD2, 0);
 
   /***
   my_f.float_val = -1.23456;
@@ -103,17 +107,17 @@ void loop() {
   // my_f_r = (my_float_t*) &data;   
   // Serial.println(my_f_r->float_val);  
   // delay(500);
-  eprom.Parameter_Read(0,my_f.bin_val);
-  Serial.println(my_f.int_val);
-  eprom.Parameter_Read(3,my_f.bin_val);
-  Serial.println(my_f.int_val);
-  eprom.Parameter_Read(4,my_f.bin_val);
-  Serial.println(my_f.int_val);
-  eprom.Read(TEST_ADD1, &tt_data);
-  Serial.println(tt_data);
-  eprom.Read(TEST_ADD2, &tt_data);
-  Serial.println(tt_data);
-  Serial.println(" ");
-  delay(500);
+  // eprom.Parameter_Read(0,my_f.bin_val);
+  // Serial.println(my_f.int_val);
+  // eprom.Parameter_Read(3,my_f.bin_val);
+  // Serial.println(my_f.int_val);
+  // eprom.Parameter_Read(4,my_f.bin_val);
+  // Serial.println(my_f.int_val);
+  // eprom.Read(TEST_ADD1, &tt_data);
+  // Serial.println(tt_data);
+  // eprom.Read(TEST_ADD2, &tt_data);
+  // Serial.println(tt_data);
+  // Serial.println(" ");
+  // delay(500);
 
 }
