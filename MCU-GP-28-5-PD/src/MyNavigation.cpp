@@ -141,11 +141,11 @@ namespace Navigation{
                 }
 
                 vec = (radians(vec) - dcm.getR_b2l().transpose() * WE_IE_L) * (t - pre_time);
-                dcm.rotate(vec);
+                dcm.rotate(vec); //更新姿態
 
                 Vector2f pr_acc = accLeveling(new_acc[0], new_acc[1], new_acc[2]);
                 pr_list.push_back(pr_acc);
-                for (int i=0;i<2;i++) { 
+                for (int i=0;i<2;i++) {  // MV濾波
                     sum_pr[i] += pr_list.back()[i]; 
                 }
                 if (pr_list.size() > window_size){
@@ -156,9 +156,9 @@ namespace Navigation{
                 }
                 
                 float ori_temp[3];
-                dcm.getOri(ori_temp);
-                if (checkACC(new_acc)){
-                    Vector2f new_pr_acc = sum_pr / pr_list.size();
+                dcm.getOri(ori_temp); // 28-5 更新，判斷ACC閥值
+                if (checkACC(new_acc)){ //CF 
+                    Vector2f new_pr_acc = sum_pr / pr_list.size(); //MV結果
                     float new_pr[2];
                     new_pr[0] = ori_temp[0] - weight[0] * normalizeAngle_float(ori_temp[0] - new_pr_acc(0));
                     new_pr[1] = ori_temp[1] - weight[1] * normalizeAngle_float(ori_temp[1] - new_pr_acc(1));

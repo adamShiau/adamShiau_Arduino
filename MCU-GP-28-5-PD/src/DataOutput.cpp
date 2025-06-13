@@ -1,6 +1,6 @@
 #include "DataOutput.h"
 
-
+// 沒用到
 Integration::Integration() : ang(3, 0.0), pre_time(-1){}
 
 std::vector<float> Integration::update(const float &time, float (&omg)[3]){

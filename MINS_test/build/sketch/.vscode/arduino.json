@@ -1,0 +1,7 @@
+#line 1 "C:\\Users\\user\\Documents\\Arduino\\test\\.vscode\\arduino.json"
+{
+    "sketch": "test.ino",
+    "output": "build",
+    "board": "arduino:samd:nano_33_iot",
+    "port": "COM21"
+}

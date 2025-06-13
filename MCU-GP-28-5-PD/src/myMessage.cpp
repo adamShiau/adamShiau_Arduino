@@ -1,6 +1,6 @@
 # include "myMessage.h"
 
-
+// 沒用到
 MyCRC::MyCRC(uint32_t width, uint32_t polynomial, uint32_t initial_remainder)
     : WIDTH(width), POLYNOMIAL(polynomial), REMAINDER(initial_remainder), crcFailCnt(0) {
     NUM_BYTE = (WIDTH + 7) / 8;

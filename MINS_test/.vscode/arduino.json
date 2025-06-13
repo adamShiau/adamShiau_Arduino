@@ -1,0 +1,6 @@
+{
+    "sketch": "test.ino",
+    "output": "build",
+    "board": "arduino:samd:nano_33_iot",
+    "port": "COM21"
+}

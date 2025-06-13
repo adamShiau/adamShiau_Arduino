@@ -1976,7 +1976,8 @@ void report_current_output_configuration()
       
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 400);
-      my_cpf.setThresholdBySTD();
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.38, 0.38, 0.025);
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 400 Hz");
@@ -1990,7 +1991,8 @@ void report_current_output_configuration()
 
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 200);
-      my_cpf.setThresholdBySTD();
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.38, 0.38, 0.025);
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 200 Hz");
@@ -2004,7 +2006,8 @@ void report_current_output_configuration()
 
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 100);
-      my_cpf.setThresholdBySTD();
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.38, 0.38, 0.025);
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");
@@ -2018,7 +2021,8 @@ void report_current_output_configuration()
 
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 10);
-      my_cpf.setThresholdBySTD();
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.38, 0.38, 0.025);
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 10 Hz");
@@ -2032,7 +2036,8 @@ void report_current_output_configuration()
 
       /*** Kalman Filter Initialize ***/
       my_cpf.setIMUError(AR_1A_UY, 100);
-      my_cpf.setThresholdBySTD();
+      // my_cpf.setThresholdBySTD();
+      my_cpf.setThreshold(0.38, 0.38, 0.025);
       /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");

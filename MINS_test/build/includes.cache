@@ -1,0 +1,57 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.13\\cores\\arduino"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.13\\variants\\nano_33_iot"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\test\\build\\sketch\\test.ino.cpp",
+    "Include": "MAVLink.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\MAVLink"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\test\\build\\sketch\\test.ino.cpp",
+    "Include": "myUARTSensor.h",
+    "Includepath": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\test\\build\\sketch\\test.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor\\myI2CSensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor\\myMessage.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor\\mySPISensor.cpp",
+    "Include": "SPI.h",
+    "Includepath": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.13\\libraries\\SPI"
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor\\mySPISensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\Documents\\Arduino\\libraries\\myArduinoSensor\\myUARTSensor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "C:\\Users\\user\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\samd\\1.8.13\\libraries\\SPI\\SPI.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]
