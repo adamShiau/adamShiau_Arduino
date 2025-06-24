@@ -562,7 +562,7 @@ uint64_t getPX4Time(bool is_print) {
 }
 
 void setXsensPackage(){
-  send2Serial(PIXHAWK_SERIAL, "MODE: " + String(current_Xsens_mode));
+  send2Serial(PIXHAWK_SERIAL, "MODE: " + String(current_Xsens_mode)); // 印出資訊，INFO 用
   xsens.ToConfigMode();
   // xsens.getFW();
   xsens.reqPortConfig();
