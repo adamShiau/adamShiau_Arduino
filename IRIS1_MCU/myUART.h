@@ -13,6 +13,8 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
   
 ***/
 #include "uartRT.h"
+#include "wiring_private.h"
+
 // cmd read from GUI
 uint8_t myCmd_header[] = {0xAB, 0xBA};
 uint8_t myCmd_trailer[] = {0x55, 0x56};
@@ -36,43 +38,45 @@ Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERI
 Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
 Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
+
 void SERCOM2_Handler() {Serial2.IrqHandler();}
 void SERCOM1_Handler() {Serial3.IrqHandler();}
 void SERCOM3_Handler() {Serial4.IrqHandler();}
-void SERCOM5_Handler()
-{
-  Serial1.IrqHandler();
+void SERCOM5_Handler() {Serial1.IrqHandler();}
+// void SERCOM5_Handler()
+// {
+//   Serial1.IrqHandler();
 
-  byte *cmd;
+//   byte *cmd;
   
-  cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
+//   cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
 
-  if(cmd){
-    uart_cmd = cmd[0];
-    uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-    fog_ch = cmd[5];
-    cmd_complete = 1;
+//   if(cmd){
+//     uart_cmd = cmd[0];
+//     uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
+//     fog_ch = cmd[5];
+//     cmd_complete = 1;
 
-    Serial.print("cmd, value, ch: ");
-    Serial.print(uart_cmd);
-    Serial.print(", ");
-    Serial.print(uart_value);
-    Serial.print(", ");
-    Serial.println(fog_ch);
-    fog_woke_flag = 1;
-  }
-}
+//     Serial.print("cmd, value, ch: ");
+//     Serial.print(uart_cmd);
+//     Serial.print(", ");
+//     Serial.print(uart_value);
+//     Serial.print(", ");
+//     Serial.println(fog_ch);
+//     fog_woke_flag = 1;
+//   }
+// }
 
-void msg_out(char *msg)
-{
-  Serial.println(msg);
-  Serial1.println(msg);
-}
+// void msg_out(char *msg)
+// {
+//   Serial.println(msg);
+//   Serial1.println(msg);
+// }
 
-#include "pig_v2.h"
-PIG sp13(Serial2, 16); //SP13
-PIG sp14(Serial3, 16); //SP14
-PIG sp9(Serial4, 16); //SP14
+// #include "pig_v2.h"
+// PIG sp13(Serial2, 16); //SP13
+// PIG sp14(Serial3, 16); //SP14
+// PIG sp9(Serial4, 16); //SP14
 
 void myUART_init(void)
 {
