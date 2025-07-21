@@ -1,12 +1,11 @@
 #include "wiring_private.h"
 #include "myUART.h"
 
-int cnt=0;
 void setup() {
   myUART_init();
   
 }
-
+byte cnt = 0;
 
 void loop() { 
 
@@ -22,7 +21,8 @@ void loop() {
     Serial1.write(c);
   }
 
-
+  // Serial1.write(cnt++);
+  // delay(100);
 }
 
 

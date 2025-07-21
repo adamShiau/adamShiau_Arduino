@@ -80,11 +80,11 @@ void SERCOM5_Handler() {Serial1.IrqHandler();}
 
 void myUART_init(void)
 {
-    Serial.begin(230400); //debug
-    Serial1.begin(230400); //to PC
-    Serial2.begin(115200); //fog
+    Serial.begin(230400); 
+    Serial1.begin(115200); //to PC
+    Serial2.begin(115200); 
     Serial3.begin(115200);
-    Serial4.begin(115200);
+    Serial4.begin(115200); //to FPGA
     cmd_complete = 0;
 
     pinPeripheral(24, PIO_SERCOM);
