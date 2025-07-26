@@ -260,7 +260,7 @@ void setup() {
   // sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PAIR003*39", "$PAIR");
   // sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PAIR004*3E", "$PAIR");
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,VER*61", "$PLSR"); //Query firmware version
-  // sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,FIXRATE,2*6B", "$PLSR"); //Set update rate
+  sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,FIXRATE,2*6B", "$PLSR"); //Set update rate 2 Hz
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,FIXRATE,?*66", "$PLSR"); //query update rate
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,UART2,{PLSC,ANTDIST,100}*46", "$PLSR"); //Set the distance between two antennas 
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,UART2,{PLSC,ANTDIST,?}*48", "$PLSR"); //query the distance between two antennas 
@@ -397,7 +397,7 @@ void setup() {
 
 void loop() { 
 
-  printMatchingNMEA(NMEA_IN_Serial, "$GNGGA");
+  // printMatchingNMEA(NMEA_IN_Serial, "$GNGGA");
   printMatchingNMEA(NMEA_IN_Serial, "$GPHDT");
   //  while (NMEA_IN_Serial.available()) {
   //   char c = NMEA_IN_Serial.read();

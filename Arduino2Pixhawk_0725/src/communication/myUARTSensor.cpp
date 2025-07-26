@@ -1178,7 +1178,7 @@ bool sendGNSSCommandAndWaitAck(HardwareSerial &serial_nmea,
     Serial.print("\nSending attempt ");
     Serial.println(i + 1);
 
-    // clearSerialBuffer(serial_nmea, 100); 
+    clearSerialBuffer(serial_nmea, 100); 
     // send2Serial(serial_nmea, cmd);
     Serial.println(cmd);
     serial_nmea.println(cmd);
@@ -1195,20 +1195,18 @@ bool sendGNSSCommandAndWaitAck(HardwareSerial &serial_nmea,
 
 
 void clearSerialBuffer(HardwareSerial &port, unsigned long max_duration_ms) {
-  // unsigned long t0 = millis();
-  t_old = millis();
-  while (millis() - t_old < max_duration_ms) {
-    while (port.available()) {
+  unsigned long t0 = millis();
+
+  while (millis() - t0 < max_duration_ms) {
+    int count = 0;
+    while (port.available() && count++ < 256) {
       port.read();
-      t_old = millis(); // 有新資料就重設 timeout 起點
-      Serial.print(999);
     }
-    Serial.print(millis());
-    Serial.print(", ");
-    Serial.println(t_old);
-    delay(10);
+
+    delay(2);
   }
 }
+
 
 
 // void clearSerialBuffer(HardwareSerial &port, unsigned long quiet_time_ms = 100) {
