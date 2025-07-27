@@ -256,7 +256,7 @@ void setup() {
   myUART_init();
   Serial.println("Step 1: Complete");
 
-  
+  sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PAIR006*3C", "$PAIR001"); //Perform GNSS cold start
   // sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PAIR003*39", "$PAIR");
   // sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PAIR004*3E", "$PAIR");
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,VER*61", "$PLSR"); //Query firmware version
@@ -265,133 +265,7 @@ void setup() {
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,UART2,{PLSC,ANTDIST,100}*46", "$PLSR"); //Set the distance between two antennas 
   sendGNSSCommandAndWaitAck(NMEA_IN_Serial, "$PLSC,UART2,{PLSC,ANTDIST,?}*48", "$PLSR"); //query the distance between two antennas 
 
-      // for (int i=0;i<5;i++){
-      //   Serial.println(i);
-      //   send2Serial(NMEA_IN_Serial, "$PAIR003*39");
-      //   if (checkLOCOSYS_ACK(NMEA_IN_Serial)) { break; }
-      // }  
-      // if (checkLOCOSYS_ACK(NMEA_IN_Serial)) { break; }
-      // ulong t0 = millis();
-      // while(true){
-      //   char receivedChars[256];
-      //   readNMEA(serial_nmea, receivedChars, 256);
-      //   if (strstr(receivedChars, "$PAIR") != NULL)
-      //   {
-      //       Serial.println(receivedChars);
-      //       return true;
-      //   }
-
-      //   if(millis() - t0 > 1000){
-      //     Serial.println("Timeout");
-      //     return false;
-      //   }
-      // }
-
-  // delay(3000);
-  // Serial.println("Query firmware version ");   
-  //   while (NMEA_IN_Serial.available()) {
-  //   Serial.read();  // 清空接收緩衝區的資料
-  //   Serial.println("clear buffer done! ");  
-  // }
-  // Serial.println("clear buffer done! ");  
-  // NMEA_IN_Serial.println("$PLSC,VER*61");
-  // delay(100);
-  // while (NMEA_IN_Serial.available()) {
-  //   char c = NMEA_IN_Serial.read();
-    
-  //   Serial.write(c);
-  // }
-  // NMEA_IN_Serial.println("$PLSC,VER*61 Done");
-  /***
-
-
-  Serial.println("Step 2: Checking USB Serial...");
-  is_debug = checkUSBSerial();
-  Serial.println("Step 2: Complete");
-  
-  Serial.println("Step 3: Checking PX4 connection...");
-  checkPX4CON();
-  Serial.println("Step 3: Complete");
-  
-  Serial.println("Step 4: Initializing GNSS Module...");
-  // 初始化 GNSS 模組 - 啟用完整的 NMEA 句子輸出
-    // 查詢韌體版本以確認連接
-  Serial.println("Sending: $PLSC,VER*61");   
-  NMEA_IN_Serial.println("$PLSC,VER*61");
-  delay(300);  // 等待 GNSS 模組穩定
-  // 設定雙天線基線距離（單位 mm），這裡設定為 0.5 公尺（500 mm）
-  Serial.println("Sending: $PLSC,UART2,{PLSC,ANTDIST,1550}*76");
-  NMEA_IN_Serial.println("$PLSC,UART2,{PLSC,ANTDIST,1550}*76");
-  
-  readLOCOSYSResponse(); 
-  delay(100);
-  readLOCOSYSResponse(); 
-
-  // 設定天線距離偏差容忍度（可選，提高嚴苛環境下的可靠性）
-  NMEA_IN_Serial.println("$PLSC,UART2,{PLSC,ANTDISTDEV,30}*23");
-  delay(100);
-  // 查詢韌體版本以確認連接
-  Serial.println("Sending: $PLSC,VER*61");   
-  NMEA_IN_Serial.println("$PLSC,VER*61");
-  delay(10);
-  readLOCOSYSResponse();  // ✅ 建議加上這行
-  // 啟用完整的 GNGSA 輸出 (包含衛星 PRN)
-  NMEA_IN_Serial.println("$PUBX,40,GSA,0,1,0,0,0,0*4E");
-  delay(100);
-
-  //啟用 GSV 句子 (衛星詳細資訊)
-  NMEA_IN_Serial.println("$PUBX,40,GSV,0,1,0,0,0,0*59");
-  delay(100);
-  
-  // 啟用 VTG 句子 (地面速度和航向)
-  NMEA_IN_Serial.println("$PUBX,40,VTG,0,1,0,0,0,0*5E");
-  delay(100);
-  
-  // 啟用 ZDA 句子 (UTC 時間)
-  NMEA_IN_Serial.println("$PUBX,40,ZDA,0,1,0,0,0,0*44");
-  delay(100);
-  // 啟用 HDT 句子 (True Heading)
-  NMEA_IN_Serial.println("$PUBX,40,HDT,0,1,0,0,0,0*6F");
-  delay(100);
-  
-  // 啟用 PLSHD 句子 (Dual-antenna GNSS-based heading)
-  NMEA_IN_Serial.println("$PUBX,40,PLSHD,0,1,0,0,0,0*45");
-  delay(100);
-  
-  unsigned long start_time = millis();
-  String response = "";
-
-
-  // 設定 GNSS 輸出率為 1Hz
-  NMEA_IN_Serial.println("$PUBX,40,GGA,0,1,0,0,0,0*5A");
-  delay(100);
-  NMEA_IN_Serial.println("$PUBX,40,RMC,0,1,0,0,0,0*47");
-  delay(100);
-  NMEA_IN_Serial.println("$PUBX,40,GST,0,1,0,0,0,0*5B");
-  delay(100);
-  
-  Serial.println("Step 4: GNSS Module initialized - waiting for satellite lock...");
-  
-  Serial.println("Step 5: Initializing Xsens (may take time)...");
-  // initialize xsens mit-680 - 優化數據流暢性
-  xsens.setDataRate(100); // 設定為100Hz，提供高頻率數據輸出
-  setXsensPackage();
-  
-  Serial.println("Step 5.1: Configuring MTi-680 GNSS Receiver...");
-  // 配置 MTi-680 GNSS 接收器設定
-  // 參數: baudrate=115200, update_rate=4Hz, talker_id=1(GN)
-  xsens.setGnssReceiverSettings(115200, 4, 1);
-  delay(1000);  // 等待配置完成
-  
-  Serial.println("Step 5.2: Starting measurement mode...");
-  xsens.ToMeasurementMode();
-  Serial.println("Step 5: Complete");
-
-  delay(100);
-  is_run = true;
-  Serial.println("=== Setup Complete - System Running ===");
-     */
-
+      
      Serial.println("End of setup ");  
 }
 
@@ -399,6 +273,7 @@ void loop() {
 
   // printMatchingNMEA(NMEA_IN_Serial, "$GNGGA");
   printMatchingNMEA(NMEA_IN_Serial, "$GPHDT");
+  printMatchingNMEA(NMEA_IN_Serial, "$PLSHD");
   //  while (NMEA_IN_Serial.available()) {
   //   char c = NMEA_IN_Serial.read();
     
