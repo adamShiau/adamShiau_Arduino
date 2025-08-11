@@ -100,6 +100,12 @@ void my_parameter_f(const char *parameter_name, float input_value, DumpParameter
   Serial1.print(output_data->str);
 }
 
+void my_parameter_f_silent(const char *parameter_name, float input_value, DumpParameter *output_data) 
+{
+  snprintf(output_data->str, MAX_STR_LENGTH, "\"%s\":%.10f", parameter_name, input_value);
+}
+
+
 void setup() {
   // delay(5000);
 
@@ -881,9 +887,9 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
 
           // 加入你要的參數
           DumpParameter my_atti_para[3];
-          my_parameter_f("STD_Wx", attitude_cali_coe._f.std_wx, &my_atti_para[0]);
-          my_parameter_f("STD_Wy", attitude_cali_coe._f.std_wy, &my_atti_para[1]);
-          my_parameter_f("STD_Wz", attitude_cali_coe._f.std_wz, &my_atti_para[2]);
+          my_parameter_f_silent("STD_Wx", attitude_cali_coe._f.std_wx, &my_atti_para[0]);
+          my_parameter_f_silent("STD_Wy", attitude_cali_coe._f.std_wy, &my_atti_para[1]);
+          my_parameter_f_silent("STD_Wz", attitude_cali_coe._f.std_wz, &my_atti_para[2]);
 
           // 加上逗號與三個參數
           fog_parameter += ",";
@@ -1947,7 +1953,31 @@ void parameter_init(void)
     read_ahrs_attitude_calibration_from_eeprom();
     /***end of AHRS attitude calibration*/
 
+    set_ahrs_attitude_cali_init();
+
   }
+}
+
+void set_ahrs_attitude_cali_init()
+{
+  Serial.println("\nStart setting AHRS attitude calibration.");
+
+  /*** End of Kalman Filter Initialize***/
+  Serial.print("STD_Wx:");
+  Serial.println(attitude_cali_coe._f.std_wx);
+  Serial.print("STD_Wy:");
+  Serial.println(attitude_cali_coe._f.std_wy);
+  Serial.print("STD_Wz:");
+  Serial.println(attitude_cali_coe._f.std_wz);
+
+  /*** Kalman Filter Initialize ***/
+  my_cpf.setIMUError(AR_1A_UY, 100);
+  // my_cpf.setThresholdBySTD();
+  my_cpf.setThreshold(attitude_cali_coe._f.std_wx, 
+                      attitude_cali_coe._f.std_wy, 
+                      attitude_cali_coe._f.std_wz);
+
+  Serial.println("End of setting AHRS attitude calibration.");
 }
 
 void update_imu_misalignment_init()
@@ -2059,12 +2089,6 @@ void report_current_output_configuration()
       // pwm.timer(1, 2, int(15000*PWM_FIX), false); //12M/2/15000 = 400Hz
       // pwm.analogWrite(PWM100, 500);  
       
-      /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1A_UY, 400);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
-      /*** End of Kalman Filter Initialize***/
-
       Serial.println("Data rate set to 400 Hz");
       Serial1.println("Data rate set to 400 Hz");
       // delay(100);
@@ -2073,12 +2097,6 @@ void report_current_output_configuration()
     case SET_DATARATE_200: {
       // pwm.timer(1, 2, int(30000*PWM_FIX), false); //12M/2/30000 = 200Hz
       // pwm.analogWrite(PWM100, 500);  
-
-      /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1A_UY, 200);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
-      /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 200 Hz");
       Serial1.println("Data rate set to 200 Hz");
@@ -2089,12 +2107,6 @@ void report_current_output_configuration()
       // pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
       // pwm.analogWrite(PWM100, 500);  
 
-      /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1A_UY, 100);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
-      /*** End of Kalman Filter Initialize***/
-
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
       // delay(100);
@@ -2104,12 +2116,6 @@ void report_current_output_configuration()
       // pwm.timer(1, 2, int(600000*PWM_FIX), false); //12M/2/600000 = 10Hz
       // pwm.analogWrite(PWM100, 500);  
 
-      /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1A_UY, 10);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
-      /*** End of Kalman Filter Initialize***/
-
       Serial.println("Data rate set to 10 Hz");
       Serial1.println("Data rate set to 10 Hz");
       // delay(100);
@@ -2118,12 +2124,6 @@ void report_current_output_configuration()
     default:{
       // pwm.timer(1, 2, int(60000*PWM_FIX), false); //12M/2/60000 = 100Hz
       // pwm.analogWrite(PWM100, 500);  
-
-      /*** Kalman Filter Initialize ***/
-      my_cpf.setIMUError(AR_1A_UY, 100);
-      // my_cpf.setThresholdBySTD();
-      my_cpf.setThreshold(0.38, 0.38, 0.025);
-      /*** End of Kalman Filter Initialize***/
 
       Serial.println("Data rate set to 100 Hz");
       Serial1.println("Data rate set to 100 Hz");
