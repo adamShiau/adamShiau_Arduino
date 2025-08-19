@@ -43,6 +43,13 @@ void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx)
     rx->cmd      = data[1];
     rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
     rx->ch       = data[6];
+    Serial.println("condition 1:");
+    Serial.print("cmd: ");
+    Serial.print(rx->cmd, HEX);
+    Serial.print(", value: ");
+    Serial.print(rx->value);
+    Serial.print(", ch: ");
+    Serial.println(rx->ch);
 
   }
   else if (rx->condition == RX_CONDITION_CDDC_5758) {
