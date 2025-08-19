@@ -10,7 +10,7 @@ void setup() {
 
 void loop() { 
   get_uart_cmd(readDataDynamic(&try1), &my_cmd);
-
+  cmd_mux(&my_cmd);
 
 }
 
