@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include "memory_manage.h"
+#include "myUART.h"
 
 
 #ifdef __cplusplus
@@ -87,7 +88,7 @@ void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
 size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
     int32_t value, uint8_t ch);
 void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
-void send_json_uart(const char* buffer);
+// void send_json_uart(const char* buffer);
 
 /* ===================== API: printf-like serial output ===================== */
 /* C-linkage printf wrappers (you can call these from C or C++). */
