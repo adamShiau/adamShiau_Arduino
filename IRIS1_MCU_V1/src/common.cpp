@@ -18,7 +18,13 @@
 #include "common.h"
 #include <ctype.h>
 #include <string.h>
-// #include <stdio.h>    // vsnprintf
+
+
+// -----------------------------------------------------------------------------
+// Forward declare Serial4 (constructed in myUART.cpp)
+class Uart;
+extern Uart Serial4;
+// -----------------------------------------------------------------------------
 
 /* ===================== serial_printf implementation ===================== */
 
@@ -252,72 +258,76 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 #define FOG_JSON_BUF_SIZE 1200    // JSON 暫存緩衝大小（依實際內容調整）
 #endif
 
-/* 從 Stream 讀一個 JSON 物件：從第一個 '{' 開始，直到對應的 '}'。 */
+// Convert int32_t to mem_unit_t as an integer payload
+static inline mem_unit_t mem_from_i32(int32_t v) {
+  mem_unit_t m;
+  m.type = TYPE_INT;
+  m.data.int_val = v;
+  return m;
+}
+
+// Read one JSON object from a Stream: from first '{' to its matching '}'.
+// Returns total bytes written to 'out' including the final NUL, or 0 on timeout/invalid.
 static size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms)
 {
   if (!out || out_cap < 3) return 0;
 
-  uint32_t t0 = millis();
-  bool started = false;
-  int depth = 0;
-  size_t i = 0;
+  const uint32_t t0 = millis();
+  bool   started = false;
+  int    depth   = 0;
+  size_t i       = 0;
 
-  // Read characters from Stream `s` until a full JSON object is captured
-  // (from the first '{' to its matching '}' ) or until `timeout_ms` expires.
+  // Read until timeout or full JSON object captured
   while ((millis() - t0) < timeout_ms) {
 
-    // No data available yet: yield to background tasks and try again.
-    if (!s.available()) {
-      yield();
-      continue;
-    }
+    // No data yet: yield to background tasks and try again
+    if (!s.available()) { yield(); continue; }
 
-    // Read one byte; if read failed (shouldn't happen after available()), skip.
     int c = s.read();
-    if (c < 0) continue;
+    if (c < 0) continue;  // defensive guard
 
     if (!started) {
-      
+      // Wait for the first '{' to start capturing
       if (c == '{') {
-        started = true;                 // Found the first '{' — begin capturing.
-        depth = 1;                      // We are now inside one level of braces.
-        if (i < out_cap - 1) out[i++] = '{'; // Store that opening brace.
+        started = true;
+        depth   = 1;
+        if (i < out_cap - 1) out[i++] = '{';
       }
-      // Ignore any bytes that appear before the first '{'.
-    }
-    else {
-      // We are capturing: track brace depth to find the matching closing '}'.
-      if (c == '{')       depth++;      // Nested '{' → go one level deeper.
-      else if (c == '}')  depth--;      // '}' → close one nesting level.
+      // ignore bytes before '{'
+    } else {
+      // Track brace depth to detect the matching closing '}'
+      if (c == '{')        depth++;
+      else if (c == '}')   depth--;
 
-      // Append the current character (including the final '}') if buffer has room.
+      // Append current char if buffer has room (keep one for NUL)
       if (i < out_cap - 1) out[i++] = (char)c;
 
-      // When depth returns to 0, we've closed the original '{' → complete object.
+      // When depth returns to 0, full JSON object is done
       if (depth == 0) break;
     }
   }
 
-  if (!started || depth != 0) return 0; // timeout 或不完整
+  if (!started || depth != 0) return 0;  // timeout or incomplete
   out[i] = '\0';
-  return i + 1; // 含 NUL
+  return i + 1;                           // include terminating NUL
 }
 
-/* 解析形如：{"0":123, "1":-456, ...} 的簡單 JSON（key 是字串數字、value 是整數） */
-typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
 
-static void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx)
+// Parse simple JSON object like: {"0":169,"1":8192,...}
+// Keys are quoted numeric strings; values are signed integers.
+// For each pair, call cb(key, value, ctx).
+static void parse_simple_json_ints(const char* js, void (*cb)(int /*key*/, int32_t /*val*/, void* /*ctx*/), void* ctx)
 {
   if (!js || !cb) return;
 
   const char* p = js;
   while (*p) {
-    // 找 key 的起始引號
+    // Find starting quote of the next key
     while (*p && *p != '"') p++;
-    if (*p != '"') break;
+    if (*p != '"') break;  // no more key
     p++;
 
-    // 讀 key（數字字串）
+    // Read numeric key
     long key = 0;
     bool any_digit = false;
     while (*p && isdigit((unsigned char)*p)) {
@@ -327,18 +337,18 @@ static void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx)
     }
     if (!any_digit) break;
 
-    // 找 key 結束引號
+    // Skip to closing quote of key
     while (*p && *p != '"') p++;
     if (*p != '"') break;
     p++; // skip closing "
 
-    // 跳過空白與冒號
+    // Skip spaces and find ':'
     while (*p && isspace((unsigned char)*p)) p++;
     if (*p != ':') { while (*p && *p != ':') p++; if (*p != ':') break; }
     p++; // skip ':'
     while (*p && isspace((unsigned char)*p)) p++;
 
-    // 讀 value（有號整數）
+    // Read signed integer value
     bool neg = false;
     if (*p == '-') { neg = true; p++; }
     long val = 0;
@@ -351,61 +361,66 @@ static void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx)
     if (!any_val_digit) break;
     if (neg) val = -val;
 
-    // 回呼
+    // Dispatch
     cb((int)key, (int32_t)val, ctx);
 
-    // 移到下一對鍵值（逗點或結束）
+    // Move to next pair (skip until ',' or end '}')
     while (*p && *p != ',' && *p != '}') p++;
     if (*p == ',') { p++; continue; }
     else if (*p == '}') break;
   }
 }
 
-/* 寫入 fog_inst->paramX/Y/Z 的 callback */
+// Context used by the callback to know where to store values
 typedef struct {
   fog_parameter_t* fog;
-  uint8_t ch;
+  uint8_t ch;        // 1 -> paramX[], 2 -> paramY[], 3 -> paramZ[]
 } fog_cb_ctx_t;
 
+
+// Store one key/value into the proper channel array (as TYPE_INT.int_val)
 static void fog_store_cb(int key, int32_t val, void* user)
 {
   fog_cb_ctx_t* C = (fog_cb_ctx_t*)user;
   if (!C || !C->fog) return;
-  if (key < 0 || key > PAR_LEN) return;
+  if (key < 0 || key >= PAR_LEN) return;  // arrays are 0..PAR_LEN-1
 
-  // 假設 paramX/Y/Z 的元素型別是整數（例如 int32_t 或 mem_unit_t）
+  mem_unit_t m = mem_from_i32(val);
+
   switch (C->ch) {
-    case 1: C->fog->paramX[key] = (int32_t)val; break;
-    case 2: C->fog->paramY[key] = (int32_t)val; break;
-    case 3: C->fog->paramZ[key] = (int32_t)val; break;
+    case 1: C->fog->paramX[key] = m; break;
+    case 2: C->fog->paramY[key] = m; break;
+    case 3: C->fog->paramZ[key] = m; break;
     default: break;
   }
 }
 
-/* 主流程：送指令 -> 收 JSON -> 解析存入 -> 透過 Serial1 原樣回送 JSON */
+
+// Main entry: send command, receive JSON, parse into fog_inst, then forward JSON via Serial1
 void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch)
 {
   if (!fog_inst) return;
 
-  // 1) 送 command
+  // 1) Send command to FPGA over Serial4
   static const uint8_t HDR[2] = {0xAB, 0xBA};
   static const uint8_t TRL[2] = {0x55, 0x56};
   sendCmd(Serial4, HDR, TRL, CMD_DUMP_FOG, 2, ch);
 
-  // 2) 從 Serial4 收 JSON（完整一個物件）
+  // 2) Receive a full JSON object from Serial4
   char json_buf[FOG_JSON_BUF_SIZE];
   size_t n = read_json_object(Serial4, json_buf, sizeof(json_buf), FOG_JSON_TIMEOUT_MS);
   if (n == 0) {
-    serial_printf("dump_fog_param: timeout/bad JSON from Serial4\n");
+    // Optional debug
+    Serial.println(F("dump_fog_param: timeout or malformed JSON from Serial4"));
     return;
   }
 
-  // 3) 解析並存入 fog_inst
+  // 3) Parse and store into fog_inst->paramX/Y/Z by channel
   fog_cb_ctx_t ctx = { fog_inst, ch };
   parse_simple_json_ints(json_buf, fog_store_cb, &ctx);
 
-  // 4) 把這段 JSON 透過 Serial1 送出（原樣轉送）
+  // 4) Forward the raw JSON to PC via Serial1 (TX)
   Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
-  Serial1.write('\n'); // 可選：加換行方便 PC 端閱讀
+  Serial1.write('\n');  // optional newline for readability
 }
 

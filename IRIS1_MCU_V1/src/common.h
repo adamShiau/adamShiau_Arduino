@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include "memory_manage.h"
-#include "myUART.h"
+
 
 
 #ifdef __cplusplus
