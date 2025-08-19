@@ -13,10 +13,22 @@
  */
 
 #include <Arduino.h>
+/*** for serial_printf() impl */
+#include <stdint.h>
+#include <stddef.h>
+#include <stdarg.h>
 
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#define DEBUG_PRINT
+
+#ifdef DEBUG_PRINT
+    #define DEBUG_PRINT(...) serial_printf(__VA_ARGS__)
+#else
+    #define DEBUG_PRINT(...)
 #endif
 
 /* ---------- Protocol condition values ----------
@@ -71,9 +83,25 @@ typedef struct
 void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
 void cmd_mux(cmd_ctrl_t* rx);
 
+/* ===================== API: printf-like serial output ===================== */
+/* C-linkage printf wrappers (you can call these from C or C++). */
+int  serial_printf(const char* fmt, ...);
+int  serial_vprintf(const char* fmt, va_list ap);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
+
+/* This requires C++ (uses Arduino Print). Provide only in C++ compilation. */
+#ifdef __cplusplus
+#include <Print.h>
+
+/**
+ * @brief Set output stream for serial_printf() (default: &Serial).
+ *        You can pass &Serial1 / &Serial4 / any Print*.
+ */
+void serial_set_stream(Print* s);
+#endif
+
 
 #endif /* COMMON_H */

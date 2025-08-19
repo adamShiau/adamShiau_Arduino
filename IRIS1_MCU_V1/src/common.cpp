@@ -16,6 +16,77 @@
  */
 
 #include "common.h"
+// #include <stdio.h>    // vsnprintf
+
+/* ===================== serial_printf implementation ===================== */
+
+#ifndef SERIAL_PRINTF_STACKBUF
+#define SERIAL_PRINTF_STACKBUF 128   // Small messages use stack buffer
+#endif
+
+#ifndef SERIAL_PRINTF_ALLOW_HEAP
+#define SERIAL_PRINTF_ALLOW_HEAP 1   // Large messages use heap if needed
+#endif
+
+/* Default output: USB Serial. You can change with serial_set_stream(). */
+static Print* g_serial_out = &Serial;
+
+void serial_set_stream(Print* s)
+{
+  if (s) g_serial_out = s;
+}
+
+int serial_vprintf(const char* fmt, va_list ap)
+{
+  if (!g_serial_out || !fmt) return 0;
+
+  // First pass: compute required length (copy va_list)
+  va_list aq;
+  va_copy(aq, ap);
+  int needed = vsnprintf(nullptr, 0, fmt, aq);
+  va_end(aq);
+  if (needed < 0) return needed;
+
+  // Small message: stack buffer
+  if (needed < (int)SERIAL_PRINTF_STACKBUF) {
+    char buf[SERIAL_PRINTF_STACKBUF];
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    if (n > 0) g_serial_out->write((const uint8_t*)buf, (size_t)n);
+    return n;
+  }
+
+  // Large message: heap (optional), or truncated
+#if SERIAL_PRINTF_ALLOW_HEAP
+  char* big = (char*)malloc((size_t)needed + 1);
+  if (!big) {
+    // Fallback: truncated
+    char buf[SERIAL_PRINTF_STACKBUF];
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    if (n > 0) g_serial_out->write((const uint8_t*)buf, (size_t)min(n, (int)sizeof(buf)));
+    return n;
+  }
+  int n = vsnprintf(big, (size_t)needed + 1, fmt, ap);
+  if (n > 0) g_serial_out->write((const uint8_t*)big, (size_t)n);
+  free(big);
+  return n;
+#else
+  char buf[SERIAL_PRINTF_STACKBUF];
+  int n = vsnprintf(buf, sizeof(buf), fmt, ap);  // truncated if too long
+  if (n > 0) g_serial_out->write((const uint8_t*)buf, (size_t)min(n, (int)sizeof(buf)));
+  return n;
+#endif
+}
+
+int serial_printf(const char* fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  int n = serial_vprintf(fmt, ap);
+  va_end(ap);
+  return n;
+}
+
+/* ===================== End of serial_printf implementation ===================== */
 
 /* Helper: assemble big-endian 4 bytes into signed 32-bit */
 static inline int32_t be_bytes_to_i32(uint8_t b3, uint8_t b2, uint8_t b1, uint8_t b0)
@@ -43,13 +114,9 @@ void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx)
     rx->cmd      = data[1];
     rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
     rx->ch       = data[6];
-    Serial.println("condition 1:");
-    Serial.print("cmd: ");
-    Serial.print(rx->cmd, HEX);
-    Serial.print(", value: ");
-    Serial.print(rx->value);
-    Serial.print(", ch: ");
-    Serial.println(rx->ch);
+
+    DEBUG_PRINT("condition: %d, ", RX_CONDITION_ABBA_5556);
+    DEBUG_PRINT("cmd: %x,value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
 
   }
   else if (rx->condition == RX_CONDITION_CDDC_5758) {
@@ -69,6 +136,9 @@ void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx)
     rx->cmd      = data[1];
     rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
     rx->ch       = data[6];
+
+    DEBUG_PRINT("condition: %d, ", RX_CONDITION_EFFE_5354);
+    DEBUG_PRINT("cmd: %x,value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
   }
   else {
     // Unknown condition; leave rx->complete unchanged (typically 0)
