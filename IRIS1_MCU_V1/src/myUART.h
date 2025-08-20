@@ -102,7 +102,10 @@ uint8_t* readDataDynamic(uint32_t* try_cnt);
 
  
 #define MAX_DATA_SIZE4  256
-uint8_t* readData(const uint8_t* header, uint8_t header_len,
+uint8_t* readDataStream(const uint8_t* header, uint8_t header_len,
+                  const uint8_t* trailer, uint8_t trailer_len,
+                  uint16_t datalen, uint32_t* try_cnt);
+uint8_t* readDataBytewise(const uint8_t* header, uint8_t header_len,
                   const uint8_t* trailer, uint8_t trailer_len,
                   uint16_t datalen, uint32_t* try_cnt);
 

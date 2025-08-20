@@ -21,4 +21,6 @@ cmd_ctrl_t my_cmd = {
 
 fog_parameter_t fog_params;	 //parameter container
 
+my_sensor_t sensor_data_raw = {}, sensor_data_cali = {};
+
 #endif /* IRIS_MCU_H */

@@ -1,16 +1,5 @@
 #ifndef COMMON_H
 #define COMMON_H
-/*
- * common.h
- *
- * Arduino-side helpers (Nios-compatible) using standard types.
- * - Signatures preserved, but use uint8_t* instead of alt_u8*:
- *     void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
- *     void cmd_mux(cmd_ctrl_t* rx);
- * - Works with readDataDynamic() output:
- *     data[0] = condition (1/2/3)
- *     data[1..] = payload (length depends on condition)
- */
 
 #include <Arduino.h>
 /*** for serial_printf() impl */
@@ -76,6 +65,58 @@ typedef enum {
     MODE_FOG = 1,
     MODE_IMU = 2
 } output_mode_t;
+
+typedef union
+{
+  float float_val;
+  uint8_t bin_val[4];
+  int32_t int_val;
+}
+my_float_t;
+
+/*** sensor data structure delaration */
+
+typedef struct {
+  my_float_t err; 
+  my_float_t step;     
+} fog_component_t;
+
+typedef struct {
+  fog_component_t fogx;
+  fog_component_t fogy;
+  fog_component_t fogz;
+} fog_t;
+
+typedef struct {
+  my_float_t tempx;  
+  my_float_t tempy; 
+  my_float_t tempz; 
+} temp_t;
+
+typedef struct {
+  my_float_t time;  
+} my_time_t;
+
+typedef struct {
+  my_float_t ax;  
+  my_float_t ay; 
+  my_float_t az; 
+  my_float_t temp;
+} accl_t;
+
+typedef struct 
+{
+  my_time_t time;
+  fog_t fog;
+  temp_t temp;
+  accl_t adxl357;
+}my_sensor_t;
+
+typedef struct {
+  my_float_t x;
+  my_float_t y;
+  my_float_t z;
+} calibrated_data_t;
 
 /* ---------- Command control structure ---------- */
 typedef struct

@@ -287,7 +287,7 @@ uint8_t* readDataDynamic(uint32_t* try_cnt)
  *   - NULL if incomplete or mismatch.
  *   - Pointer to rd4.payload on success (length == datalen).
  */
-uint8_t* readData(const uint8_t* header, uint8_t header_len,
+uint8_t* readDataStream(const uint8_t* header, uint8_t header_len,
                   const uint8_t* trailer, uint8_t trailer_len,
                   uint16_t datalen, uint32_t* try_cnt)
 {
@@ -359,3 +359,82 @@ uint8_t* readData(const uint8_t* header, uint8_t header_len,
 
   return NULL;  // not complete yet
 }
+
+uint8_t* readDataBytewise(const uint8_t* header, uint8_t header_len,
+                  const uint8_t* trailer, uint8_t trailer_len,
+                  uint16_t datalen, uint32_t* try_cnt)
+{
+  // 參數檢查
+  if (!header || header_len == 0 || datalen == 0 || datalen > MAX_DATA_SIZE4) {
+    if (try_cnt) (*try_cnt)++;
+    rd4_reset();
+    return NULL;
+  }
+
+  // 如果沒有資料可讀，直接回 NULL
+  if (Serial4.available() == 0) {
+    return NULL;
+  }
+
+  int di = Serial4.read();
+  if (di == -1) {
+    return NULL;  // 防禦性檢查
+  }
+  uint8_t b = (uint8_t)di;
+
+  switch (rd4.state) {
+    case RD_FIND_HEADER:
+      // 逐 byte 比對 header
+      if (b == header[rd4.hdr_idx]) {
+        rd4.hdr_idx++;
+        if (rd4.hdr_idx >= header_len) {
+          rd4.state   = RD_READ_PAYLOAD;
+          rd4.pay_idx = 0;
+          rd4.datalen = datalen;
+        }
+      } else {
+        // fallback: 如果匹配失敗，看看要不要回到第一個 header byte
+        rd4.hdr_idx = (b == header[0]) ? 1 : 0;
+        if (try_cnt) (*try_cnt)++;
+      }
+      break;
+
+    case RD_READ_PAYLOAD:
+      rd4.payload[rd4.pay_idx++] = b;
+      if (rd4.pay_idx >= rd4.datalen) {
+        if (trailer_len == 0) {
+          // 無 trailer，直接完成
+          uint8_t* ret = rd4.payload;
+          rd4_reset();
+          if (try_cnt) *try_cnt = 0;
+          return ret;
+        } else {
+          rd4.state   = RD_CHECK_TRAILER;
+          rd4.trl_idx = 0;
+        }
+      }
+      break;
+
+    case RD_CHECK_TRAILER:
+      if (!trailer || rd4.trl_idx >= trailer_len) {
+        if (try_cnt) (*try_cnt)++;
+        rd4_reset();
+        break;
+      }
+      if (b != trailer[rd4.trl_idx++]) {
+        // trailer mismatch → reset
+        if (try_cnt) (*try_cnt)++;
+        rd4_reset();
+      } else if (rd4.trl_idx >= trailer_len) {
+        // trailer 完成
+        uint8_t* ret = rd4.payload;
+        rd4_reset();
+        if (try_cnt) *try_cnt = 0;
+        return ret;
+      }
+      break;
+  }
+
+  return NULL;  // 預設情況：還沒湊齊一包
+}
+
