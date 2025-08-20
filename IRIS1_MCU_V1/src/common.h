@@ -35,6 +35,7 @@ extern "C" {
 
 extern const uint8_t HDR_ABBA[2];
 extern const uint8_t TRL_5556[2];
+extern const uint8_t HDR_OUT[4];
 
 /* ---------- Protocol condition values ----------
  * Keep aligned with readDataDynamic():

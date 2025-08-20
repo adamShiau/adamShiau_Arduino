@@ -39,11 +39,23 @@ void loop() {
   }
 
   if(my_cmd.run == 1) {
-    while (Serial4.available()) {
-    char c = Serial4.read();
-    Serial1.write(c);
-    Serial.write(c);
+    uint8_t* pkt = readData(HDR_ABBA, 2, TRL_5556, 2, 44, &try4);
+
+    if (pkt != NULL) {
+    Serial1.write(HDR_OUT, sizeof(HDR_OUT));   // 先送 header
+    Serial1.write(pkt, 44);             // 再送 payload
+    // Serial1.write(TRL_5556, sizeof(TRL_5556));   // 最後送 trailer
+
+    // Debug 顯示
+    // Serial.print("Forwarded one packet, payload[0]=");
+    // Serial.println(pkt[0], HEX);
   }
+
+  //   while (Serial4.available()) {
+  //   char c = Serial4.read();
+  //   Serial1.write(c);
+  //   Serial.write(c);
+  // }
   }
 
   
