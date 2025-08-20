@@ -6,6 +6,9 @@
 #define PAR_LEN 40 // 定義陣列大小
 #define MIS_LEN 30
 
+#define CONTAINER_TO_CMD_OFFSET     8   
+#define MIS_CONTAINER_TO_CMD_OFFSET     48  
+
 typedef union{
     float	float_val;
     int32_t  int_val;

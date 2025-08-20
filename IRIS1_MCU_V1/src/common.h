@@ -87,7 +87,14 @@ void cmd_mux(cmd_ctrl_t* rx);
 void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
 size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
     int32_t value, uint8_t ch);
+void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
+
+/*** Key-value callback interface 型別宣告 */
+typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
+
 void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
+size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms);
+void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
 // void send_json_uart(const char* buffer);
 
 /* ===================== API: printf-like serial output ===================== */
