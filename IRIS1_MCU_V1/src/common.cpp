@@ -997,7 +997,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 					} 
 					case CMD_DUMP_MIS: {
 						DEBUG_PRINT("CMD_DUMP_MIS:\n");
-						// dump_misalignment_param(fog_inst);
+						dump_misalignment_param(fog_inst);
 						break;
 					} 
 					case CMD_DUMP_SN: {
@@ -1208,6 +1208,16 @@ static void fog_store_cb(int key, int32_t val, void* user)
   }
 }
 
+static void imu_cali_store_cb(int key, int32_t val, void* user)
+{
+  fog_cb_ctx_t* C = (fog_cb_ctx_t*)user;
+  if (!C || !C->fog) return;
+  if (key < 0 || key >= MIS_LEN) return;  // arrays are 0..MIS_LEN-1
+
+  C->fog->misalignment[key].data.int_val = val;
+}
+
+
 
 void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch)
 {
@@ -1235,4 +1245,30 @@ void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch)
   Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
   Serial1.write('\n');  // optional newline for readability
 }
+
+void dump_misalignment_param(fog_parameter_t* fog_inst)
+{
+  if (!fog_inst) return;
+
+  // 1) Send command to FPGA over Serial4
+
+  sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_DUMP_MIS, 2, 4);
+
+  // 2) Receive a full JSON object from Serial4
+  char json_buf[FOG_JSON_BUF_SIZE];
+  size_t n = read_json_object(Serial4, json_buf, sizeof(json_buf), FOG_JSON_TIMEOUT_MS);
+  if (n == 0) {
+    // debug
+    DEBUG_PRINT("dump_imu_mis-alignment: timeout or malformed JSON from Serial4");
+    return;
+  }
+
+  // 3) Parse and store into fog_inst->paramX/Y/Z by channel
+  fog_cb_ctx_t ctx = { fog_inst, 4 };
+  parse_simple_json_ints(json_buf, imu_cali_store_cb, &ctx);
+
+  // 4) Forward the raw JSON to PC via Serial1 (TX)
+  Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
+  Serial1.write('\n');  // optional newline for readability
+} 
 

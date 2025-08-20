@@ -93,9 +93,9 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
 typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
 
 void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
+void dump_misalignment_param(fog_parameter_t* fog_inst);
 size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms);
 void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
-// void send_json_uart(const char* buffer);
 
 /* ===================== API: printf-like serial output ===================== */
 /* C-linkage printf wrappers (you can call these from C or C++). */
