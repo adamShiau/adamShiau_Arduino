@@ -33,6 +33,9 @@ extern "C" {
     #define DEBUG_PRINT(...)
 #endif
 
+extern const uint8_t HDR_ABBA[2];
+extern const uint8_t TRL_5556[2];
+
 /* ---------- Protocol condition values ----------
  * Keep aligned with readDataDynamic():
  *   1 -> AB BA ... 55 56  (DATA1_SIZE = 6)
@@ -66,6 +69,12 @@ typedef enum {
     SEL_HP_TEST = 8,
     SEL_ATT_NMEA = 9
 } select_fn_t;
+
+typedef enum {
+    MODE_RST = 0,
+    MODE_FOG = 1,
+    MODE_IMU = 2
+} output_mode_t;
 
 /* ---------- Command control structure ---------- */
 typedef struct

@@ -19,8 +19,8 @@
 #include <ctype.h>
 #include <string.h>
 
-static const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
-static const uint8_t TRL_5556[2] = {0x55, 0x56};
+const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
+const uint8_t TRL_5556[2] = {0x55, 0x56};
 
 
 // -----------------------------------------------------------------------------
