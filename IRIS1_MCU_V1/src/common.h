@@ -27,6 +27,15 @@ extern const uint8_t TRL_5556[2];
 extern const uint8_t KVH_HEADER[4];
 #define POLYNOMIAL_32 0x04C11DB7
 
+// first order temperature compensation, one T
+#define SF_TEMP_COMPENSATION_1ST_ORDER(temp, slope, offset) ((temp) * (slope) + (offset))
+
+// first order temperature compensation, three T
+#define BIAS_TEMP_COMPENSATION_1ST_ORDER_3T(temp, T1, T2, s1, o1, s2, o2, s3, o3) \
+        (((temp) < (T1)) ? ((temp) * (s1) + (o1)) : \
+        ((temp) < (T2)) ? ((temp) * (s2) + (o2)) : \
+                        ((temp) * (s3) + (o3)))
+
 /* ---------- Protocol condition values ----------
  * Keep aligned with readDataDynamic():
  *   1 -> AB BA ... 55 56  (DATA1_SIZE = 6)
@@ -153,6 +162,11 @@ size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_m
 void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
 void dumpPkt(uint8_t *pkt, int len);
 int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
+void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter);
+void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out);
+void reset_FPGA_timer(void);
+void set_data_rate(uint32_t rate);
+
 
 /* ===================== API: printf-like serial output ===================== */
 /* C-linkage printf wrappers (you can call these from C or C++). */

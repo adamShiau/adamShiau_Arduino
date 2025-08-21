@@ -100,6 +100,24 @@ int serial_printf(const char* fmt, ...)
 
 /* ===================== End of serial_printf implementation ===================== */
 
+// first order temperature compensation, one T
+static inline float sf_temp_comp_1st(float temp, float slope, float offset) {
+  return slope * temp + offset;
+}
+
+// first order temperature compensation, three T
+static inline float bias_temp_comp_1st_3t(float temp,
+                                          float T1, float T2,
+                                          float s1, float o1,
+                                          float s2, float o2,
+                                          float s3, float o3) {
+  float slope, offset;
+  if (temp < T1)      { slope = s1; offset = o1; }
+  else if (temp < T2) { slope = s2; offset = o2; }
+  else                { slope = s3; offset = o3; }
+  return slope * temp + offset;
+}
+
 /* Helper: assemble big-endian 4 bytes into signed 32-bit */
 static inline int32_t be_bytes_to_i32(uint8_t b3, uint8_t b2, uint8_t b1, uint8_t b0)
 {
@@ -393,7 +411,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_MOD_FREQ:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_MOD_FREQ, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MOD_FREQ - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_MOD_FREQ - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -405,7 +423,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_MOD_AMP_H:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_MOD_AMP_H, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MOD_AMP_H - CONTAINER_TO_CMD_OFFSET);
+							update_parameter_container(rx, fog_inst, CMD_MOD_AMP_H - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -417,7 +435,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_MOD_AMP_L:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_MOD_AMP_L, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MOD_AMP_L - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_MOD_AMP_L - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -429,7 +447,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_POLARITY:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_POLARITY, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_POLARITY - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_POLARITY - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -441,7 +459,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_WAIT_CNT:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_WAIT_CNT, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_WAIT_CNT - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_WAIT_CNT - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -453,7 +471,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_ERR_AVG:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_ERR_AVG, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_ERR_AVG - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_ERR_AVG - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -465,7 +483,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_GAIN1:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_GAIN1, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_GAIN1 - CONTAINER_TO_CMD_OFFSET);
+             				 update_parameter_container(rx, fog_inst, CMD_GAIN1 - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -477,7 +495,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_CONST_STEP:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_CONST_STEP, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_CONST_STEP - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_CONST_STEP - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -489,7 +507,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_FB_ON:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_FB_ON, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_FB_ON - CONTAINER_TO_CMD_OFFSET);
+             			 	update_parameter_container(rx, fog_inst, CMD_FB_ON - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -501,7 +519,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						DEBUG_PRINT("CMD_GAIN2:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_GAIN2, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_GAIN2 - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_GAIN2 - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -1120,13 +1138,17 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						break;
 					}
 					case CMD_SYNC_CNT: {
-						DEBUG_PRINT("CMD_SYNC_CNT:\n");
-						// IOWR(VARSET_BASE, var_sync_count, rx->value);
+						DEBUG_PRINT("CMD_SYNC_CNT:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rx->value, rx->ch);
+						}			
 						break;
 					} 
 					case CMD_HW_TIMER_RST: {
-						DEBUG_PRINT("CMD_HW_TIMER_RST:\n");
-						// IOWR(VARSET_BASE, var_timer_rst, rx->value);
+						DEBUG_PRINT("CMD_HW_TIMER_RST:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, rx->value, rx->ch);
+						}			
 						break;
 					}
 					default:{
@@ -1159,6 +1181,16 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 			
 		}
 
+}
+
+void reset_FPGA_timer(void)
+{
+	sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
+}
+
+void set_data_rate(uint32_t rate)
+{
+	sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
 }
 
 #ifndef FOG_JSON_TIMEOUT_MS
@@ -1380,4 +1412,167 @@ void dump_misalignment_param(fog_parameter_t* fog_inst)
   Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
   Serial1.write('\n');  // optional newline for readability
 } 
+
+void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out)
+{
+  if (!cali || !out) return;
+  int idx = 0;
+
+  memcpy(&out[idx], cali->fog.fogx.step.bin_val, 4); idx += 4;
+  memcpy(&out[idx], cali->fog.fogy.step.bin_val, 4); idx += 4;
+  memcpy(&out[idx], cali->fog.fogz.step.bin_val, 4); idx += 4;
+
+  memcpy(&out[idx], cali->adxl357.ax.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->adxl357.ay.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->adxl357.az.bin_val, 4);    idx += 4;
+
+  memcpy(&out[idx], cali->temp.tempx.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->temp.tempy.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->temp.tempz.bin_val, 4);    idx += 4;
+
+  memcpy(&out[idx], cali->adxl357.temp.bin_val, 4);  idx += 4;
+
+  memcpy(&out[idx], cali->time.time.bin_val, 4);     idx += 4;
+}
+
+
+void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter)
+{
+  if (!raw || !cali || !fog_parameter) return;
+
+  // === Copy raw data to cali structure ===
+  float tx   = raw->temp.tempx.float_val;
+  float ty   = raw->temp.tempy.float_val;
+  float tz   = raw->temp.tempz.float_val;
+  float tacc = raw->adxl357.temp.float_val;
+
+  // === Gyro scale factor（一次線性）===
+  float sf_x_gyro = sf_temp_comp_1st(tx,
+      fog_parameter->paramX[17].data.float_val,
+      fog_parameter->paramX[18].data.float_val);
+
+  float sf_y_gyro = sf_temp_comp_1st(ty,
+      fog_parameter->paramY[17].data.float_val,
+      fog_parameter->paramY[18].data.float_val);
+
+  float sf_z_gyro = sf_temp_comp_1st(tz,
+      fog_parameter->paramZ[17].data.float_val,
+      fog_parameter->paramZ[18].data.float_val);
+
+  // === Accel scale factor（一次線性；用 adxl 溫度）===
+  float sf_x_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramX[31].data.float_val,
+      fog_parameter->paramX[32].data.float_val);
+
+  float sf_y_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramY[31].data.float_val,
+      fog_parameter->paramY[32].data.float_val);
+
+  float sf_z_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramZ[31].data.float_val,
+      fog_parameter->paramZ[32].data.float_val);
+
+  // === Gyro bias（三區段一次線性）===
+  float bx_gyro = bias_temp_comp_1st_3t(
+      tx,
+      fog_parameter->paramX[23].data.float_val,  // T1
+      fog_parameter->paramX[24].data.float_val,  // T2
+      fog_parameter->paramX[25].data.float_val,  // s1
+      fog_parameter->paramX[26].data.float_val,  // o1
+      fog_parameter->paramX[27].data.float_val,  // s2
+      fog_parameter->paramX[28].data.float_val,  // o2
+      fog_parameter->paramX[29].data.float_val,  // s3
+      fog_parameter->paramX[30].data.float_val   // o3
+  );
+
+  float by_gyro = bias_temp_comp_1st_3t(
+      ty, fog_parameter->paramY[23].data.float_val, fog_parameter->paramY[24].data.float_val,
+      fog_parameter->paramY[25].data.float_val, fog_parameter->paramY[26].data.float_val,
+      fog_parameter->paramY[27].data.float_val, fog_parameter->paramY[28].data.float_val,
+      fog_parameter->paramY[29].data.float_val, fog_parameter->paramY[30].data.float_val
+  );
+
+  float bz_gyro = bias_temp_comp_1st_3t(
+      tz, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
+      fog_parameter->paramZ[25].data.float_val, fog_parameter->paramZ[26].data.float_val,
+      fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
+      fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
+  );
+
+  // === Accel bias（一次線性；用 adxl 溫度）===
+  float bx_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramX[33].data.float_val,
+      fog_parameter->paramX[34].data.float_val);
+
+  float by_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramY[33].data.float_val,
+      fog_parameter->paramY[34].data.float_val);
+
+  float bz_acc = sf_temp_comp_1st(tacc,
+      fog_parameter->paramZ[33].data.float_val,
+      fog_parameter->paramZ[34].data.float_val);
+
+  // === Gyro 溫補（scale factor & bias）===
+  float gx_comp = raw->fog.fogx.step.float_val * sf_x_gyro - bx_gyro;
+  float gy_comp = raw->fog.fogy.step.float_val * sf_y_gyro - by_gyro;
+  float gz_comp = raw->fog.fogz.step.float_val * sf_z_gyro - bz_gyro;
+
+  // === Accel 溫補（scale factor & bias）===
+  float ax_comp = raw->adxl357.ax.float_val * sf_x_acc - bx_acc;
+  float ay_comp = raw->adxl357.ay.float_val * sf_y_acc - by_acc;
+  float az_comp = raw->adxl357.az.float_val * sf_z_acc - bz_acc;
+
+  // === Gyro misalignment（misalignment[12..23]）===
+  float cgx = fog_parameter->misalignment[12].data.float_val;
+  float cgy = fog_parameter->misalignment[13].data.float_val;
+  float cgz = fog_parameter->misalignment[14].data.float_val;
+  float g11 = fog_parameter->misalignment[15].data.float_val;
+  float g12 = fog_parameter->misalignment[16].data.float_val;
+  float g13 = fog_parameter->misalignment[17].data.float_val;
+  float g21 = fog_parameter->misalignment[18].data.float_val;
+  float g22 = fog_parameter->misalignment[19].data.float_val;
+  float g23 = fog_parameter->misalignment[20].data.float_val;
+  float g31 = fog_parameter->misalignment[21].data.float_val;
+  float g32 = fog_parameter->misalignment[22].data.float_val;
+  float g33 = fog_parameter->misalignment[23].data.float_val;
+
+  float gx_cal = g11*gx_comp + g12*gy_comp + g13*gz_comp + cgx;
+  float gy_cal = g21*gx_comp + g22*gy_comp + g23*gz_comp + cgy;
+  float gz_cal = g31*gx_comp + g32*gy_comp + g33*gz_comp + cgz;
+
+  // === Accel misalignment（misalignment[0..11]）===
+  float cax = fog_parameter->misalignment[0].data.float_val;
+  float cay = fog_parameter->misalignment[1].data.float_val;
+  float caz = fog_parameter->misalignment[2].data.float_val;
+  float a11 = fog_parameter->misalignment[3].data.float_val;
+  float a12 = fog_parameter->misalignment[4].data.float_val;
+  float a13 = fog_parameter->misalignment[5].data.float_val;
+  float a21 = fog_parameter->misalignment[6].data.float_val;
+  float a22 = fog_parameter->misalignment[7].data.float_val;
+  float a23 = fog_parameter->misalignment[8].data.float_val;
+  float a31 = fog_parameter->misalignment[9].data.float_val;
+  float a32 = fog_parameter->misalignment[10].data.float_val;
+  float a33 = fog_parameter->misalignment[11].data.float_val;
+
+  float ax_cal = a11*ax_comp + a12*ay_comp + a13*az_comp + cax;
+  float ay_cal = a21*ax_comp + a22*ay_comp + a23*az_comp + cay;
+  float az_cal = a31*ax_comp + a32*ay_comp + a33*az_comp + caz;
+
+  // === 輸出到 cali 結構 ===
+  cali->fog.fogx.step.float_val = gx_cal;
+  cali->fog.fogy.step.float_val = gy_cal;
+  cali->fog.fogz.step.float_val = gz_cal;
+
+  cali->adxl357.ax.float_val = ax_cal;
+  cali->adxl357.ay.float_val = ay_cal;
+  cali->adxl357.az.float_val = az_cal;
+
+  // 溫度 / 時間直接沿用 raw
+  cali->temp.tempx.float_val = tx;
+  cali->temp.tempy.float_val = ty;
+  cali->temp.tempz.float_val = tz;
+  cali->adxl357.temp.float_val = tacc;
+  cali->time.time.float_val = raw->time.time.float_val;
+}
+
 

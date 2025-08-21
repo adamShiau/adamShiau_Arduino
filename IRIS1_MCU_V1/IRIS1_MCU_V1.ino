@@ -4,6 +4,10 @@
 #define EXT_SYNC 2
 #define STOP_RUN 4
 
+#define SYNC_50HZ  1e6
+#define SYNC_100HZ 5e5
+#define SYNC_200HZ 2.5e5
+
 // 預期 payload 長度（11 個 float × 4 bytes）
 #define SENSOR_PAYLOAD_LEN 44
 
@@ -14,7 +18,16 @@ extern Uart Serial4;
 void setup() {
   myUART_init();
   crc32_init_table();
-  
+  dump_fog_param(&fog_params, 1);
+  delay(10);
+  dump_fog_param(&fog_params, 2);
+  delay(10);
+  dump_fog_param(&fog_params, 3);
+  delay(10);
+  dump_misalignment_param(&fog_params);
+  delay(10);
+  set_data_rate(SYNC_100HZ); 
+  delay(10);
 }
 
 void loop() { 
@@ -35,57 +48,49 @@ void loop() {
     if(my_cmd.value == EXT_SYNC) { 
       my_cmd.run = 1; // set run flag
       sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 2, 2);
+      delay(10);
+      reset_FPGA_timer();
     }
     else if(my_cmd.value == STOP_RUN) { 
       my_cmd.run = 0; // set run flag
       sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 4, 2);
+      sensor_raw = {}; // reset sensor_raw
+      sensor_cali = {}; // reset sensor_cali
     }
   }
 
-  if(my_cmd.run == 1) {
-    uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
+  if (my_cmd.run == 1) {
+  uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
 
-    if (pkt) {
-      
+  if (pkt) {
+    // 1) 解析 raw
+    if (update_raw_data(pkt, &sensor_raw) == 0) {
 
-      if (update_raw_data(pkt, &sensor_data_raw) == 0) dumpPkt(pkt, SENSOR_PAYLOAD_LEN);
+      // dumpPkt(pkt, SENSOR_PAYLOAD_LEN);
 
+      // 2) 校正 → 輸出到 cali
+      sensor_data_cali(&sensor_raw, &sensor_cali, &fog_params);
+
+      // 3) 用 cali 打包成 44 bytes
+      uint8_t out[SENSOR_PAYLOAD_LEN];
+      pack_sensor_payload_from_cali(&sensor_cali, out);
+      // pack_sensor_payload_from_cali(&sensor_raw, out);
+
+      // 4) 以 (KVH_HEADER + out) 產生 CRC
       uint8_t crc[4];
-      gen_crc32(KVH_HEADER, pkt, SENSOR_PAYLOAD_LEN, crc);
+      gen_crc32(KVH_HEADER, out, SENSOR_PAYLOAD_LEN, crc);
 
-      // Debug 印 CRC
-      DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n",
-                  crc[0], crc[1], crc[2], crc[3]);
+      // （可選）debug
+      // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
 
-      // 依序送出
-      Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));   // 送 header (4B)
-      Serial1.write(pkt, SENSOR_PAYLOAD_LEN);          // 送 payload (44B)
-      Serial1.write(crc, 4);  
-
-      // Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));   // 先送 header
-      // Serial1.write(pkt, 44);             // 再送 payload
-
-      // alt_u8* imu_data = (alt_u8*)malloc(48); // KVH_HEADER:4 + fog:12 + accl:12 + fog_temp:12 + accl_temp:4 + time:4 
-			// alt_u8 CRC32[4];
-
-      // memcpy(imu_data, KVH_HEADER, 4);
-      // memcpy(imu_data+4, gyro_misalign_calibrated.x.bin_val, 4); 
-      // memcpy(imu_data+8, gyro_misalign_calibrated.y.bin_val, 4); 
-      // memcpy(imu_data+12, gyro_misalign_calibrated.z.bin_val, 4); 
-      // memcpy(imu_data+16, accl_misalign_calibrated.x.bin_val, 4); 
-      // memcpy(imu_data+20, accl_misalign_calibrated.y.bin_val, 4); 
-      // memcpy(imu_data+24, accl_misalign_calibrated.z.bin_val, 4); 
-      // memcpy(imu_data+28, data.temp.tempx.bin_val, 4); 
-      // memcpy(imu_data+32, data.temp.tempy.bin_val, 4); 
-      // memcpy(imu_data+36, data.temp.tempz.bin_val, 4); 
-      // memcpy(imu_data+40, data.adxl357.temp.bin_val, 4); 
-      // memcpy(imu_data+44, data.time.time.bin_val, 4);              
-      // crc_32(imu_data, 48, CRC32);
-      // free(imu_data);
-   
+      // 5) 依序送出：Header + Calibrated Payload + CRC
+      Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
+      Serial1.write(out, SENSOR_PAYLOAD_LEN);
+      Serial1.write(crc, 4);
+    }
   }
+}
 
-  }
 
   
 }
