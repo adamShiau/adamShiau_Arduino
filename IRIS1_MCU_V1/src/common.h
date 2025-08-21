@@ -24,7 +24,8 @@ extern "C" {
 
 extern const uint8_t HDR_ABBA[2];
 extern const uint8_t TRL_5556[2];
-extern const uint8_t HDR_OUT[4];
+extern const uint8_t KVH_HEADER[4];
+#define POLYNOMIAL_32 0x04C11DB7
 
 /* ---------- Protocol condition values ----------
  * Keep aligned with readDataDynamic():
@@ -139,6 +140,9 @@ void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
 size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
     int32_t value, uint8_t ch);
 void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
+
+void crc32_init_table();
+void gen_crc32(const uint8_t* header, const uint8_t* payload, size_t payload_len, uint8_t* crc_out);
 
 /*** Key-value callback interface 型別宣告 */
 typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);

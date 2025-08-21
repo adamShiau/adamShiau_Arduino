@@ -21,7 +21,7 @@
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
 const uint8_t TRL_5556[2] = {0x55, 0x56};
-const uint8_t HDR_OUT[4] = {0xFE, 0x81, 0xFF, 0x55};
+const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
 
 // -----------------------------------------------------------------------------
@@ -168,6 +168,54 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
 
     return 0;
 }
+
+uint32_t crc_table[256];
+
+void crc32_init_table() {
+	for (int i = 0; i < 256; ++i) {
+		uint32_t remainder = i << 24;
+		for (int bit = 0; bit < 8; ++bit) {
+			if (remainder & 0x80000000) {
+				remainder = (remainder << 1) ^ POLYNOMIAL_32;
+			} else {
+				remainder = (remainder << 1);
+			}
+		}
+		crc_table[i] = remainder;
+	}
+}
+
+/**
+ * @brief Generate CRC32 for KVH_HEADER + payload
+ * 
+ * @param header  pointer to 4-byte KVH header
+ * @param payload pointer to 44-byte payload
+ * @param payload_len length of payload (should be 44)
+ * @param crc_out pointer to 4-byte array for output (big-endian)
+ */
+void gen_crc32(const uint8_t* header, const uint8_t* payload, size_t payload_len, uint8_t* crc_out)
+{
+    uint32_t remainder = 0xFFFFFFFF;
+
+    // header (固定 4B)
+    for (int i = 0; i < 4; i++) {
+        uint8_t index = (remainder >> 24) ^ header[i];
+        remainder = (remainder << 8) ^ crc_table[index];
+    }
+
+    // payload (44B)
+    for (size_t i = 0; i < payload_len; i++) {
+        uint8_t index = (remainder >> 24) ^ payload[i];
+        remainder = (remainder << 8) ^ crc_table[index];
+    }
+
+    // 輸出 big-endian
+    crc_out[0] = (remainder >> 24) & 0xFF;
+    crc_out[1] = (remainder >> 16) & 0xFF;
+    crc_out[2] = (remainder >> 8) & 0xFF;
+    crc_out[3] = remainder & 0xFF;
+}
+
 
 
 

@@ -13,6 +13,7 @@ extern Uart Serial4;
 
 void setup() {
   myUART_init();
+  crc32_init_table();
   
 }
 
@@ -49,25 +50,38 @@ void loop() {
 
       if (update_raw_data(pkt, &sensor_data_raw) == 0) dumpPkt(pkt, SENSOR_PAYLOAD_LEN);
 
-      // int idx = 0;
-      // memcpy(sensor_data_raw.fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.fog.fogz.step.bin_val,  &pkt[idx], 4); idx += 4;
+      uint8_t crc[4];
+      gen_crc32(KVH_HEADER, pkt, SENSOR_PAYLOAD_LEN, crc);
 
-      // memcpy(sensor_data_raw.adxl357.ax.bin_val,     &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.adxl357.ay.bin_val,     &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.adxl357.az.bin_val,     &pkt[idx], 4); idx += 4;
+      // Debug 印 CRC
+      DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n",
+                  crc[0], crc[1], crc[2], crc[3]);
 
-      // memcpy(sensor_data_raw.temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
-      // memcpy(sensor_data_raw.temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
+      // 依序送出
+      Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));   // 送 header (4B)
+      Serial1.write(pkt, SENSOR_PAYLOAD_LEN);          // 送 payload (44B)
+      Serial1.write(crc, 4);  
 
-      // memcpy(sensor_data_raw.adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
+      // Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));   // 先送 header
+      // Serial1.write(pkt, 44);             // 再送 payload
 
-      // memcpy(sensor_data_raw.time.time.bin_val,      &pkt[idx], 4); idx += 4;
+      // alt_u8* imu_data = (alt_u8*)malloc(48); // KVH_HEADER:4 + fog:12 + accl:12 + fog_temp:12 + accl_temp:4 + time:4 
+			// alt_u8 CRC32[4];
 
-      Serial1.write(HDR_OUT, sizeof(HDR_OUT));   // 先送 header
-      Serial1.write(pkt, 44);             // 再送 payload
+      // memcpy(imu_data, KVH_HEADER, 4);
+      // memcpy(imu_data+4, gyro_misalign_calibrated.x.bin_val, 4); 
+      // memcpy(imu_data+8, gyro_misalign_calibrated.y.bin_val, 4); 
+      // memcpy(imu_data+12, gyro_misalign_calibrated.z.bin_val, 4); 
+      // memcpy(imu_data+16, accl_misalign_calibrated.x.bin_val, 4); 
+      // memcpy(imu_data+20, accl_misalign_calibrated.y.bin_val, 4); 
+      // memcpy(imu_data+24, accl_misalign_calibrated.z.bin_val, 4); 
+      // memcpy(imu_data+28, data.temp.tempx.bin_val, 4); 
+      // memcpy(imu_data+32, data.temp.tempy.bin_val, 4); 
+      // memcpy(imu_data+36, data.temp.tempz.bin_val, 4); 
+      // memcpy(imu_data+40, data.adxl357.temp.bin_val, 4); 
+      // memcpy(imu_data+44, data.time.time.bin_val, 4);              
+      // crc_32(imu_data, 48, CRC32);
+      // free(imu_data);
    
   }
 
