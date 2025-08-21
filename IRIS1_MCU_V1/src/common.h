@@ -147,6 +147,8 @@ void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
 void dump_misalignment_param(fog_parameter_t* fog_inst);
 size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms);
 void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
+void dumpPkt(uint8_t *pkt, int len);
+int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
 
 /* ===================== API: printf-like serial output ===================== */
 /* C-linkage printf wrappers (you can call these from C or C++). */

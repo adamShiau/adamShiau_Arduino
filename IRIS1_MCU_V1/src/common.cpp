@@ -111,6 +111,66 @@ static inline int32_t be_bytes_to_i32(uint8_t b3, uint8_t b2, uint8_t b1, uint8_
   return (int32_t)u;  // interpret as signed if needed
 }
 
+void dumpPkt(uint8_t *pkt, int len) {
+    if (!pkt) {
+        DEBUG_PRINT("pkt = NULL\n");
+        return;
+    }
+
+    DEBUG_PRINT("Payload len = %d\n", len);
+
+    for (int i = 0; i < len; i++) {
+        if (i % 4 == 0) {
+            DEBUG_PRINT("[%d] ", i/4);
+        }
+        DEBUG_PRINT("%02X ", pkt[i]);
+        if (i % 4 == 3) {
+            DEBUG_PRINT("\n");
+        }
+    }
+    DEBUG_PRINT("\n");
+}
+
+
+/**
+ * @brief Update my_sensor_t from a 44-byte payload in the fixed order.
+ *
+ * pkt  : pointer to 44-byte payload returned by readDataBytewise()
+ * out  : target structure to fill
+ * return: 0 on success, -1 on invalid args
+ */
+int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
+{
+    if (!pkt || !out) return -1;
+
+    int idx = 0;
+
+    // fog.*.step
+    memcpy(out->fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
+    memcpy(out->fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
+    memcpy(out->fog.fogz.step.bin_val,  &pkt[idx], 4); idx += 4;
+
+    // adxl357 {ax, ay, az}
+    memcpy(out->adxl357.ax.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->adxl357.ay.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->adxl357.az.bin_val,     &pkt[idx], 4); idx += 4;
+
+    // temp {x, y, z}
+    memcpy(out->temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
+
+    // adxl357.temp
+    memcpy(out->adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
+
+    // time
+    memcpy(out->time.time.bin_val,      &pkt[idx], 4); idx += 4;
+
+    return 0;
+}
+
+
+
 /* -------------------------------------------------------------------------- */
 /* Parse a UART command buffer into cmd_ctrl_t                                 */
 /* -------------------------------------------------------------------------- */

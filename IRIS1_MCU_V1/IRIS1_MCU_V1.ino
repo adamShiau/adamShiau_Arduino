@@ -4,6 +4,9 @@
 #define EXT_SYNC 2
 #define STOP_RUN 4
 
+// 預期 payload 長度（11 個 float × 4 bytes）
+#define SENSOR_PAYLOAD_LEN 44
+
 uint32_t try1 = 0, try4 = 0;
 
 extern Uart Serial4;
@@ -39,23 +42,35 @@ void loop() {
   }
 
   if(my_cmd.run == 1) {
-    uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, 44, &try4);
+    uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
 
     if (pkt) {
-    Serial1.write(HDR_OUT, sizeof(HDR_OUT));   // 先送 header
-    Serial1.write(pkt, 44);             // 再送 payload
-    // Serial1.write(TRL_5556, sizeof(TRL_5556));   // 最後送 trailer
+      
 
-    // Debug 顯示
-    // Serial.print("Forwarded one packet, payload[0]=");
-    // Serial.println(pkt[0], HEX);
+      if (update_raw_data(pkt, &sensor_data_raw) == 0) dumpPkt(pkt, SENSOR_PAYLOAD_LEN);
+
+      // int idx = 0;
+      // memcpy(sensor_data_raw.fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.fog.fogz.step.bin_val,  &pkt[idx], 4); idx += 4;
+
+      // memcpy(sensor_data_raw.adxl357.ax.bin_val,     &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.adxl357.ay.bin_val,     &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.adxl357.az.bin_val,     &pkt[idx], 4); idx += 4;
+
+      // memcpy(sensor_data_raw.temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
+      // memcpy(sensor_data_raw.temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
+
+      // memcpy(sensor_data_raw.adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
+
+      // memcpy(sensor_data_raw.time.time.bin_val,      &pkt[idx], 4); idx += 4;
+
+      Serial1.write(HDR_OUT, sizeof(HDR_OUT));   // 先送 header
+      Serial1.write(pkt, 44);             // 再送 payload
+   
   }
 
-  //   while (Serial4.available()) {
-  //   char c = Serial4.read();
-  //   Serial1.write(c);
-  //   Serial.write(c);
-  // }
   }
 
   
