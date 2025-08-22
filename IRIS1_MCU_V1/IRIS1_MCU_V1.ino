@@ -4,6 +4,8 @@
 #define EXT_SYNC 2
 #define STOP_RUN 4
 
+#define DATA_DELAY_CNT 5
+
 #define SYNC_50HZ  1e6
 #define SYNC_100HZ 5e5
 #define SYNC_200HZ 2.5e5
@@ -13,19 +15,23 @@
 
 uint32_t try1 = 0, try4 = 0;
 
+uint8_t data_cnt = 0;
+
 extern Uart Serial4;
+
 
 void setup() {
   myUART_init();
   crc32_init_table();
+  // delay(5000);
   dump_fog_param(&fog_params, 1);
-  delay(10);
+  delay(100);
   dump_fog_param(&fog_params, 2);
-  delay(10);
+  delay(100);
   dump_fog_param(&fog_params, 3);
-  delay(10);
+  delay(100);
   dump_misalignment_param(&fog_params);
-  delay(10);
+  delay(100);
   set_data_rate(SYNC_100HZ); 
   delay(10);
 }
@@ -53,6 +59,7 @@ void loop() {
     }
     else if(my_cmd.value == STOP_RUN) { 
       my_cmd.run = 0; // set run flag
+      data_cnt = 0;
       sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 4, 2);
       sensor_raw = {}; // reset sensor_raw
       sensor_cali = {}; // reset sensor_cali
@@ -63,6 +70,7 @@ void loop() {
   uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
 
   if (pkt) {
+    data_cnt++;
     // 1) 解析 raw
     if (update_raw_data(pkt, &sensor_raw) == 0) {
 
@@ -84,9 +92,12 @@ void loop() {
       // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
 
       // 5) 依序送出：Header + Calibrated Payload + CRC
-      Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
-      Serial1.write(out, SENSOR_PAYLOAD_LEN);
-      Serial1.write(crc, 4);
+      if(data_cnt >= DATA_DELAY_CNT) {
+        Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
+        Serial1.write(out, SENSOR_PAYLOAD_LEN);
+        Serial1.write(crc, 4);
+      }
+      
     }
   }
 }

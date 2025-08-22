@@ -1185,6 +1185,9 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 
 void reset_FPGA_timer(void)
 {
+	DEBUG_PRINT("reset_FPGA_timer\n");
+	sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 1, 1);
+	delay(10); 
 	sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
 }
 
