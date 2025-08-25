@@ -1927,9 +1927,13 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
 
   bool ok = true;
   ok &= dump_fog_param(fog_inst, 1);   // X
+  delay(10);
   ok &= dump_fog_param(fog_inst, 2);   // Y
+  delay(10);
   ok &= dump_fog_param(fog_inst, 3);   // Z
+  delay(10);
   ok &= dump_misalignment_param(fog_inst); // MIS
+  delay(10);
 //   ok &= dump_SN(fog_inst);             // SN -> 寫進 fog_inst->sn
 
   return ok;

@@ -23,7 +23,8 @@ extern Uart Serial4;
 void setup() {
   myUART_init();
   crc32_init_table();
-  // delay(5000);
+  delay(100);
+  DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
   boot_capture_all(&fog_params);
   delay(100);
   // dump_fog_param(&fog_params, 1);
