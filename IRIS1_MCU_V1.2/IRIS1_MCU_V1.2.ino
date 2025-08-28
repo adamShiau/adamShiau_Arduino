@@ -77,12 +77,12 @@ void loop() {
     // 1) 解析 raw
     if (update_raw_data(pkt, &sensor_raw) == 0) {
 
-      // dumpPkt(pkt, SENSOR_PAYLOAD_LEN);
+      // dumpPkt(pkt, SENSOR_PAYLOAD_LEN); //<-- for debug monitor
 
-      // 2) 校正 → 輸出到 cali
+      // 2) 校正 → 輸出到 sensor_cali
       sensor_data_cali(&sensor_raw, &sensor_cali, &fog_params);
 
-      // 3) 用 cali 打包成 44 bytes
+      // 3) 用 sensor_cali 打包成 44 bytes
       uint8_t out[SENSOR_PAYLOAD_LEN];
       pack_sensor_payload_from_cali(&sensor_cali, out);
       // pack_sensor_payload_from_cali(&sensor_raw, out);

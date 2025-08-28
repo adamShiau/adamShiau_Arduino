@@ -124,7 +124,7 @@ void myUART_init(void)
   Serial.begin(230400);
 
   // UARTs
-  Serial1.begin(115200);  // PC (SERCOM5) -- provided by core
+  Serial1.begin(230400);  // PC (SERCOM5) -- provided by core
   Serial2.begin(115200);  // SERCOM2
   Serial3.begin(115200);  // SERCOM1
   Serial4.begin(115200);  // FPGA (SERCOM3)
