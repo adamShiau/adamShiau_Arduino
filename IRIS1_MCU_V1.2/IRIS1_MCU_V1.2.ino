@@ -25,6 +25,10 @@ void setup() {
   crc32_init_table();
   delay(100);
   DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
+
+  // delay(2000);
+  // Serial.println("IRIS1_MCU_V1.2");
+  // DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
   boot_capture_all(&fog_params);
   delay(100);
   // dump_fog_param(&fog_params, 1);
@@ -70,10 +74,10 @@ void loop() {
   }
 
   if (my_cmd.run == 1) {
-  uint8_t* pkt = readDataBytewise(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
+  uint8_t* pkt = readDataStream(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try4);
 
   if (pkt) {
-    data_cnt++;
+    if(data_cnt < DATA_DELAY_CNT) data_cnt++;
     // 1) 解析 raw
     if (update_raw_data(pkt, &sensor_raw) == 0) {
 
