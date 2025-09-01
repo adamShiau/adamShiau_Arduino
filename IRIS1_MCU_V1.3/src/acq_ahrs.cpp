@@ -8,7 +8,7 @@
 
 #define DATA_DELAY_CNT 5
 
-// 預期 payload 長度（11 個 float × 4 bytes）
+// 讀取來自 FPGA payload 長度（11 個 float × 4 bytes），不含 header 與 CRC
 #define SENSOR_PAYLOAD_LEN 44
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
