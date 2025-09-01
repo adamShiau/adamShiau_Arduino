@@ -16,6 +16,7 @@ my_sensor_t sensor_raw = {}, sensor_cali = {};
 static uint32_t t_start = 0;
 static uint8_t data_cnt = 0;
 static uint32_t try_cnt = 0;
+static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
 
 void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 {
@@ -37,6 +38,7 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             sendCmd(Serial4, HDR_ABBA, TRL_5556, MODE_IMU, 4, 2);
             sensor_raw = {}; // reset sensor_raw
             sensor_cali = {}; // reset sensor_cali
+            my_cpf.resetEuler(0,0,0);
         }
     }
 
@@ -49,29 +51,42 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             // 1) 解析 raw
             if (update_raw_data(pkt, &sensor_raw) == 0) {
 
-            // dumpPkt(pkt, SENSOR_PAYLOAD_LEN); //<-- for debug monitor
+                // dumpPkt(pkt, SENSOR_PAYLOAD_LEN); //<-- for debug monitor
 
-            // 2) 校正 → 輸出到 sensor_cali
-            sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
+                // 2) 校正 → 輸出到 sensor_cali
+                sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
+                my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
+                my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
+                my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
+                my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
+                my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
+                my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
 
-            // 3) 用 sensor_cali 打包成 44 bytes
-            uint8_t out[SENSOR_PAYLOAD_LEN];
-            pack_sensor_payload_from_cali(&sensor_cali, out);
-            // pack_sensor_payload_from_cali(&sensor_raw, out);
+                // 3) 用 sensor_cali 打包成 44 bytes
+                uint8_t out[SENSOR_PAYLOAD_LEN];
+                pack_sensor_payload_from_cali(&sensor_cali, out);
+                // pack_sensor_payload_from_cali(&sensor_raw, out);
 
-            // 4) 以 (KVH_HEADER + out) 產生 CRC
-            uint8_t crc[4];
-            gen_crc32(KVH_HEADER, out, SENSOR_PAYLOAD_LEN, crc);
+                // 4) 以 (KVH_HEADER + out) 產生 CRC
+                uint8_t crc[4];
+                gen_crc32(KVH_HEADER, out, SENSOR_PAYLOAD_LEN, crc);
 
-            // （可選）debug
-            // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
+                // （可選）debug
+                // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
 
-            // 5) 依序送出：Header + Calibrated Payload + CRC
-            if(data_cnt >= DATA_DELAY_CNT) {
-                Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
-                Serial1.write(out, SENSOR_PAYLOAD_LEN);
-                Serial1.write(crc, 4);
-            }
+                // 5) 依序送出：Header + Calibrated Payload + CRC
+                if(data_cnt >= DATA_DELAY_CNT) {
+                    Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
+                    Serial1.write(out, SENSOR_PAYLOAD_LEN);
+                    Serial1.write(crc, 4);
+                }
+                my_cpf.run(sensor_raw.time.time.float_val, my_GYRO_cali.float_val, my_ACCL_cali.float_val);
+                my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
+                // DEBUG_PRINT("IMU attitude: %7.3f, %7.3f, %7.3f\n", my_att.float_val[0], my_att.float_val[1], my_att.float_val[2]);
+                Serial.print("IMU attitude: ");
+                Serial.print(my_att.float_val[0], 3); Serial.print(", ");
+                Serial.print(my_att.float_val[1], 3); Serial.print(", ");
+                Serial.println(my_att.float_val[2], 3);
             
             }
         }

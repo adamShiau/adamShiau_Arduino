@@ -6,6 +6,7 @@
 #include "memory_manage.h"
 #include "output_mode_config.h"
 #include "output_mode_setting.h"
+#include "MyNavigation.h"
 
 
 // Definition and initialization of my_cmd, structure type is defined in common.h

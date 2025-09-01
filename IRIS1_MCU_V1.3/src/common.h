@@ -83,6 +83,13 @@ typedef union
 }
 my_float_t;
 
+typedef union
+{
+  float float_val[3];
+  uint8_t bin_val[12];
+  int int_val[3];
+}my_att_t;
+
 /*** sensor data structure delaration */
 
 typedef struct {

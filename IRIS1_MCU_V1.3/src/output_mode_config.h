@@ -4,6 +4,9 @@
 // #include <Arduino.h> 
 #include "common.h"
 #include "memory_manage.h"
+#include "MyNavigation.h"
+
+extern Navigation::ComplementaryFilter my_cpf; //define in IRIS1_MCU.ino
 
 
 typedef void (*fn_ptr) (cmd_ctrl_t*, fog_parameter_t*);

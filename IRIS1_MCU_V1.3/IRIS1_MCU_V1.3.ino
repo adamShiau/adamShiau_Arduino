@@ -16,6 +16,8 @@ uint8_t data_cnt = 0;
 
 extern Uart Serial4;
 
+/*** Attitude calculation*/
+Navigation::ComplementaryFilter my_cpf;
 
 void setup() {
   myUART_init();
@@ -30,6 +32,10 @@ void setup() {
   delay(100);
   set_data_rate(SYNC_100HZ); 
   delay(10);
+
+  my_cpf.setIMUError(IRIS, 100);
+  my_cpf.setThreshold(0.01, 0.01, 0.01); // dps
+                      
 }
 
 void loop() { 
