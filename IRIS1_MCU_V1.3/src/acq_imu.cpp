@@ -11,12 +11,11 @@
 // 預期 payload 長度（11 個 float × 4 bytes）
 #define SENSOR_PAYLOAD_LEN 44
 
-my_sensor_t sensor_raw = {}, sensor_cali = {};
+static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
 static uint32_t t_start = 0;
 static uint8_t data_cnt = 0;
 static uint32_t try_cnt = 0;
-static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
 
 void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 {
@@ -27,7 +26,7 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
         if(rx->value == INT_SYNC || rx->value == EXT_SYNC) {
             DEBUG_PRINT("acq_imu start\n");
             rx->run = 1;
-            sendCmd(Serial4, HDR_ABBA, TRL_5556, MODE_IMU, 2, 2);
+            sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 2, 2);
             delay(10);
             reset_FPGA_timer();
         }
@@ -35,10 +34,9 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             DEBUG_PRINT("acq_imu select stop\n");
             rx->run = 0;
             data_cnt = 0;
-            sendCmd(Serial4, HDR_ABBA, TRL_5556, MODE_IMU, 4, 2);
+            sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 4, 2);
             sensor_raw = {}; // reset sensor_raw
             sensor_cali = {}; // reset sensor_cali
-            my_cpf.resetEuler(0,0,0);
         }
     }
 
@@ -55,13 +53,7 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
                 // 2) 校正 → 輸出到 sensor_cali
                 sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
-                my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
-                my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
-                my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-                my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
-                my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
-                my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
-
+                
                 // 3) 用 sensor_cali 打包成 44 bytes
                 uint8_t out[SENSOR_PAYLOAD_LEN];
                 pack_sensor_payload_from_cali(&sensor_cali, out);
@@ -79,15 +71,7 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                     Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
                     Serial1.write(out, SENSOR_PAYLOAD_LEN);
                     Serial1.write(crc, 4);
-                }
-                my_cpf.run(sensor_raw.time.time.float_val, my_GYRO_cali.float_val, my_ACCL_cali.float_val);
-                my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
-                // DEBUG_PRINT("IMU attitude: %7.3f, %7.3f, %7.3f\n", my_att.float_val[0], my_att.float_val[1], my_att.float_val[2]);
-                Serial.print("IMU attitude: ");
-                Serial.print(my_att.float_val[0], 3); Serial.print(", ");
-                Serial.print(my_att.float_val[1], 3); Serial.print(", ");
-                Serial.println(my_att.float_val[2], 3);
-            
+                }       
             }
         }
     }
