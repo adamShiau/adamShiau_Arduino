@@ -7,11 +7,11 @@
 // Input BR, noise, RRW, sted, BS, type ("gyro" or "accl")
 SensorParams::SensorParams(float BR, float noise, float RRW, float std, float BS, std::string sensor_type) {
     if (sensor_type == "gyro") {
-        this->BR = radians(BR) / 3600.0;
-        this->noise = radians(noise) / 60.0;
+        this->BR = radians(BR) / 3600.0; // input dps
+        this->noise = radians(noise) / 60.0; // dps/√Hz / 60 = degree/sqrt(Hz) 
         this->RRW = radians(RRW) / pow(60.0, 3);
-        this->std = radians(std) / 3600.0;
-        this->BS = radians(BS) / 3600.0;
+        this->std = radians(std) / 3600.0; // input dps
+        this->BS = radians(BS) / 3600.0; // input dps
     } else if (sensor_type == "accl") {
         float ug = 9.8 * 1e-6;
         this->BR = BR * ug;

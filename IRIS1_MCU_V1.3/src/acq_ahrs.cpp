@@ -10,6 +10,10 @@
 
 // 讀取來自 FPGA payload 長度（11 個 float × 4 bytes），不含 header 與 CRC
 #define SENSOR_PAYLOAD_LEN 44
+// 姿態 3 floats = 12 bytes
+#define ATT_PAYLOAD_LEN    12
+// 合併後總長度
+#define TOTAL_PAYLOAD_LEN  (SENSOR_PAYLOAD_LEN + ATT_PAYLOAD_LEN)
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
@@ -48,6 +52,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
         if (pkt) {
             if(data_cnt < DATA_DELAY_CNT) data_cnt++;
+
             // 1) 解析 raw
             if (update_raw_data(pkt, &sensor_raw) == 0) {
 
@@ -62,32 +67,38 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
                 my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
 
-                // 3) 用 sensor_cali 打包成 44 bytes
-                uint8_t out[SENSOR_PAYLOAD_LEN];
+                // 3) 先用校正後資料跑姿態（時間、角速、加速度）
+                my_cpf.run(sensor_raw.time.time.float_val,
+                           my_GYRO_cali.float_val,
+                           my_ACCL_cali.float_val);
+
+                // 取回 Euler (roll, pitch, yaw) → 存到 my_att.float_val[3]
+                my_cpf.getEularAngle(my_att.float_val);
+
+                // 4) 建立新的 payload：前 44B 是感測打包，後 12B 是姿態
+                uint8_t out[TOTAL_PAYLOAD_LEN];
+
+                // 4-1) 先打包原本 44B 感測 payload
                 pack_sensor_payload_from_cali(&sensor_cali, out);
-                // pack_sensor_payload_from_cali(&sensor_raw, out);
 
-                // 4) 以 (KVH_HEADER + out) 產生 CRC
+                // 4-2) 再把 12B 姿態 append 在後面
+                memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
+
+                // 5) 用 (KVH_HEADER + out[0..TOTAL_PAYLOAD_LEN-1]) 算 CRC32
                 uint8_t crc[4];
-                gen_crc32(KVH_HEADER, out, SENSOR_PAYLOAD_LEN, crc);
+                gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
 
-                // （可選）debug
-                // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
-
-                // 5) 依序送出：Header + Calibrated Payload + CRC
+                // 6) 依序送出：Header + 新 payload(56B) + CRC(4B)
                 if(data_cnt >= DATA_DELAY_CNT) {
                     Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
-                    Serial1.write(out, SENSOR_PAYLOAD_LEN);
+                    Serial1.write(out, TOTAL_PAYLOAD_LEN);
                     Serial1.write(crc, 4);
                 }
-                my_cpf.run(sensor_raw.time.time.float_val, my_GYRO_cali.float_val, my_ACCL_cali.float_val);
-                my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
-                // DEBUG_PRINT("IMU attitude: %7.3f, %7.3f, %7.3f\n", my_att.float_val[0], my_att.float_val[1], my_att.float_val[2]);
-                Serial.print("IMU attitude: ");
-                Serial.print(my_att.float_val[0], 3); Serial.print(", ");
-                Serial.print(my_att.float_val[1], 3); Serial.print(", ");
-                Serial.println(my_att.float_val[2], 3);
-            
+
+                // Serial.print("IMU attitude: ");
+                // Serial.print(my_att.float_val[0], 3); Serial.print(", ");
+                // Serial.print(my_att.float_val[1], 3); Serial.print(", ");
+                // Serial.println(my_att.float_val[2], 3);
             }
         }
     }

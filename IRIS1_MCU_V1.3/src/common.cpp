@@ -221,7 +221,7 @@ void gen_crc32(const uint8_t* header, const uint8_t* payload, size_t payload_len
         remainder = (remainder << 8) ^ crc_table[index];
     }
 
-    // payload (44B)
+    // payload (TOTAL_PAYLOAD_LEN)
     for (size_t i = 0; i < payload_len; i++) {
         uint8_t index = (remainder >> 24) ^ payload[i];
         remainder = (remainder << 8) ^ crc_table[index];
