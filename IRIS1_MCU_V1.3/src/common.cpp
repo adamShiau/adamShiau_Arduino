@@ -1541,6 +1541,9 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float gx_comp = raw->fog.fogx.step.float_val * sf_x_gyro - bx_gyro;
   float gy_comp = raw->fog.fogy.step.float_val * sf_y_gyro - by_gyro;
   float gz_comp = raw->fog.fogz.step.float_val * sf_z_gyro - bz_gyro;
+  // Serial.print(raw->fog.fogx.step.float_val); Serial.print(","); 
+  // Serial.print(raw->fog.fogy.step.float_val); Serial.print(","); 
+  // Serial.print(raw->fog.fogz.step.float_val); Serial.println();Serial.println();
 
   // === Accel 溫補（scale factor & bias）===
   float ax_comp = raw->adxl357.ax.float_val * sf_x_acc - bx_acc;
@@ -1560,6 +1563,10 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float g31 = fog_parameter->misalignment[21].data.float_val;
   float g32 = fog_parameter->misalignment[22].data.float_val;
   float g33 = fog_parameter->misalignment[23].data.float_val;
+  // Serial.print(g11); Serial.print(","); Serial.print(g12); Serial.print(","); Serial.println(g13);
+  // Serial.print(g21); Serial.print(","); Serial.print(g22); Serial.print(","); Serial.println(g23);
+  // Serial.print(g31); Serial.print(","); Serial.print(g32); Serial.print(","); Serial.println(g33);
+  // Serial.println();  
 
   float gx_cal = g11*gx_comp + g12*gy_comp + g13*gz_comp + cgx;
   float gy_cal = g21*gx_comp + g22*gy_comp + g23*gz_comp + cgy;
