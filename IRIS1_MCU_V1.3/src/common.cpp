@@ -322,24 +322,28 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
     case 1: // paramX
       if (idx < PAR_LEN) {
         fog_inst->paramX[idx].data.int_val = rx->value;
+        // DEBUG_PRINT("paramX[%d] = %d\n", idx, fog_inst->paramX[idx].data.int_val);
       }
       break;
 
     case 2: // paramY
       if (idx < PAR_LEN) {
         fog_inst->paramY[idx].data.int_val = rx->value;
+        // DEBUG_PRINT("paramY[%d] = %d\n", idx, fog_inst->paramY[idx].data.int_val);
       }
       break;
 
     case 3: // paramZ
       if (idx < PAR_LEN) {
         fog_inst->paramZ[idx].data.int_val = rx->value;
+        // DEBUG_PRINT("paramZ[%d] = %d\n", idx, fog_inst->paramZ[idx].data.int_val);
       }
       break;
 
     case 4: // misalignment
       if (idx < MIS_LEN) {
         fog_inst->misalignment[idx].data.int_val = rx->value;
+        // DEBUG_PRINT("misalignment[%d] = %d\n", idx, fog_inst->misalignment[idx].data.int_val);
       }
       break;
 
@@ -1483,6 +1487,13 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float sf_z_gyro = sf_temp_comp_1st(tz,
       fog_parameter->paramZ[17].data.float_val,
       fog_parameter->paramZ[18].data.float_val);
+      // Serial.println("\nsf_gyro: slope, offset:");
+      // Serial.print(fog_parameter->paramX[17].data.float_val,4); Serial.print(","); 
+      // Serial.print(fog_parameter->paramX[18].data.float_val,4); Serial.println();
+      // Serial.print(fog_parameter->paramY[17].data.float_val,4); Serial.print(","); 
+      // Serial.print(fog_parameter->paramY[18].data.float_val,4); Serial.println();
+      // Serial.print(fog_parameter->paramZ[17].data.float_val,4); Serial.print(","); 
+      // Serial.print(fog_parameter->paramZ[18].data.float_val,4); Serial.println();
 
   // === Accel scale factor（一次線性；用 adxl 溫度）===
   float sf_x_acc = sf_temp_comp_1st(tacc,
@@ -1496,6 +1507,13 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float sf_z_acc = sf_temp_comp_1st(tacc,
       fog_parameter->paramZ[31].data.float_val,
       fog_parameter->paramZ[32].data.float_val);
+      // Serial.println("\nsf_accl: slope, offset:");
+      // Serial.print(fog_parameter->paramX[31].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramX[32].data.float_val); Serial.println();
+      // Serial.print(fog_parameter->paramY[31].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramY[32].data.float_val); Serial.println();
+      // Serial.print(fog_parameter->paramZ[31].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramZ[32].data.float_val); Serial.println();
 
   // === Gyro bias（三區段一次線性）===
   float bx_gyro = bias_temp_comp_1st_3t(
@@ -1523,6 +1541,31 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
       fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
   );
+  // Serial.println("\nbs_gyro: T1, T2, s1, o1, s2, o2, s3, o3:");
+  // Serial.print(fog_parameter->paramX[23].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[24].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[25].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[26].data.float_val); Serial.print(",");
+  // Serial.print(fog_parameter->paramX[27].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[28].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[29].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramX[30].data.float_val); Serial.println();
+  // Serial.print(fog_parameter->paramY[23].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[24].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[25].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[26].data.float_val); Serial.print(",");
+  // Serial.print(fog_parameter->paramY[27].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[28].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[29].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramY[30].data.float_val); Serial.println();
+  // Serial.print(fog_parameter->paramZ[23].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[24].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[25].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[26].data.float_val); Serial.print(",");
+  // Serial.print(fog_parameter->paramZ[27].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[28].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[29].data.float_val); Serial.print(","); 
+  // Serial.print(fog_parameter->paramZ[30].data.float_val); Serial.println();
 
   // === Accel bias（一次線性；用 adxl 溫度）===
   float bx_acc = sf_temp_comp_1st(tacc,
@@ -1536,6 +1579,14 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float bz_acc = sf_temp_comp_1st(tacc,
       fog_parameter->paramZ[33].data.float_val,
       fog_parameter->paramZ[34].data.float_val);
+      // Serial.println("\nbs_accl: s, o:");
+      // Serial.print(fog_parameter->paramX[33].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramX[34].data.float_val); Serial.println();
+      // Serial.print(fog_parameter->paramY[33].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramY[34].data.float_val); Serial.println();
+      // Serial.print(fog_parameter->paramZ[33].data.float_val); Serial.print(","); 
+      // Serial.print(fog_parameter->paramZ[34].data.float_val); Serial.println();
+
 
   // === Gyro 溫補（scale factor & bias）===
   float gx_comp = raw->fog.fogx.step.float_val * sf_x_gyro - bx_gyro;
@@ -1563,10 +1614,11 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float g31 = fog_parameter->misalignment[21].data.float_val;
   float g32 = fog_parameter->misalignment[22].data.float_val;
   float g33 = fog_parameter->misalignment[23].data.float_val;
+  // Serial.println("\nMIS_gyro:");
   // Serial.print(g11); Serial.print(","); Serial.print(g12); Serial.print(","); Serial.println(g13);
   // Serial.print(g21); Serial.print(","); Serial.print(g22); Serial.print(","); Serial.println(g23);
   // Serial.print(g31); Serial.print(","); Serial.print(g32); Serial.print(","); Serial.println(g33);
-  // Serial.println();  
+ 
 
   float gx_cal = g11*gx_comp + g12*gy_comp + g13*gz_comp + cgx;
   float gy_cal = g21*gx_comp + g22*gy_comp + g23*gz_comp + cgy;
@@ -1585,6 +1637,11 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float a31 = fog_parameter->misalignment[9].data.float_val;
   float a32 = fog_parameter->misalignment[10].data.float_val;
   float a33 = fog_parameter->misalignment[11].data.float_val;
+  // Serial.println("\nMIS_accl:");
+  // Serial.print(a11); Serial.print(","); Serial.print(a12); Serial.print(","); Serial.println(a13);
+  // Serial.print(a21); Serial.print(","); Serial.print(a22); Serial.print(","); Serial.println(a23);
+  // Serial.print(a31); Serial.print(","); Serial.print(a32); Serial.print(","); Serial.println(a33);
+
 
   float ax_cal = a11*ax_comp + a12*ay_comp + a13*az_comp + cax;
   float ay_cal = a21*ax_comp + a22*ay_comp + a23*az_comp + cay;
