@@ -34,7 +34,7 @@ void setup() {
   delay(10);
 
   my_cpf.setIMUError(IRIS, 100);
-  my_cpf.setThreshold(0.00028, 0.00028, 0.00028); // dps
+  my_cpf.setThreshold(0.00028, 0.00028, 0.00028); // dps, 0905 HP指示調整成~ 1 dph
                       
 }
 
