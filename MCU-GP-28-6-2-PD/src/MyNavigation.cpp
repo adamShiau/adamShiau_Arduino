@@ -164,6 +164,7 @@ namespace Navigation{
                     new_pr[1] = ori_temp[1] - weight[1] * normalizeAngle_float(ori_temp[1] - new_pr_acc(1));
                     
                     dcm.resetOri(new_pr[0], new_pr[1], ori_temp[2]);
+                    // dcm.resetOri(ori_temp[0], ori_temp[1], ori_temp[2]);
                 }
             }
 
@@ -647,13 +648,13 @@ Vector2f accLeveling(const float &fx, const float &fy, const float &fz){
     // Vector2f pr(pitch, roll);
     // return pr;
 
-    float pitch = atan2(fy, max(sqrt(fx*fx + fz*fz), 1e-8));
+    float pitch = atan2(fy, max(sqrt(fx*fx + fz*fz), 1e-4));
     float roll = 0;
     if (fz > 0){
-        roll = atan2(-fx, sqrt(fz*fz + 1e-6*fx*fx));
+        roll = atan2(-fx, sqrt(fz*fz + 1e-4*fx*fx));
     }
     else{
-        roll = atan2(-fx, -sqrt(fz*fz + 1e-6*fx*fx));
+        roll = atan2(-fx, -sqrt(fz*fz + 1e-4*fx*fx));
     }    
     
     Vector2f pr(pitch, roll);

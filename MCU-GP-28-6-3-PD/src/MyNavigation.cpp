@@ -141,7 +141,7 @@ namespace Navigation{
                 }
 
                 vec = (radians(vec) - dcm.getR_b2l().transpose() * WE_IE_L) * (t - pre_time);
-                dcm.rotate(vec); //更新姿態矩陣
+                dcm.rotate(vec); //更新姿態
 
                 Vector2f pr_acc = accLeveling(new_acc[0], new_acc[1], new_acc[2]);
                 pr_list.push_back(pr_acc);
