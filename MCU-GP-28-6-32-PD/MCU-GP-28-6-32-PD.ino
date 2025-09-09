@@ -77,7 +77,7 @@ volatile bool ISR_PEDGE;
 int t_adc = millis();
 
 // attitude calculation filter
-Madgwick filter;
+Madgwick ahrs_attitude;
 
 int WDT_CNT=0;
 int tt0=0, tt1, tt2, tt3;
@@ -116,8 +116,10 @@ void setup() {
   // set_system_clk(EXTERNAL_CRYSTAL);
   // Blink_MCU_LED();
 
-  //attitude calculation filter
-  filter.begin(100); // sample frequency in Hz
+  //attitude calculation 
+  ahrs_attitude.begin(100.0f); // sample frequency in Hz
+  ahrs_attitude.setGimbalLockGuard(true);   // 開啟奇異點保護（預設已開）
+  ahrs_attitude.setGyroBiasLearning(true);  // 開啟靜止偏置學習（預設已開）
 
   /*** pwm ***/
     pwm_init();
@@ -1364,7 +1366,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       case STOP_SYNC:
         reset_SYNC();
         data_cnt = 0;
-        filter.resetAttitude();
+        ahrs_attitude.resetAttitude();
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         my_cpf.resetEuler(0,0,0);
@@ -1441,11 +1443,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
       // my_cpf.run(float(mcu_time.ulong_val) * 1e-3, my_GYRO_cali.float_val, my_memsXLM_cali.float_val);
       // my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
-      filter.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
+      ahrs_attitude.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
          my_memsXLM_cali.float_val[0], my_memsXLM_cali.float_val[1], my_memsXLM_cali.float_val[2]);
-      my_att.float_val[0] = filter.getPitch();
-      my_att.float_val[1] = filter.getRoll();
-      my_att.float_val[2] = filter.getYaw();
+      my_att.float_val[0] = ahrs_attitude.getPitch();
+      my_att.float_val[1] = ahrs_attitude.getRoll();
+      my_att.float_val[2] = ahrs_attitude.getYaw();
     }
 	}
 	clear_SEL_EN(select_fn);
