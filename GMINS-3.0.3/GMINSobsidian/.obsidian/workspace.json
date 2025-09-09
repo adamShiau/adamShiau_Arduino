@@ -1,0 +1,213 @@
+{
+  "main": {
+    "id": "5046e4b3822a2942",
+    "type": "split",
+    "children": [
+      {
+        "id": "21e0e39a638e6ba5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e5a1347df18bdacc",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "6.個別系統內容架構/Parser → Adapter → Protocol.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Parser → Adapter → Protocol"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "2ae97de5776594c9",
+    "type": "split",
+    "children": [
+      {
+        "id": "ad7204b0f3775288",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a1b31a1c075b3d33",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "檔案瀏覽器"
+            }
+          },
+          {
+            "id": "c8ef67164211d465",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜尋"
+            }
+          },
+          {
+            "id": "709e56c95ff26e8a",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "書籤"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "74882c080111b299",
+    "type": "split",
+    "children": [
+      {
+        "id": "cb275a1852299168",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1102445a1fa2d816",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "6.個別系統內容架構/Parser → Adapter → Protocol.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Parser → Adapter → Protocol 的反向連結"
+            }
+          },
+          {
+            "id": "1166a479d6d8bec5",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "6.個別系統內容架構/GMINS_Development_Flow.excalidraw",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "GMINS_Development_Flow 的對外連結"
+            }
+          },
+          {
+            "id": "defd6b1637775b9f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "標籤"
+            }
+          },
+          {
+            "id": "16c5a1516da3128a",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "6.個別系統內容架構/GMINS_Development_Flow.excalidraw",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "GMINS_Development_Flow 的大綱"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:建立新的 base": false,
+      "switcher:開啟快速切換": false,
+      "graph:查看關聯圖": false,
+      "canvas:建立新畫布": false,
+      "daily-notes:開啟今天的每日筆記": false,
+      "templates:插入模板": false,
+      "command-palette:開啟命令面板": false,
+      "obsidian-excalidraw-plugin:新建繪圖檔案": false,
+      "templater-obsidian:Templater": false
+    }
+  },
+  "active": "e5a1347df18bdacc",
+  "lastOpenFiles": [
+    "6.個別系統內容架構/系統檔案架構製作.md",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md",
+    "6.個別系統內容架構/FOUNDATION'/Parser → Adapter → Protocol.md",
+    "6.個別系統內容架構/xsens_mti_driver.md",
+    "6.個別系統內容架構/Parser → Adapter → Protocol.md",
+    "6.個別系統內容架構/GMINS_Development_Flow.excalidraw",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035603957",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035582016",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035547175",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035517744",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035476751",
+    "6.個別系統內容架構/FOUNDATION'/xsens_mti_driver.md.tmp.16088.1757035457246",
+    "6.個別系統內容架構/FOUNDATION'/Parser → Adapter → Protocol.md.tmp.1054.1756946756190",
+    "6.個別系統內容架構/FOUNDATION'/Parser → Adapter → Protocol.md.tmp.1054.1756946718055",
+    "6.個別系統內容架構/FOUNDATION'/Parser → Adapter → Protocol.md.tmp.1054.1756946660119",
+    "修改內容筆記 改變yaw.md",
+    "6.個別系統內容架構/FOUNDATION'/praser.md",
+    "5.實作指導/h檔案簡潔化.md",
+    "6.個別系統內容架構/FOUNDATION'/DataFlowMonitor MultiChannelMonitor的實戰用法.md",
+    "5.實作指導/GMINS系統逐步啟動測試指南.md",
+    "5.實作指導/測試策略.md",
+    "6.個別系統內容架構/FOUNDATION'/MAVLink_輸出流程完整追蹤.md",
+    "6.個別系統內容架構/FOUNDATION'/data_types_design=我的模具.md",
+    "6.個別系統內容架構/FOUNDATION'/Adapter folder筆記.md",
+    "5.實作指導/堆疊緩衝區優化技術筆記.md",
+    "6.個別系統內容架構/FOUNDATION'/Serial Command Handler System.md",
+    "6.個別系統內容架構/FOUNDATION'/system_controller.md",
+    "5.實作指導/GMINS系統簡化部署指南.md",
+    "4.原始代碼架構/Arduino-vs-GMINS緩衝區架構對比分析.md",
+    "4.原始代碼架構/src目錄結構設計.md",
+    "4.原始代碼架構/AR_1A_FC_GUI_INTEGRATION.md",
+    "5.實作指導/MAVLink堆疊管理與95Hz穩定運行分析.md",
+    "6.個別系統內容架構/FOUNDATION'/GMINS系統FOUNDATION核心架構筆記.md",
+    "6.個別系統內容架構/FOUNDATION'/Push-Pull解耦多協議分頻架構.md",
+    "5.實作指導/static變數與全域變數死機分析報告.md",
+    "5.實作指導/Parser → Adapter → Protocol.md",
+    "Pasted image 20250815143950.png"
+  ]
+}

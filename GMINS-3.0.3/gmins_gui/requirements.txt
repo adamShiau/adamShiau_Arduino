@@ -1,0 +1,23 @@
+# GMINS GUI Application Requirements
+
+# Core GUI Framework
+PyQt5>=5.15.0
+PyQt5-tools>=5.15.0
+
+# Data Processing
+numpy>=1.21.0
+pandas>=1.3.0
+
+# Visualization
+matplotlib>=3.5.0
+pyqtgraph>=0.12.0
+
+# Communication
+pyserial>=3.5
+pymavlink>=2.4.0
+
+# Optional: Enhanced features
+folium>=0.12.0  # For map display (optional)
+
+# Development tools (optional)
+pyqt5-stubs  # For IDE type checking

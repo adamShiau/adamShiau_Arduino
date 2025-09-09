@@ -117,9 +117,18 @@ void setup() {
   // Blink_MCU_LED();
 
   //attitude calculation 
-  ahrs_attitude.begin(100.0f); // sample frequency in Hz
-  ahrs_attitude.setGimbalLockGuard(true);   // 開啟奇異點保護（預設已開）
-  ahrs_attitude.setGyroBiasLearning(true);  // 開啟靜止偏置學習（預設已開）
+  ahrs_attitude.begin(100.0f); // sample rate
+  // 旋轉至NED座標系
+  const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };
+  // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 };
+  ahrs_attitude.setSensorToCaseMatrix(Rcs);
+
+  // 設定 Local 世界座標為 NED：
+  ahrs_attitude.setLocalFrameNED(true);
+
+  ahrs_attitude.setGyroBiasLearning(true);
+  ahrs_attitude.setDynamicAccelWeight(true);
+  ahrs_attitude.setGimbalLockGuard(true, 89.0f);
 
   /*** pwm ***/
     pwm_init();
@@ -1315,6 +1324,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
   static my_float_t myfog_GYRO;
   static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
+  static float yaw0 = 0.0f;
 
   byte *fog;
 	uint8_t CRC32[4];
@@ -1344,6 +1354,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial.println("Enter EXT_SYNC mode");
         Serial.println("Set EXTT to CHANGE");
 
+        // float y = ahrs_attitude.getLocalCaseYaw(); 
+        yaw0 = ahrs_attitude.getLocalCaseYaw();
+
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
@@ -1366,7 +1379,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       case STOP_SYNC:
         reset_SYNC();
         data_cnt = 0;
-        ahrs_attitude.resetAttitude();
+        ahrs_attitude.resetAttitude(true);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
         my_cpf.resetEuler(0,0,0);
@@ -1413,6 +1426,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       // my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
+      // my_GYRO_cali.float_val[0]*=-1; my_GYRO_cali.float_val[1]*=-1; my_GYRO_cali.float_val[2]*=-1;
+      // --- 座標旋轉 ---
+      // rotate2NED(my_memsXLM_cali.float_val);
+      // rotate2NED(my_GYRO_cali.float_val);
+
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
       memcpy(imu_data, KVH_HEADER, 4);
@@ -1445,9 +1463,16 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       // my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
       ahrs_attitude.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
          my_memsXLM_cali.float_val[0], my_memsXLM_cali.float_val[1], my_memsXLM_cali.float_val[2]);
-      my_att.float_val[0] = ahrs_attitude.getPitch();
-      my_att.float_val[1] = ahrs_attitude.getRoll();
-      my_att.float_val[2] = ahrs_attitude.getYaw();
+
+      float r = ahrs_attitude.getLocalCaseRoll();
+      float p = ahrs_attitude.getLocalCasePitch();
+      float y = ahrs_attitude.getLocalCaseYaw();
+      my_att.float_val[0] =  p; // pitch
+      my_att.float_val[1] =  r; // roll
+      my_att.float_val[2] =  wrapDeg(y - yaw0); // yaw 減去零位，並 wrap 到 [-180,180]
+      // my_att.float_val[0] = ahrs_attitude.getPitch();
+      // my_att.float_val[1] = ahrs_attitude.getRoll();
+      // my_att.float_val[2] = ahrs_attitude.getYaw();
     }
 	}
 	clear_SEL_EN(select_fn);
@@ -2749,4 +2774,17 @@ void print_ext_WDT_configuration(int sel)
     else{
         msg_out("input out of range");
     } 
+}
+
+static inline void rotate2NED(float v[3]) {
+  float x0 = v[0], y0= v[1], z0= v[2];
+  v[0] = -y0;  // X -> -Y
+  v[1] = -x0;  // Y -> -X
+  v[2] = -z0;   // Z -> -Z
+}
+
+static inline float wrapDeg(float a){
+    while (a >  180.0f) a -= 360.0f;
+    while (a < -180.0f) a += 360.0f;
+    return a;
 }
