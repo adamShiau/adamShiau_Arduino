@@ -30,6 +30,22 @@ private:
         ry = aw*by - ax*bz + ay*bw + az*bx;
         rz = aw*bz + ax*by - ay*bx + az*bw;
     }
+
+    static inline void quatConj(float w,float x,float y,float z,
+                            float& cw,float& cx,float& cy,float& cz){
+        cw=w; cx=-x; cy=-y; cz=-z;
+    }
+    // q_LC = q_WL←WE ⊗ ( q_WS ⊗ conj(q_CS) )
+    static inline void currentLocalCaseQuat(
+        float q0,float q1,float q2,float q3,         // q_WS
+        float qc0,float qc1,float qc2,float qc3,     // q_CS
+        float qwl0,float qwl1,float qwl2,float qwl3, // q_WL←WE
+        float& lc0,float& lc1,float& lc2,float& lc3)
+    {
+        float c0,c1,c2,c3;  quatConj(qc0,qc1,qc2,qc3, c0,c1,c2,c3);
+        float wc0,wc1,wc2,wc3;  quatMul(q0,q1,q2,q3, c0,c1,c2,c3, wc0,wc1,wc2,wc3);
+        quatMul(qwl0,qwl1,qwl2,qwl3, wc0,wc1,wc2,wc3, lc0,lc1,lc2,lc3);
+    }
     static inline void eulerZYX_from_quat_deg(float w,float x,float y,float z,
                                               float& roll_deg,float& pitch_deg,float& yaw_deg) {
         // ZYX: yaw-pitch-roll
@@ -115,6 +131,10 @@ private:
     // 世界座標切換（Local←ENU）：預設=單位 → ENU
     float qwl0 = 1.0f, qwl1 = 0.0f, qwl2 = 0.0f, qwl3 = 0.0f; // q_WL←WE
 
+    // --- Yaw 零位（只修正偏航）---
+    bool  yawZeroValid = false;
+    float qz0w = 1.0f, qz0x = 0.0f, qz0y = 0.0f, qz0z = 0.0f; // q_Z0 = Rz(-yaw0)
+
 
     void computeAngles();
     bool isStill(float gx_dps, float gy_dps, float gz_dps,
@@ -147,6 +167,15 @@ public:
     float getLocalCaseRoll();
     float getLocalCasePitch();
     float getLocalCaseYaw();
+
+    // 從「當下 Local+Case 的 yaw」捕捉零位（之後 yaw 會以此為 0）
+    void captureYawZeroLocalCase();
+
+    // 直接指定一個 yaw0（度），等效於之後都加 Rz(-yaw0)
+    void setYawZeroDeg(float yaw0_deg);
+
+    // 取消 yaw 零位（回到絕對 yaw）
+    void clearYawZero();
 
 
     // 基本設定

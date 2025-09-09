@@ -438,11 +438,42 @@ float Madgwick::getLocalCasePitch() {
 }
 float Madgwick::getLocalCaseYaw() {
   if (!anglesComputed) computeAngles();
-  float cq0=qc0, cq1=-qc1, cq2=-qc2, cq3=-qc3;
-  float wc0,wc1,wc2,wc3; quatMul(q0,q1,q2,q3,  cq0,cq1,cq2,cq3,  wc0,wc1,wc2,wc3);
-  float lc0,lc1,lc2,lc3; quatMul(qwl0,qwl1,qwl2,qwl3, wc0,wc1,wc2,wc3, lc0,lc1,lc2,lc3);
-  float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
-  return y;
+  float lc0,lc1,lc2,lc3;
+  currentLocalCaseQuat(q0,q1,q2,q3, qc0,qc1,qc2,qc3, qwl0,qwl1,qwl2,qwl3, lc0,lc1,lc2,lc3);
+
+  if (yawZeroValid) {
+    // q_adj = Rz(-yaw0) ⊗ q_LC
+    float aj0,aj1,aj2,aj3;
+    quatMul(qz0w,qz0x,qz0y,qz0z, lc0,lc1,lc2,lc3, aj0,aj1,aj2,aj3);
+    float r,p,y; eulerZYX_from_quat_deg(aj0,aj1,aj2,aj3, r,p,y);
+    return y;
+  } else {
+    float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+    return y;
+  }
 }
+
+
+void Madgwick::captureYawZeroLocalCase() {
+  if (!anglesComputed) computeAngles();
+  // 1) 取得當下 Local+Case 的四元數
+  float lc0,lc1,lc2,lc3;
+  currentLocalCaseQuat(q0,q1,q2,q3, qc0,qc1,qc2,qc3, qwl0,qwl1,qwl2,qwl3, lc0,lc1,lc2,lc3);
+  // 2) 取出當下的 yaw（ZYX），只用來做 Rz(-yaw0)
+  float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+  setYawZeroDeg(y); // 將當下 yaw 當作零位
+}
+
+void Madgwick::setYawZeroDeg(float yaw0_deg) {
+  float a = -0.5f * yaw0_deg * 0.01745329252f; // -yaw0/2 (rad)
+  qz0w = cosf(a); qz0x = 0.0f; qz0y = 0.0f; qz0z = sinf(a); // Rz(-yaw0)
+  yawZeroValid = true;
+}
+
+void Madgwick::clearYawZero() {
+  yawZeroValid = false;
+  qz0w = 1.0f; qz0x = qz0y = qz0z = 0.0f;
+}
+
 
 
