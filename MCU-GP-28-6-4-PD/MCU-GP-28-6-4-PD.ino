@@ -2794,6 +2794,10 @@ static inline void rotate2NED(float v_new[3], float v_old[3]) {
   v_new[0] = -v_old[1];  // X -> -Y
   v_new[1] = -v_old[0];  // Y -> -X
   v_new[2] = -v_old[2];   // Z -> -Z
+
+  // v_new[0] = v_old[0];  
+  // v_new[1] = v_old[1];  
+  // v_new[2] = v_old[2];   
 }
 
 static inline float wrapDeg(float a){

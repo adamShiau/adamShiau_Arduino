@@ -4,45 +4,53 @@
 #include "MadgwickAHRS_IMU.h"
 
 // 預設
-#define sampleFreqDef   512.0f   // Hz
-#define betaDef         0.1f     // 2 * proportional gain
+#define sampleFreqDef   512.0f   // 內部預設採樣率；實務請用 begin(fs) 覆蓋
+#define betaDef         0.1f     // Madgwick 增益：大=收斂快但噪、大甩易被拉偏；小=平滑但回正慢
 
 //=============================================================================================
 // 建構
 
+/* Tuning cheatsheet:
+- 手持：beta=0.08~0.12, accTolG=0.12~0.18, gyroHigh=120~180, betaMin=0.25~0.3
+- 載具：beta=0.06~0.10, accTolG=0.18~0.25, gyroHigh=180~240
+- 激烈：beta=0.05~0.08,  accTolG=0.22~0.30, gyroHigh=240~300, betaMin=0.2~0.25
+- 漂移重：開 gyroBiasEnable、biasAlpha=0.003~0.005、stillGyro=1.5、stillAccTolG=0.06
+- Pitch±90° 跳：gimbalLockEnable=true, gimbalLockPitchDeg=89.5~89.9
+*/
+
 Madgwick::Madgwick() {
-    beta = betaDef;
-    q0 = 1.0f; q1 = 0.0f; q2 = 0.0f; q3 = 0.0f;   // world←sensor
-    invSampleFreq = 1.0f / sampleFreqDef;
+    beta = betaDef;                          // 主增益：一般 0.05~0.15
+    q0 = 1.0f; q1 = 0.0f; q2 = 0.0f; q3 = 0.0f; // 初始姿態（world←sensor）
+    invSampleFreq = 1.0f / sampleFreqDef;    // 由 begin(fs) 實際設定
     anglesComputed = 0;
     roll = pitch = yaw = 0.0f;
 
-    // unwrap / gimbal
-    yaw_deg_prev  = 0.0f;
+// ---- 奇異點保護 / unwrap ----
+    yaw_deg_prev  = 0.0f;                    // unwrap 狀態
     yaw_deg_cont  = 0.0f;
     roll_deg_prev = 0.0f;
     has_prev_angles   = false;
-    gimbalLockEnable  = true;
-    gimbalLockPitchDeg= 89.0f;
+    gimbalLockEnable  = true;                // Pitch 近 ±90° 鎖定 roll/yaw
+    gimbalLockPitchDeg= 89.0f;               // 88~89.9°；越大越晚鎖
 
-    // gyro 偏置學習
-    gyroBiasEnable = true;
-    bgx_dps = bgy_dps = bgz_dps = 0.0f;
-    biasAlpha = 0.002f;
-    stillGyroThreshDps = 1.0f;
-    stillAccTolG       = 0.05f;
+    // ---- 陀螺偏置學習（靜止時）----
+    gyroBiasEnable = true;                   // 自動學偏置，降漂移
+    bgx_dps = bgy_dps = bgz_dps = 0.0f;      // 當前學到的偏置（deg/s）
+    biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    stillGyroThreshDps = 1.0f;               // 靜止判定角速閾值(合計)：0.5~2 dps
+    stillAccTolG       = 0.05f;              // 靜止判定加速度容忍(‖a‖ vs 1g)：0.03~0.07
 
-    // 動態加權
-    dynAccWeightEnable = true;
-    g0 = 9.80665f;
-    accTolG = 0.15f;
-    gyroHighThreshDps = 150.0f;
-    betaMinRatio = 0.25f;
-    betaSmoothAlpha = 0.20f;
-    betaEffLP = beta;
+    // ---- 動態加速度權重（大甩降權）----
+    dynAccWeightEnable = true;               // 依 ‖a‖ 偏離與 |gyro| 動態調 β
+    g0 = 9.80665f;                           // 1g（m/s^2）
+    accTolG = 0.15f;                         // ‖a‖ 相對 1g 容忍：0.1~0.25（大甩取大）
+    gyroHighThreshDps = 150.0f;              // |gx|+|gy|+|gz| 高門檻：100~300 dps
+    betaMinRatio = 0.25f;                    // β 最低比例：0.2~0.4（太低回正慢）
+    betaSmoothAlpha = 0.20f;                 // β 平滑：0.1~0.3（大=反應快）
+    betaEffLP = beta;                        // 目前生效 β（內部狀態）
 
-    // Sensor→Case 固定旋轉（預設單位：case==sensor）
-    qc0 = 1.0f; qc1 = 0.0f; qc2 = 0.0f; qc3 = 0.0f;
+    // ---- Sensor→Case 固定旋轉（幾何對應）----
+    qc0 = 1.0f; qc1 = 0.0f; qc2 = 0.0f; qc3 = 0.0f; // 預設 case==sensor；用 setSensorToCase* 設定
 }
 
 //=============================================================================================
