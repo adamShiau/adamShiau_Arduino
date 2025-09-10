@@ -1463,12 +1463,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       }
       #endif  
       resetWDT(); 
-      reset_EXT_WDI(WDI);
+      reset_EXT_WDI(WDI); 
 
-      // my_cpf.run(float(mcu_time.ulong_val) * 1e-3, my_GYRO_cali.float_val, my_memsXLM_cali.float_val);
-      // my_cpf.getEularAngle(my_att.float_val); //raw data -> att, pitch, row, yaw 
-      ahrs_attitude.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
+      my_acc_t my_GYRO_att_calculate;
+      if(abs(my_GYRO_cali.float_val[0]) > attitude_cali_coe._f.std_wx) my_GYRO_att_calculate.float_val[0] = my_GYRO_cali.float_val[0];
+      else my_GYRO_att_calculate.float_val[0] = 0.0f;
+      if(abs(my_GYRO_cali.float_val[1]) > attitude_cali_coe._f.std_wy) my_GYRO_att_calculate.float_val[1] = my_GYRO_cali.float_val[1];
+      else my_GYRO_att_calculate.float_val[1] = 0.0f;
+      if(abs(my_GYRO_cali.float_val[2]) > attitude_cali_coe._f.std_wz) my_GYRO_att_calculate.float_val[2] = my_GYRO_cali.float_val[2];
+      else my_GYRO_att_calculate.float_val[2] = 0.0f;
+      
+      ahrs_attitude.updateIMU(my_GYRO_att_calculate.float_val[0], my_GYRO_att_calculate.float_val[1], my_GYRO_att_calculate.float_val[2],
          my_memsXLM_cali.float_val[0], my_memsXLM_cali.float_val[1], my_memsXLM_cali.float_val[2]);
+      // ahrs_attitude.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
+      //    my_memsXLM_cali.float_val[0], my_memsXLM_cali.float_val[1], my_memsXLM_cali.float_val[2]);
 
       float r = ahrs_attitude.getLocalCaseRoll();
       float p = ahrs_attitude.getLocalCasePitch();
@@ -1476,9 +1484,6 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       my_att.float_val[0] =  p; // pitch
       my_att.float_val[1] =  r; // roll
       my_att.float_val[2] =  wrapDeg(y - yaw0); // yaw 減去零位，並 wrap 到 [-180,180]
-      // my_att.float_val[0] = ahrs_attitude.getPitch();
-      // my_att.float_val[1] = ahrs_attitude.getRoll();
-      // my_att.float_val[2] = ahrs_attitude.getYaw();
     }
 	}
 	clear_SEL_EN(select_fn);
