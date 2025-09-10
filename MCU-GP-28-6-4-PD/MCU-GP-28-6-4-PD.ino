@@ -1469,13 +1469,16 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       reset_EXT_WDI(WDI); 
 
       my_acc_t my_GYRO_att_calculate;
-      if(abs(my_GYRO_cali.float_val[0]) > 0.38) my_GYRO_att_calculate.float_val[0] = my_GYRO_cali.float_val[0];
+      if(abs(my_GYRO_cali.float_val[0]) > attitude_cali_coe._f.std_wx) my_GYRO_att_calculate.float_val[0] = my_GYRO_cali.float_val[0];
       else my_GYRO_att_calculate.float_val[0] = 0.0f;
-      if(abs(my_GYRO_cali.float_val[1]) > 0.38) my_GYRO_att_calculate.float_val[1] = my_GYRO_cali.float_val[1];
+      if(abs(my_GYRO_cali.float_val[1]) > attitude_cali_coe._f.std_wy) my_GYRO_att_calculate.float_val[1] = my_GYRO_cali.float_val[1];
       else my_GYRO_att_calculate.float_val[1] = 0.0f;
-      if(abs(my_GYRO_cali.float_val[2]) > 0.025) my_GYRO_att_calculate.float_val[2] = my_GYRO_cali.float_val[2];
+      if(abs(my_GYRO_cali.float_val[2]) > attitude_cali_coe._f.std_wz) my_GYRO_att_calculate.float_val[2] = my_GYRO_cali.float_val[2];
       else my_GYRO_att_calculate.float_val[2] = 0.0f;
-      
+      // Serial.print("std_wx: "); Serial.print(attitude_cali_coe._f.std_wx);
+      // Serial.print(", std_wy: "); Serial.print(attitude_cali_coe._f.std_wy);
+      // Serial.print(", std_wz: "); Serial.println(attitude_cali_coe._f.std_wz);
+
       ahrs_attitude.updateIMU(my_GYRO_att_calculate.float_val[0], my_GYRO_att_calculate.float_val[1], my_GYRO_att_calculate.float_val[2],
          my_memsXLM_cali.float_val[0], my_memsXLM_cali.float_val[1], my_memsXLM_cali.float_val[2]);
       // ahrs_attitude.updateIMU(my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
@@ -2794,10 +2797,6 @@ static inline void rotate2NED(float v_new[3], float v_old[3]) {
   v_new[0] = -v_old[1];  // X -> -Y
   v_new[1] = -v_old[0];  // Y -> -X
   v_new[2] = -v_old[2];   // Z -> -Z
-
-  // v_new[0] = v_old[0];  
-  // v_new[1] = v_old[1];  
-  // v_new[2] = v_old[2];   
 }
 
 static inline float wrapDeg(float a){
