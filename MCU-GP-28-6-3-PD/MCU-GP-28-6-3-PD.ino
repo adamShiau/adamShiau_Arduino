@@ -1325,6 +1325,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
   static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
   static float yaw0 = 0.0f;
+  // my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
 
   byte *fog;
 	uint8_t CRC32[4];
@@ -1427,16 +1428,19 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
       // my_GYRO_cali.float_val[0]*=-1; my_GYRO_cali.float_val[1]*=-1; my_GYRO_cali.float_val[2]*=-1;
-      // --- 座標旋轉 ---
-      // rotate2NED(my_memsXLM_cali.float_val);
-      // rotate2NED(my_GYRO_cali.float_val);
+
+      // --- 座標旋轉至輸出IMU顯示正確 --- 
+      my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
+      rotate2NED(my_GYRO_case_frame.float_val, my_GYRO_cali.float_val);
+      rotate2NED(my_memsXLM_case_frame.float_val, my_memsXLM_cali.float_val);
 
       print_imu_data(false, my_memsXLM_cali.float_val, my_GYRO_cali.float_val);
 
       memcpy(imu_data, KVH_HEADER, 4);
-      memcpy(imu_data+4, my_GYRO_cali.bin_val, 12);//wx, wy, wz
-      memcpy(imu_data+16, my_memsXLM_cali.bin_val, 12);//ax, ay, az
-      // memcpy(imu_data+28, reg_fog+12, 4);// PD temp
+      // memcpy(imu_data+4, my_GYRO_cali.bin_val, 12);//wx, wy, wz
+      // memcpy(imu_data+16, my_memsXLM_cali.bin_val, 12);//ax, ay, az
+      memcpy(imu_data+4, my_GYRO_case_frame.bin_val, 12);//wx, wy, wz
+      memcpy(imu_data+16, my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
       memcpy(imu_data+28, MARS_PD_TEMP, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
       memcpy(imu_data+36, my_att.bin_val, 12);
@@ -1448,8 +1452,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       if(data_cnt >= DELAY_CNT)
       {
         Serial1.write(KVH_HEADER, 4);
-        Serial1.write(my_GYRO_cali.bin_val, 12);   //wx, wy, wz
-        Serial1.write(my_memsXLM_cali.bin_val, 12);//ax, ay, az
+        // Serial1.write(my_GYRO_cali.bin_val, 12);   //wx, wy, wz
+        // Serial1.write(my_memsXLM_cali.bin_val, 12);//ax, ay, az
+        Serial1.write(my_GYRO_case_frame.bin_val, 12);   //wx, wy, wz
+        Serial1.write(my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
         Serial1.write(MARS_PD_TEMP, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(my_att.bin_val, 12);
@@ -2776,11 +2782,10 @@ void print_ext_WDT_configuration(int sel)
     } 
 }
 
-static inline void rotate2NED(float v[3]) {
-  float x0 = v[0], y0= v[1], z0= v[2];
-  v[0] = -y0;  // X -> -Y
-  v[1] = -x0;  // Y -> -X
-  v[2] = -z0;   // Z -> -Z
+static inline void rotate2NED(float v_new[3], float v_old[3]) {
+  v_new[0] = -v_old[1];  // X -> -Y
+  v_new[1] = -v_old[0];  // Y -> -X
+  v_new[2] = -v_old[2];   // Z -> -Z
 }
 
 static inline float wrapDeg(float a){
