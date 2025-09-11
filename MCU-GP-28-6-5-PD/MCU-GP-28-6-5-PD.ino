@@ -1325,7 +1325,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
   static my_float_t myfog_GYRO;
   static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
-  static float yaw0 = 0.0f;
+  // static float yaw0 = 0.0f;
   // my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
 
   byte *fog;
