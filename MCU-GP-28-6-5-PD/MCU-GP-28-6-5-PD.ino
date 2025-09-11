@@ -119,12 +119,13 @@ void setup() {
   //attitude calculation 
   ahrs_attitude.begin(100.0f); // sample rate
   // 旋轉至NED座標系
-  const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };
-  // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 };
+  // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 }; // 原始 Sensor 座標系，對應 ENU
+  const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 }; // 旋轉至 NED 座標系
+  
   ahrs_attitude.setSensorToCaseMatrix(Rcs);
 
   // 設定 Local 世界座標為 NED：
-  ahrs_attitude.setLocalFrameNED(true);
+  ahrs_attitude.setLocalFrameNED(true); // true: NED, false: ENU
 
   ahrs_attitude.setGyroBiasLearning(true);
   ahrs_attitude.setDynamicAccelWeight(true);
