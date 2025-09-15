@@ -580,6 +580,11 @@ float Madgwick::getGyroBiasAlpha() const {
     return biasAlpha;
 }
 
+void Madgwick::getQuatWS(float& w, float& x, float& y, float& z) const {
+    w = q0; x = q1; y = q2; z = q3;
+}
+
+
 
 
 

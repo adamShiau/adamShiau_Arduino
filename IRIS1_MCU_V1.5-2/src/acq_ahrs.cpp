@@ -1,18 +1,18 @@
 #include "common.h"
 #include "output_mode_config.h"
 #include "myUART.h"
+#include <math.h>   // fabsf, sqrtf, isfinite
 
 #define INT_SYNC 1
-#define EXT_SYNC 2 
-#define STOP_RUN 4 
-// ===== 參數設定（可調整）=====    
-#define ACC_MIN   (0.05f*9.80665f)       // Accel 最低閥值 (m/s^2)
-#define ACC_MAX   (16.0f  * 9.80665f)    // Accel 飽和值 m/s^2
-#define GYRO_MIN_DPS (0.01f)          // Gyro 最低閥值 (dps)
-#define GYRO_MAX_DPS (660.0f)           // Gyro 飽和值 (dps)
+#define EXT_SYNC 2
+#define STOP_RUN 4
 
-#define ACC_LP_ALPHA (0.2f)   // 0.1~0.3 可調
-
+// ===== 參數設定（可調整）=====
+#define ACC_MIN        (0.05f * 9.80665f)   // Accel 最低閥值 (m/s^2)
+#define ACC_MAX        (16.0f * 9.80665f)   // Accel 飽和值 (m/s^2)
+#define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps)
+#define GYRO_MAX_DPS   (660.0f)             // Gyro 飽和值 (dps)
+#define ACC_LP_ALPHA   (0.2f)               // Accel 低通係數 0.1~0.3
 
 #define DATA_DELAY_CNT 5
 
@@ -23,14 +23,18 @@
 // 合併後總長度
 #define TOTAL_PAYLOAD_LEN  (SENSOR_PAYLOAD_LEN + ATT_PAYLOAD_LEN)
 
-// ===== 靜止偵測參數（與 Library 內預設相近，視場景微調）=====
-#define G0_MPS2              (9.80665f)
-#define GYRO_STILL_THRESH_DPS  (1.0f)   // |gx|+|gy|+|gz| 的和門檻
-#define ACC_STILL_TOL_G        (0.06f)  // |‖a‖-1g|/1g 的容忍
+// ===== 靜止偵測參數 =====
+#define G0_MPS2               (9.80665f)
+#define GYRO_STILL_THRESH_DPS (1.0f)   // |gx|+|gy|+|gz| 的和門檻
+#define ACC_STILL_TOL_G       (0.06f)  // |‖a‖-1g|/1g 的容忍
 
 // ===== 加速學習設定 =====
-#define BIAS_ALPHA_BOOST       (0.010f) // 靜止剛發生時臨時加大（原本大約 0.002）
-#define BIAS_ALPHA_BOOST_MS    (800u)   // 提升持續時間 (ms)
+#define BIAS_ALPHA_BOOST      (0.010f) // 靜止剛發生時臨時加大（原本大約 0.002）
+#define BIAS_ALPHA_BOOST_MS   (800u)   // 提升持續時間 (ms)
+
+// ===== 奇異區遲滯（Pitch 接近 ±90°）=====
+#define GL_ENTER_DEG  (88.0f)   // 進入奇異區門檻
+#define GL_EXIT_DEG   (86.0f)   // 離開奇異區門檻（要小於 ENTER，形成遲滯）
 
 // ===== 狀態機 =====
 static uint8_t   g_just_still = 0;
@@ -39,37 +43,31 @@ static float     g_bias_alpha_base = 0.0f;  // 進入 boost 前先記住原值
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
-static uint32_t t_start = 0;
-static uint8_t data_cnt = 0;
+static uint8_t  data_cnt = 0;
 static uint32_t try_cnt = 0;
 static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
-static float ax_lp=0, ay_lp=0, az_lp=0; //Low-Pass for Accel
+static float    ax_lp=0, ay_lp=0, az_lp=0; // Low-Pass for Accel
 
-
-static float g_w_prev_dps[3] = {0,0,0};
-static float g_dt_prev_s = 0.0f;
-static uint8_t g_have_prev = 0;
+// Coning 狀態
+static float    g_w_prev_dps[3] = {0,0,0};
+static float    g_dt_prev_s = 0.0f;
+static uint8_t  g_have_prev = 0;
 static uint32_t g_last_ts_us = 0;
 
+// 奇異區鎖定與投影積分 yaw
+static bool  yaw_gl_locked = false;
+static float yaw_hold_deg  = 0.0f;
 
-// 死區 + 飽和（不依賴 copysignf）
-// x: 輸入值
-// min_abs: 最低閥值 (|x| < min_abs → 輸出 0)
-// max_abs: 最大絕對值 (|x| > max_abs → 輸出 ±max_abs)
+// ---- 小工具：死區 + 飽和 ----
 static inline float apply_deadband_and_sat(float x, float min_abs, float max_abs) {
     if (!isfinite(x)) return 0.0f; // 防呆：NaN/Inf → 0
-
     float ax = fabsf(x);
-    if (ax < min_abs) return 0.0f; // 死區內視為 0
-
-    if (ax > max_abs) {            // 飽和處理
-        if (x > 0.0f) return max_abs;
-        else          return -max_abs;
-    }
-
-    return x; // 正常範圍內直接輸出
+    if (ax < min_abs) return 0.0f; // 死區
+    if (ax > max_abs) return (x > 0.0f ? max_abs : -max_abs); // 飽和
+    return x;
 }
 
+// ---- 靜止偵測（與庫內一致邏輯；用原始校正後數據）----
 static inline bool is_still_app(float gx_dps, float gy_dps, float gz_dps,
                                 float ax_mps2, float ay_mps2, float az_mps2) {
     float gsum = fabsf(gx_dps) + fabsf(gy_dps) + fabsf(gz_dps);
@@ -79,9 +77,7 @@ static inline bool is_still_app(float gx_dps, float gy_dps, float gz_dps,
     return (dev <= ACC_STILL_TOL_G);
 }
 
-// 兩樣本 Coning 合成（小角近似）
-// in:  w1_dps, w2_dps  [deg/s]；dt1, dt2 [s]
-// out: weq_dps        [deg/s]
+// ---- 兩樣本 Coning 合成（輸入/輸出 dps）----
 static inline void coning_two_sample_dps(const float w1_dps[3], float dt1,
                                          const float w2_dps[3], float dt2,
                                          float weq_dps[3]) {
@@ -112,7 +108,14 @@ static inline void coning_two_sample_dps(const float w1_dps[3], float dt1,
     weq_dps[2] = weq_rad[2]*R2D;
 }
 
-
+// ---- 四元數轉世界←機體 3×3 矩陣 ----
+static inline void quat_to_Rwb(float w,float x,float y,float z, float R[9]) {
+    float ww=w*w, xx=x*x, yy=y*y, zz=z*z;
+    float wx=w*x, wy=w*y, wz=w*z, xy=x*y, xz=x*z, yz=y*z;
+    R[0]=ww+xx-yy-zz; R[1]=2*(xy-wz);    R[2]=2*(xz+wy);
+    R[3]=2*(xy+wz);   R[4]=ww-xx+yy-zz; R[5]=2*(yz-wx);
+    R[6]=2*(xz-wy);   R[7]=2*(yz+wx);   R[8]=ww-xx-yy+zz;
+}
 
 void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 {
@@ -122,7 +125,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
         if(rx->value == INT_SYNC || rx->value == EXT_SYNC) {
             DEBUG_PRINT("acq_ahrs start\n");
-            ahrs_attitude.captureYawZeroLocalCase(); // 重設 yaw0
+            ahrs_attitude.captureYawZeroLocalCase(); // 重設 yaw0（相對零位）
             rx->run = 1;
             sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 2, 2);
             delay(10);
@@ -137,20 +140,20 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             sensor_raw = {}; // reset sensor_raw
             sensor_cali = {}; // reset sensor_cali
             // my_cpf.resetEuler(0,0,0);
+            // 也重置本檔案內部狀態
+            ax_lp=ay_lp=az_lp=0;
+            g_have_prev = 0; g_last_ts_us = 0; g_dt_prev_s = 0;
+            yaw_gl_locked = false; yaw_hold_deg = 0.0f;
         }
     }
 
-    if (rx -> run == 1) {
-
+    if (rx->run == 1) {
         uint8_t* pkt = readDataStream(HDR_ABBA, 2, TRL_5556, 2, SENSOR_PAYLOAD_LEN, &try_cnt);
-
         if (pkt) {
             if(data_cnt < DATA_DELAY_CNT) data_cnt++;
 
             // 1) 解析 raw，需配合實際安裝軸向做調整
             if (update_raw_data(pkt, &sensor_raw) == 0) {
-
-                // dumpPkt(pkt, SENSOR_PAYLOAD_LEN); //<-- for debug monitor
 
                 // 2) 校正 → 輸出到 sensor_cali
                 sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
@@ -161,23 +164,19 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
                 my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
 
-                // 3) 先用校正後資料跑姿態, 考慮閥值篩選功能
-                
                 // 3-1) 閥值與飽和值篩選
                 my_att_t my_GYRO_att_calculate, my_ACCL_att_calculate;
-            
                 for (int i = 0; i < 3; ++i) {
                     // Gyro: 死區 + 飽和
                     my_GYRO_att_calculate.float_val[i] =
-                    apply_deadband_and_sat(my_GYRO_cali.float_val[i],
-                                    GYRO_MIN_DPS, GYRO_MAX_DPS);
+                        apply_deadband_and_sat(my_GYRO_cali.float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
 
                     // Accel: 死區 + 飽和
                     my_ACCL_att_calculate.float_val[i] =
-                    apply_deadband_and_sat(my_ACCL_cali.float_val[i],
-                                    ACC_MIN, ACC_MAX);
+                        apply_deadband_and_sat(my_ACCL_cali.float_val[i], ACC_MIN, ACC_MAX);
                 }
 
+                // 3-1.5) Acc 低通（姿態修正用；權重判斷用原始）
                 if (ax_lp==0 && ay_lp==0 && az_lp==0) {
                     ax_lp = my_ACCL_att_calculate.float_val[0];
                     ay_lp = my_ACCL_att_calculate.float_val[1];
@@ -188,9 +187,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                     az_lp = (1-ACC_LP_ALPHA)*az_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[2];
                 }
 
-
-                // ---- (NEW) 靜止偵測 + 快速度偏置學習 ----
-                // 用「原始校正後」的感測值做偵測（權重判斷要敏感，不要用低通/飽和後）
+                // ---- 靜止偵測 + 快速度偏置學習 ----
                 bool still_now = is_still_app(
                     my_GYRO_cali.float_val[0], my_GYRO_cali.float_val[1], my_GYRO_cali.float_val[2],
                     my_ACCL_cali.float_val[0], my_ACCL_cali.float_val[1], my_ACCL_cali.float_val[2]
@@ -199,95 +196,104 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 uint32_t now_ms = millis();
                 if (still_now) {
                     if (!g_just_still) {
-                        // 由「動」→「靜」的瞬間：記下原本 alpha，拉高 alpha 一小段時間
                         g_just_still   = 1;
                         g_still_ts_ms  = now_ms;
-                        g_bias_alpha_base = ahrs_attitude.getGyroBiasAlpha(); // 記原值
-                        ahrs_attitude.setGyroBiasAlpha(BIAS_ALPHA_BOOST);     // 拉高學習速率
-                        // （可選）也可短暫把 beta 拉高一些，加速 roll/pitch 回正：提供 setter 再做
+                        g_bias_alpha_base = ahrs_attitude.getGyroBiasAlpha();
+                        ahrs_attitude.setGyroBiasAlpha(BIAS_ALPHA_BOOST);
                     } else {
-                        // 持續靜止：到時間就還原
                         if ((uint32_t)(now_ms - g_still_ts_ms) > BIAS_ALPHA_BOOST_MS) {
                             ahrs_attitude.setGyroBiasAlpha(g_bias_alpha_base);
-                            g_just_still = 0; // 保持「靜止」但 boost 結束
+                            g_just_still = 0;
                         }
                     }
                 } else {
-                    // 一旦又動了：立刻還原 alpha，重置狀態
                     if (g_just_still) {
                         ahrs_attitude.setGyroBiasAlpha(g_bias_alpha_base);
                         g_just_still = 0;
                     }
                 }
-                // ---- (END) 靜止偵測 + 快速度偏置學習 ----
-                
-                // 3-2) 計算姿態
-                // ahrs_attitude.updateIMU_dualAccel(
-                //     my_GYRO_att_calculate.float_val[0],
-                //     my_GYRO_att_calculate.float_val[1],
-                //     my_GYRO_att_calculate.float_val[2],
-                //     // 低通版：給姿態修正
-                //     ax_lp, ay_lp, az_lp,
-                //     // 原始版（未低通；但可保留你「死區/飽和」的清潔）：給權重/動態判斷
-                //     my_ACCL_att_calculate.float_val[0],
-                //     my_ACCL_att_calculate.float_val[1],
-                //     my_ACCL_att_calculate.float_val[2]
-                // );
+                // ---- (END) 靜止偵測 ----
 
-                // --- 計算本筆 dt（秒）---
+                // 3-2) 計算 dt（秒）
                 uint32_t now_us = micros();
                 float dt_curr = 0.0f;
                 if (g_last_ts_us == 0) {
-                    // 第一次樣本：估個 dt，或用已知取樣率 (例: 1/100Hz)
-                    dt_curr = 1.0f / 100.0f;   // 若你有實際 fs，填它
+                    dt_curr = 1.0f / 512.0f;   // 若你有實際 fs，填它
                 } else {
                     uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
                     dt_curr = (float)du * 1e-6f;
                 }
-                // after computing dt_curr
-                if (dt_curr < 1e-5f) dt_curr = 1e-5f;      // 下限 10 µs（避免 0）
-                if (dt_curr > 0.02f) dt_curr = 0.02f;      // 上限 20 ms（>50 Hz 視情況調）
-
                 g_last_ts_us = now_us;
+                // 夾一下 dt（避免偶發卡頓或 0）
+                if (dt_curr < 1e-5f) dt_curr = 1e-5f;    // 10 µs
+                if (dt_curr > 0.02f) dt_curr = 0.02f;    // 20 ms
 
-                // --- 兩樣本 coning 合成 ---
+                // 3-3) 兩樣本 coning 合成 → 等效角速率 weq_dps
                 float w_eq_dps[3];
                 if (g_have_prev) {
                     coning_two_sample_dps(g_w_prev_dps, g_dt_prev_s,
-                                        my_GYRO_att_calculate.float_val, dt_curr,
-                                        w_eq_dps);
+                                          my_GYRO_att_calculate.float_val, dt_curr,
+                                          w_eq_dps);
                 } else {
-                    // 第一筆沒前樣本，就直接用當前
                     w_eq_dps[0] = my_GYRO_att_calculate.float_val[0];
                     w_eq_dps[1] = my_GYRO_att_calculate.float_val[1];
                     w_eq_dps[2] = my_GYRO_att_calculate.float_val[2];
                     g_have_prev = 1;
                 }
 
-                // --- 餵進濾波器：用 weq 取代原本的 gyro ---
+                // 3-4) 姿態更新（低通 acc 做修正；原始 acc 做權重判斷）
                 ahrs_attitude.updateIMU_dualAccel(
                     w_eq_dps[0], w_eq_dps[1], w_eq_dps[2],
                     ax_lp, ay_lp, az_lp,                                         // 低通 acc → 姿態修正
-                    my_ACCL_att_calculate.float_val[0],                           // 原始 acc → 權重判斷
+                    my_ACCL_att_calculate.float_val[0],                          // 原始 acc → 權重判斷
                     my_ACCL_att_calculate.float_val[1],
                     my_ACCL_att_calculate.float_val[2]
                 );
 
-                // --- 滾動狀態 ---
+                // 3-5) 產出 Pitch / Roll（照舊）
+                my_att.float_val[0] = ahrs_attitude.getLocalCasePitch(); // pitch
+                my_att.float_val[1] = ahrs_attitude.getLocalCaseRoll();  // roll
+
+                // 3-6) 奇異區遲滯 + 投影積分 yaw
+                float pitch_deg_now = my_att.float_val[0];
+                // 遲滯鎖定狀態機
+                if (!yaw_gl_locked && fabsf(pitch_deg_now) >= GL_ENTER_DEG) {
+                    yaw_gl_locked = true;
+                    // 切換進鎖定時，讓投影積分起點對齊目前 yaw
+                    yaw_hold_deg = ahrs_attitude.getLocalCaseYaw();
+                }
+                if (yaw_gl_locked && fabsf(pitch_deg_now) <= GL_EXIT_DEG) {
+                    yaw_gl_locked = false;
+                    // 離開鎖定時，將庫內 yaw 對齊暫存 yaw（可選）
+                    // 這裡直接回用庫內 yaw，保持連續
+                }
+
+                if (yaw_gl_locked) {
+                    // 取 q_WS，投影 ω_b 到世界座標，積分 z 分量
+                    float q0,q1,q2,q3; ahrs_attitude.getQuatWS(q0,q1,q2,q3);
+                    float Rwb[9]; quat_to_Rwb(q0,q1,q2,q3, Rwb);
+                    float omega_b_dps[3] = { w_eq_dps[0], w_eq_dps[1], w_eq_dps[2] };
+                    float omega_w_dps[3] = {
+                        Rwb[0]*omega_b_dps[0] + Rwb[1]*omega_b_dps[1] + Rwb[2]*omega_b_dps[2],
+                        Rwb[3]*omega_b_dps[0] + Rwb[4]*omega_b_dps[1] + Rwb[5]*omega_b_dps[2],
+                        Rwb[6]*omega_b_dps[0] + Rwb[7]*omega_b_dps[1] + Rwb[8]*omega_b_dps[2]
+                    };
+                    yaw_hold_deg += omega_w_dps[2] * dt_curr; // dps × s = deg
+                    my_att.float_val[2] = yaw_hold_deg;
+                } else {
+                    // 正常使用庫內 yaw
+                    my_att.float_val[2] = ahrs_attitude.getLocalCaseYaw();
+                    yaw_hold_deg = my_att.float_val[2]; // 讓持有值跟上
+                }
+
+                // --- 滾動 coning 狀態 ---
                 g_w_prev_dps[0] = my_GYRO_att_calculate.float_val[0];
                 g_w_prev_dps[1] = my_GYRO_att_calculate.float_val[1];
                 g_w_prev_dps[2] = my_GYRO_att_calculate.float_val[2];
                 g_dt_prev_s = dt_curr;
-                
 
-                my_att.float_val[0] =  ahrs_attitude.getLocalCasePitch(); // pitch
-                my_att.float_val[1] =  ahrs_attitude.getLocalCaseRoll();  // roll
-                my_att.float_val[2] =  ahrs_attitude.getLocalCaseYaw();   // yaw
-
-
-                // 3-3) IMU data sensor frame 轉 Case frame, 更新至 sensor_cali 結構
+                // 3-7) IMU data sensor frame 轉 Case frame, 更新至 sensor_cali 結構（照舊）
                 my_att_t my_GYRO_case_frame, my_ACCL_case_frame;
-                
                 ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val,  my_GYRO_case_frame.float_val);
                 ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val,  my_ACCL_case_frame.float_val);
                 sensor_cali.fog.fogx.step.float_val = my_GYRO_case_frame.float_val[0];
@@ -317,6 +323,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                     Serial1.write(crc, 4);
                 }
 
+                // // Debug prints if needed:
                 // Serial.print("IMU attitude: ");
                 // Serial.print(my_att.float_val[0], 3); Serial.print(", ");
                 // Serial.print(my_att.float_val[1], 3); Serial.print(", ");
@@ -324,7 +331,4 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             }
         }
     }
-
 }
-
-

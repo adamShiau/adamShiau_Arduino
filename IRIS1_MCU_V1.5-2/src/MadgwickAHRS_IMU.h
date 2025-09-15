@@ -183,6 +183,10 @@ public:
     void  setGyroBiasAlpha(float a);
     float getGyroBiasAlpha() const;
 
+    // 取得目前 q_WS（world ← sensor）
+    void getQuatWS(float& w, float& x, float& y, float& z) const;
+
+
 
     // 基本設定
     void begin(float sampleFrequency) { invSampleFreq = 1.0f / sampleFrequency; }
