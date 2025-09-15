@@ -11,6 +11,9 @@
 #define GYRO_MIN_DPS (0.01f)          // Gyro 最低閥值 (dps)
 #define GYRO_MAX_DPS (660.0f)           // Gyro 飽和值 (dps)
 
+#define ACC_LP_ALPHA (0.2f)   // 0.1~0.3 可調
+
+
 #define DATA_DELAY_CNT 5
 
 // 讀取來自 FPGA payload 長度（11 個 float × 4 bytes），不含 header 與 CRC
@@ -175,7 +178,6 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                                     ACC_MIN, ACC_MAX);
                 }
 
-                const float ACC_LP_ALPHA = 0.2f;  // 0.1~0.3 視振動調
                 if (ax_lp==0 && ay_lp==0 && az_lp==0) {
                     ax_lp = my_ACCL_att_calculate.float_val[0];
                     ay_lp = my_ACCL_att_calculate.float_val[1];
@@ -184,7 +186,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                     ax_lp = (1-ACC_LP_ALPHA)*ax_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[0];
                     ay_lp = (1-ACC_LP_ALPHA)*ay_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[1];
                     az_lp = (1-ACC_LP_ALPHA)*az_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[2];
-}
+                }
 
 
                 // ---- (NEW) 靜止偵測 + 快速度偏置學習 ----
@@ -220,19 +222,63 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 // ---- (END) 靜止偵測 + 快速度偏置學習 ----
                 
                 // 3-2) 計算姿態
+                // ahrs_attitude.updateIMU_dualAccel(
+                //     my_GYRO_att_calculate.float_val[0],
+                //     my_GYRO_att_calculate.float_val[1],
+                //     my_GYRO_att_calculate.float_val[2],
+                //     // 低通版：給姿態修正
+                //     ax_lp, ay_lp, az_lp,
+                //     // 原始版（未低通；但可保留你「死區/飽和」的清潔）：給權重/動態判斷
+                //     my_ACCL_att_calculate.float_val[0],
+                //     my_ACCL_att_calculate.float_val[1],
+                //     my_ACCL_att_calculate.float_val[2]
+                // );
+
+                // --- 計算本筆 dt（秒）---
+                uint32_t now_us = micros();
+                float dt_curr = 0.0f;
+                if (g_last_ts_us == 0) {
+                    // 第一次樣本：估個 dt，或用已知取樣率 (例: 1/100Hz)
+                    dt_curr = 1.0f / 100.0f;   // 若你有實際 fs，填它
+                } else {
+                    uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
+                    dt_curr = (float)du * 1e-6f;
+                }
+                // after computing dt_curr
+                if (dt_curr < 1e-5f) dt_curr = 1e-5f;      // 下限 10 µs（避免 0）
+                if (dt_curr > 0.02f) dt_curr = 0.02f;      // 上限 20 ms（>50 Hz 視情況調）
+
+                g_last_ts_us = now_us;
+
+                // --- 兩樣本 coning 合成 ---
+                float w_eq_dps[3];
+                if (g_have_prev) {
+                    coning_two_sample_dps(g_w_prev_dps, g_dt_prev_s,
+                                        my_GYRO_att_calculate.float_val, dt_curr,
+                                        w_eq_dps);
+                } else {
+                    // 第一筆沒前樣本，就直接用當前
+                    w_eq_dps[0] = my_GYRO_att_calculate.float_val[0];
+                    w_eq_dps[1] = my_GYRO_att_calculate.float_val[1];
+                    w_eq_dps[2] = my_GYRO_att_calculate.float_val[2];
+                    g_have_prev = 1;
+                }
+
+                // --- 餵進濾波器：用 weq 取代原本的 gyro ---
                 ahrs_attitude.updateIMU_dualAccel(
-                    my_GYRO_att_calculate.float_val[0],
-                    my_GYRO_att_calculate.float_val[1],
-                    my_GYRO_att_calculate.float_val[2],
-                    // 低通版：給姿態修正
-                    ax_lp, ay_lp, az_lp,
-                    // 原始版（未低通；但可保留你「死區/飽和」的清潔）：給權重/動態判斷
-                    my_ACCL_att_calculate.float_val[0],
+                    w_eq_dps[0], w_eq_dps[1], w_eq_dps[2],
+                    ax_lp, ay_lp, az_lp,                                         // 低通 acc → 姿態修正
+                    my_ACCL_att_calculate.float_val[0],                           // 原始 acc → 權重判斷
                     my_ACCL_att_calculate.float_val[1],
                     my_ACCL_att_calculate.float_val[2]
                 );
 
-
+                // --- 滾動狀態 ---
+                g_w_prev_dps[0] = my_GYRO_att_calculate.float_val[0];
+                g_w_prev_dps[1] = my_GYRO_att_calculate.float_val[1];
+                g_w_prev_dps[2] = my_GYRO_att_calculate.float_val[2];
+                g_dt_prev_s = dt_curr;
+                
 
                 my_att.float_val[0] =  ahrs_attitude.getLocalCasePitch(); // pitch
                 my_att.float_val[1] =  ahrs_attitude.getLocalCaseRoll();  // roll
