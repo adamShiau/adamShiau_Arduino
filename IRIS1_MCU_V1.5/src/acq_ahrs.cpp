@@ -81,6 +81,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 if(abs(my_GYRO_cali.float_val[2]) > 0.0003) my_GYRO_att_calculate.float_val[2] = my_GYRO_cali.float_val[2];
                 else my_GYRO_att_calculate.float_val[2] = 0.0f;
                  
+                
 
                 // 3-2) 計算姿態
                 ahrs_attitude.updateIMU(my_GYRO_att_calculate.float_val[0], my_GYRO_att_calculate.float_val[1], 
