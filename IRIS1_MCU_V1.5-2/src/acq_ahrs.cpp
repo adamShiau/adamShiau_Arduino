@@ -322,12 +322,6 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                     Serial1.write(out, TOTAL_PAYLOAD_LEN);
                     Serial1.write(crc, 4);
                 }
-
-                // // Debug prints if needed:
-                // Serial.print("IMU attitude: ");
-                // Serial.print(my_att.float_val[0], 3); Serial.print(", ");
-                // Serial.print(my_att.float_val[1], 3); Serial.print(", ");
-                // Serial.println(my_att.float_val[2], 3);
             }
         }
     }
