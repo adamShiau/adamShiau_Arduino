@@ -55,7 +55,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
         if (pkt) {
             if(data_cnt < DATA_DELAY_CNT) data_cnt++;
 
-            // 1) 解析 raw
+            // 1) 解析 raw，需配合實際安裝軸向做調整
             if (update_raw_data(pkt, &sensor_raw) == 0) {
 
                 // dumpPkt(pkt, SENSOR_PAYLOAD_LEN); //<-- for debug monitor
