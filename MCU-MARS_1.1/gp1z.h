@@ -14,6 +14,7 @@
 #include "myUART.h"
 #include "myPWM.h"
 #include "myWDT.h"
+#include "acq_imu.h"
 
 #include "src/MadgwickAHRS_IMU.h"
 
