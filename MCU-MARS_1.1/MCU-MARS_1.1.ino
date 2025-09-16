@@ -281,7 +281,7 @@ void printVal_0(char name[])
 	Serial.println(name);
 }
 
-void cmd_mux(bool &cmd_complete, byte cmd, byte &mux_flag)
+void cmd_mux(volatile  bool &cmd_complete, byte cmd, byte &mux_flag)
 {
 	if(cmd_complete)
 	{
