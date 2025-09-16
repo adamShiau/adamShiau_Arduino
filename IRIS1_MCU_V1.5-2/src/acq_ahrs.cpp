@@ -12,7 +12,8 @@
 #define ACC_MAX        (16.0f * 9.80665f)   // Accel 飽和值 (m/s^2)
 #define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps)
 #define GYRO_MAX_DPS   (660.0f)             // Gyro 飽和值 (dps)
-#define ACC_LP_ALPHA   (0.2f)               // Accel 低通係數 0.1~0.3
+#define ACC_LP_ALPHA   (0.2f)               // Accel 低通係數 0.1~0.3, 100 Hz 時等效時間常數 τ ≈ (1-α)/α * Ts ≈ 0.04 s，截止頻率 ~4 Hz
+                                            // 若手感還是有振動殘留，可試 0.12~0.16（fc ~2–3 Hz）；若覺得太鈍，往 0.25 調
 
 #define DATA_DELAY_CNT 5
 
@@ -25,7 +26,7 @@
 
 // ===== 靜止偵測參數 =====
 #define G0_MPS2               (9.80665f)
-#define GYRO_STILL_THRESH_DPS (1.0f)   // |gx|+|gy|+|gz| 的和門檻
+#define GYRO_STILL_THRESH_DPS (2.0f)   // |gx|+|gy|+|gz| 的和門檻
 #define ACC_STILL_TOL_G       (0.06f)  // |‖a‖-1g|/1g 的容忍
 
 // ===== 加速學習設定 =====
@@ -40,6 +41,15 @@
 static uint8_t   g_just_still = 0;
 static uint32_t  g_still_ts_ms = 0;
 static float     g_bias_alpha_base = 0.0f;  // 進入 boost 前先記住原值
+
+// ---- 姿態角輸出移動平均設定 ----
+#define ATT_MA_N  5   // 視資料率調整，延遲 ≈ (N-1)/2 * Ts ≈ 20 ms @ 100HZ
+
+static float att_ma_buf[3][ATT_MA_N];  // [axis][k]
+static float att_ma_sum[3] = {0,0,0};
+static uint8_t att_ma_idx   = 0;
+static uint8_t att_ma_count = 0;       // 目前有效樣本數（未滿窗時用它做除數）
+
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
@@ -144,6 +154,13 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             ax_lp=ay_lp=az_lp=0;
             g_have_prev = 0; g_last_ts_us = 0; g_dt_prev_s = 0;
             yaw_gl_locked = false; yaw_hold_deg = 0.0f;
+
+            // STOP_RUN 裡面原本的重置之後，補這段
+            memset(att_ma_buf, 0, sizeof(att_ma_buf));
+            att_ma_sum[0]=att_ma_sum[1]=att_ma_sum[2]=0.0f;
+            att_ma_idx=0; 
+            att_ma_count=0;
+
         }
     }
 
@@ -218,7 +235,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 uint32_t now_us = micros();
                 float dt_curr = 0.0f;
                 if (g_last_ts_us == 0) {
-                    dt_curr = 1.0f / 512.0f;   // 若你有實際 fs，填它
+                    dt_curr = 1.0f / 100.0f;   // 若你有實際 fs，填它
                 } else {
                     uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
                     dt_curr = (float)du * 1e-6f;
@@ -226,7 +243,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 g_last_ts_us = now_us;
                 // 夾一下 dt（避免偶發卡頓或 0）
                 if (dt_curr < 1e-5f) dt_curr = 1e-5f;    // 10 µs
-                if (dt_curr > 0.02f) dt_curr = 0.02f;    // 20 ms
+                // if (dt_curr > 0.02f) dt_curr = 0.02f;    // 20 ms
 
                 // 3-3) 兩樣本 coning 合成 → 等效角速率 weq_dps
                 float w_eq_dps[3];
@@ -291,6 +308,30 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 g_w_prev_dps[1] = my_GYRO_att_calculate.float_val[1];
                 g_w_prev_dps[2] = my_GYRO_att_calculate.float_val[2];
                 g_dt_prev_s = dt_curr;
+
+                // ---- (NEW) 姿態角輸出移動平均 ----
+                // 先把本幀 pitch/roll/yaw 放到同一個索引位，再更新索引
+                for (int axis = 0; axis < 3; ++axis) {
+                    float v = my_att.float_val[axis];
+                    if (!isfinite(v)) v = 0.0f; // 防呆
+                    att_ma_sum[axis] -= att_ma_buf[axis][att_ma_idx];
+                    att_ma_buf[axis][att_ma_idx] = v;
+                    att_ma_sum[axis] += v;
+                }
+                // 更新有效樣本數與循環索引
+                if (att_ma_count < ATT_MA_N) att_ma_count++;
+                att_ma_idx = (att_ma_idx + 1) % ATT_MA_N;
+
+                // 取平均（未滿窗時用 att_ma_count 做除數）
+                float ma_pitch = att_ma_sum[0] / att_ma_count;
+                float ma_roll  = att_ma_sum[1] / att_ma_count;
+                float ma_yaw   = att_ma_sum[2] / att_ma_count;
+
+                // 用平滑後的角度覆蓋輸出（或另存到一個 struct 再 pack）
+                my_att.float_val[0] = ma_pitch;
+                my_att.float_val[1] = ma_roll;
+                my_att.float_val[2] = ma_yaw;
+
 
                 // 3-7) IMU data sensor frame 轉 Case frame, 更新至 sensor_cali 結構（照舊）
                 my_att_t my_GYRO_case_frame, my_ACCL_case_frame;
