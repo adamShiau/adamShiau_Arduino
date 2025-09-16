@@ -36,7 +36,8 @@ Madgwick::Madgwick() {
     // ---- 陀螺偏置學習（靜止時）----
     gyroBiasEnable = true;                   // 自動學偏置，降漂移
     bgx_dps = bgy_dps = bgz_dps = 0.0f;      // 當前學到的偏置（deg/s）
-    biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    // biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    biasAlpha = 0.0f;                        // 初始值，之後由BIAS_ALPHA_BASE覆蓋  
     stillGyroThreshDps = 1.0f;               // 靜止判定角速閾值(合計)：0.5~2 dps
     stillAccTolG       = 0.05f;              // 靜止判定加速度容忍(‖a‖ vs 1g)：0.03~0.07
 

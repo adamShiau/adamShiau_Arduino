@@ -7,13 +7,20 @@
 #define EXT_SYNC 2
 #define STOP_RUN 4
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#define DEG2RAD ( (float)M_PI / 180.0f )
+#define RAD2DEG ( 180.0f / (float)M_PI )
+
 // ===== 參數設定（可調整）=====
 #define ACC_MIN        (0.05f * 9.80665f)   // Accel 最低閥值 (m/s^2)
 #define ACC_MAX        (16.0f * 9.80665f)   // Accel 飽和值 (m/s^2)
 #define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps)
 #define GYRO_MAX_DPS   (660.0f)             // Gyro 飽和值 (dps)
-#define ACC_LP_ALPHA   (0.2f)               // Accel 低通係數 0.1~0.3, 100 Hz 時等效時間常數 τ ≈ (1-α)/α * Ts ≈ 0.04 s，截止頻率 ~4 Hz
-                                            // 若手感還是有振動殘留，可試 0.12~0.16（fc ~2–3 Hz）；若覺得太鈍，往 0.25 調
+#define ACC_LP_ALPHA   (0.2f)               // Acc 低通係數 0.1~0.3
+                                            // 100 Hz 時等效 τ ≈ (1-α)/α * Ts ≈ 0.04 s，fc ~ 4 Hz
+                                            // 若殘留振動多，可試 0.12~0.16（fc ~2–3 Hz）；太鈍則往 0.25 調
 
 #define DATA_DELAY_CNT 5
 
@@ -29,9 +36,20 @@
 #define GYRO_STILL_THRESH_DPS (2.0f)   // |gx|+|gy|+|gz| 的和門檻
 #define ACC_STILL_TOL_G       (0.06f)  // |‖a‖-1g|/1g 的容忍
 
-// ===== 加速學習設定 =====
-#define BIAS_ALPHA_BOOST      (0.010f) // 靜止剛發生時臨時加大（原本大約 0.002）
-#define BIAS_ALPHA_BOOST_MS   (800u)   // 提升持續時間 (ms)
+// ===== 加速學習設定（Gyro bias EMA；fs = 100 Hz）=====
+// 公式：一階 EMA  b_k = (1-α) b_{k-1} + α x_k
+// 時間常數 τ ≈ Ts / α ；截止頻率 fc ≈ α / (2π·Ts) = α·fs / (2π)
+// 在 fs=100 Hz (Ts=0.01 s) 時：
+//   α=0.001 → τ≈10.0 s，fc≈0.016 Hz
+//   α=0.002 → τ≈ 5.0 s，fc≈0.032 Hz  ← 建議 base
+//   α=0.003 → τ≈ 3.33 s，fc≈0.048 Hz
+//   α=0.005 → τ≈ 2.0  s，fc≈0.080 Hz
+//   α=0.010 → τ≈ 1.0  s，fc≈0.159 Hz  ← still 加速
+//   α=0.020 → τ≈ 0.5  s，fc≈0.318 Hz  ← 更快收斂
+// BIAS_ALPHA_BOOST_MS 為加速學習維持時間（毫秒）
+#define BIAS_ALPHA_BASE     (0.002f)  // 慢速學習 α；100 Hz 時 fc ≈ 0.032 Hz
+#define BIAS_ALPHA_BOOST    (0.010f)  // still 瞬間啟用的 α（τ≈1.0 s，fc≈0.159 Hz @ 100 Hz）
+#define BIAS_ALPHA_BOOST_MS (800u)    // 加速學習維持時間（ms），可調 500~1500 ms
 
 // ===== 奇異區遲滯（Pitch 接近 ±90°）=====
 #define GL_ENTER_DEG  (88.0f)   // 進入奇異區門檻
@@ -43,20 +61,25 @@ static uint32_t  g_still_ts_ms = 0;
 static float     g_bias_alpha_base = 0.0f;  // 進入 boost 前先記住原值
 
 // ---- 姿態角輸出移動平均設定 ----
-#define ATT_MA_N  5   // 視資料率調整，延遲 ≈ (N-1)/2 * Ts ≈ 20 ms @ 100HZ
+#define ATT_MA_N  5   // 視資料率調整，延遲 ≈ (N-1)/2 * Ts ≈ 20 ms @ 100 Hz
 
-static float att_ma_buf[3][ATT_MA_N];  // [axis][k]
+static float att_ma_buf[3][ATT_MA_N];  // [axis][k]，for pitch/roll 線性平均
 static float att_ma_sum[3] = {0,0,0};
 static uint8_t att_ma_idx   = 0;
-static uint8_t att_ma_count = 0;       // 目前有效樣本數（未滿窗時用它做除數）
+static uint8_t att_ma_count = 0;       // 未滿窗時用它做除數
 
+// yaw 使用圓形平均（sin/cos）
+static float yaw_sin_buf[ATT_MA_N] = {0};
+static float yaw_cos_buf[ATT_MA_N] = {0};
+static float yaw_ma_sin_sum = 0.0f;
+static float yaw_ma_cos_sum = 0.0f;
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
 static uint8_t  data_cnt = 0;
 static uint32_t try_cnt = 0;
 static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
-static float    ax_lp=0, ay_lp=0, az_lp=0; // Low-Pass for Accel
+static float    ax_lp=0, ay_lp=0, az_lp=0; // Acc 低通狀態
 
 // Coning 狀態
 static float    g_w_prev_dps[3] = {0,0,0};
@@ -67,6 +90,9 @@ static uint32_t g_last_ts_us = 0;
 // 奇異區鎖定與投影積分 yaw
 static bool  yaw_gl_locked = false;
 static float yaw_hold_deg  = 0.0f;
+
+// 名目取樣時間（100 Hz）
+static const float Ts = 1.0f / 100.0f;
 
 // ---- 小工具：死區 + 飽和 ----
 static inline float apply_deadband_and_sat(float x, float min_abs, float max_abs) {
@@ -139,6 +165,9 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             rx->run = 1;
             sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 2, 2);
             delay(10);
+            // —— 初始化（開跑 or setup 時做一次）——
+            ahrs_attitude.setGyroBiasAlpha(BIAS_ALPHA_BASE);
+            g_bias_alpha_base = BIAS_ALPHA_BASE;
             reset_FPGA_timer();
         }
         else if(rx->value == STOP_RUN) {
@@ -149,18 +178,23 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 4, 2);
             sensor_raw = {}; // reset sensor_raw
             sensor_cali = {}; // reset sensor_cali
-            // my_cpf.resetEuler(0,0,0);
+
             // 也重置本檔案內部狀態
             ax_lp=ay_lp=az_lp=0;
             g_have_prev = 0; g_last_ts_us = 0; g_dt_prev_s = 0;
             yaw_gl_locked = false; yaw_hold_deg = 0.0f;
 
-            // STOP_RUN 裡面原本的重置之後，補這段
+            // 清空 MA 緩衝
             memset(att_ma_buf, 0, sizeof(att_ma_buf));
             att_ma_sum[0]=att_ma_sum[1]=att_ma_sum[2]=0.0f;
-            att_ma_idx=0; 
+            att_ma_idx=0;
             att_ma_count=0;
 
+            // 清空 yaw 的圓形平均狀態
+            yaw_ma_sin_sum = 0.0f;
+            yaw_ma_cos_sum = 0.0f;
+            memset(yaw_sin_buf, 0, sizeof(yaw_sin_buf));
+            memset(yaw_cos_buf, 0, sizeof(yaw_cos_buf));
         }
     }
 
@@ -233,17 +267,23 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
                 // 3-2) 計算 dt（秒）
                 uint32_t now_us = micros();
-                float dt_curr = 0.0f;
+                float dt_curr;
                 if (g_last_ts_us == 0) {
-                    dt_curr = 1.0f / 100.0f;   // 若你有實際 fs，填它
+                    dt_curr = Ts;                 // 第一筆：名目取樣時間
                 } else {
                     uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
                     dt_curr = (float)du * 1e-6f;
                 }
                 g_last_ts_us = now_us;
+
                 // 夾一下 dt（避免偶發卡頓或 0）
-                if (dt_curr < 1e-5f) dt_curr = 1e-5f;    // 10 µs
-                // if (dt_curr > 0.02f) dt_curr = 0.02f;    // 20 ms
+                if (dt_curr < 1e-5f) dt_curr = 1e-5f;  // 10 µs 下限保護
+
+                // 若超過較寬鬆上限（建議 50 ms），丟棄上一筆，避免錯誤的兩樣本外積
+                if (dt_curr > 0.05f) {   // > 50 ms 視為掉拍
+                    dt_curr = Ts;        // 重置為名目取樣時間
+                    g_have_prev = 0;     // 不做兩樣本合成，下一筆重新開始
+                }
 
                 // 3-3) 兩樣本 coning 合成 → 等效角速率 weq_dps
                 float w_eq_dps[3];
@@ -273,16 +313,12 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
                 // 3-6) 奇異區遲滯 + 投影積分 yaw
                 float pitch_deg_now = my_att.float_val[0];
-                // 遲滯鎖定狀態機
                 if (!yaw_gl_locked && fabsf(pitch_deg_now) >= GL_ENTER_DEG) {
                     yaw_gl_locked = true;
-                    // 切換進鎖定時，讓投影積分起點對齊目前 yaw
                     yaw_hold_deg = ahrs_attitude.getLocalCaseYaw();
                 }
                 if (yaw_gl_locked && fabsf(pitch_deg_now) <= GL_EXIT_DEG) {
                     yaw_gl_locked = false;
-                    // 離開鎖定時，將庫內 yaw 對齊暫存 yaw（可選）
-                    // 這裡直接回用庫內 yaw，保持連續
                 }
 
                 if (yaw_gl_locked) {
@@ -310,14 +346,35 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 g_dt_prev_s = dt_curr;
 
                 // ---- (NEW) 姿態角輸出移動平均 ----
-                // 先把本幀 pitch/roll/yaw 放到同一個索引位，再更新索引
-                for (int axis = 0; axis < 3; ++axis) {
+                // pitch / roll：線性平均；yaw：圓形平均
+                for (int axis = 0; axis < 2; ++axis) { // 先處理 pitch(0)、roll(1)
                     float v = my_att.float_val[axis];
-                    if (!isfinite(v)) v = 0.0f; // 防呆
+                    if (!isfinite(v)) v = 0.0f;
                     att_ma_sum[axis] -= att_ma_buf[axis][att_ma_idx];
                     att_ma_buf[axis][att_ma_idx] = v;
                     att_ma_sum[axis] += v;
                 }
+                // yaw：用 sin/cos 環形緩衝平滑，避免跨 ±180° 出錯
+                {
+                    float yaw_deg = my_att.float_val[2];
+                    if (!isfinite(yaw_deg)) yaw_deg = 0.0f;
+                    float yaw_rad = yaw_deg * DEG2RAD;
+
+                    // 先移除該槽舊貢獻（首次為 0）
+                    yaw_ma_sin_sum -= yaw_sin_buf[att_ma_idx];
+                    yaw_ma_cos_sum -= yaw_cos_buf[att_ma_idx];
+
+                    // 寫入新貢獻
+                    float s = sinf(yaw_rad);
+                    float c = cosf(yaw_rad);
+                    yaw_sin_buf[att_ma_idx] = s;
+                    yaw_cos_buf[att_ma_idx] = c;
+
+                    // 累加新貢獻
+                    yaw_ma_sin_sum += s;
+                    yaw_ma_cos_sum += c;
+                }
+
                 // 更新有效樣本數與循環索引
                 if (att_ma_count < ATT_MA_N) att_ma_count++;
                 att_ma_idx = (att_ma_idx + 1) % ATT_MA_N;
@@ -325,13 +382,21 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 // 取平均（未滿窗時用 att_ma_count 做除數）
                 float ma_pitch = att_ma_sum[0] / att_ma_count;
                 float ma_roll  = att_ma_sum[1] / att_ma_count;
-                float ma_yaw   = att_ma_sum[2] / att_ma_count;
 
-                // 用平滑後的角度覆蓋輸出（或另存到一個 struct 再 pack）
+                // yaw 圓形平均（防 atan2(0,0)）
+                float avg_sin = yaw_ma_sin_sum / att_ma_count;
+                float avg_cos = yaw_ma_cos_sum / att_ma_count;
+                float ma_yaw;
+                if (avg_sin*avg_sin + avg_cos*avg_cos < 1e-6f) {
+                    ma_yaw = my_att.float_val[2]; // 回退用當下 yaw
+                } else {
+                    ma_yaw = atan2f(avg_sin, avg_cos) * RAD2DEG;
+                }
+
+                // 覆蓋輸出
                 my_att.float_val[0] = ma_pitch;
                 my_att.float_val[1] = ma_roll;
                 my_att.float_val[2] = ma_yaw;
-
 
                 // 3-7) IMU data sensor frame 轉 Case frame, 更新至 sensor_cali 結構（照舊）
                 my_att_t my_GYRO_case_frame, my_ACCL_case_frame;
