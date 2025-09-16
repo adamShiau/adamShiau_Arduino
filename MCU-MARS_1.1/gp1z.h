@@ -15,8 +15,6 @@
 #include "myPWM.h"
 #include "myWDT.h"
 
-#include "src/MyNavigation.h"
-// #include <MadgwickAHRS.h>
 #include "src/MadgwickAHRS_IMU.h"
 
 

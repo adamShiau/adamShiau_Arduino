@@ -19,7 +19,7 @@ SERCOM5: serial1 (PB23, PB22) [rx, tx]
 
 
 /*** Attitude calculation*/
-Navigation::ComplementaryFilter my_cpf;
+// Navigation::ComplementaryFilter my_cpf;
 
 unsigned short count = 0;
 unsigned long pre_time = 0;
@@ -1134,8 +1134,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
   static my_float_t myfog_GYRO;
   static my_acc_t my_memsXLM, my_memsXLM_cali;
   static my_acc_t my_GYRO, my_GYRO_cali, my_att;
-  // static float yaw0 = 0.0f;
-  // my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
+
 
   byte *fog;
 	uint8_t CRC32[4];
@@ -1179,7 +1178,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         data_cnt = 0;
         Serial.println("Enter EXT_SYNC2 mode");
         Serial.println("Set EXTT to CHANGE");
-        my_cpf.startLC();
+        // my_cpf.startLC();
         EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
         setupWDT(11);
@@ -1193,7 +1192,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         ahrs_attitude.resetAttitude(true);
         EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
         eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
-        my_cpf.resetEuler(0,0,0);
+        // my_cpf.resetEuler(0,0,0);
         disableWDT();
         disable_EXT_WDT(EXT_WDT_EN);
       break;
@@ -1523,11 +1522,11 @@ void set_ahrs_attitude_cali_init()
   Serial.println(attitude_cali_coe._f.std_wz);
 
   /*** Kalman Filter Initialize ***/
-  my_cpf.setIMUError(AR_1A_UY, 100);
+  // my_cpf.setIMUError(AR_1A_UY, 100);
   // my_cpf.setThresholdBySTD();
-  my_cpf.setThreshold(attitude_cali_coe._f.std_wx, 
-                      attitude_cali_coe._f.std_wy, 
-                      attitude_cali_coe._f.std_wz);
+  // my_cpf.setThreshold(attitude_cali_coe._f.std_wx, 
+  //                     attitude_cali_coe._f.std_wy, 
+  //                     attitude_cali_coe._f.std_wz);
 
   Serial.println("End of setting AHRS attitude calibration.");
 }
