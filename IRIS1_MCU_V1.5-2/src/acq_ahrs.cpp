@@ -61,7 +61,10 @@ static uint32_t  g_still_ts_ms = 0;
 static float     g_bias_alpha_base = 0.0f;  // 進入 boost 前先記住原值
 
 // ---- 姿態角輸出移動平均設定 ----
-#define ATT_MA_N  5   // 視資料率調整，延遲 ≈ (N-1)/2 * Ts ≈ 20 ms @ 100 Hz
+#define ATT_MA_N  5   // 移動平均的群延遲 ≈ (N-1)/2 * Ts ≈ 20 ms @ 100 Hz 
+                      // N=5  → 延遲 ≈ 20  ms（目前）
+                      // N=21 → 延遲 ≈ 100 ms（目前）
+                      // N=51 → 延遲 ≈ 250 ms（目前）
 
 static float att_ma_buf[3][ATT_MA_N];  // [axis][k]，for pitch/roll 線性平均
 static float att_ma_sum[3] = {0,0,0};
