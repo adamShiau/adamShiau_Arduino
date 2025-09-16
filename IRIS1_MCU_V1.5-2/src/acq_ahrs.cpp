@@ -179,6 +179,7 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
             rx->run = 0;
             data_cnt = 0;
             sendCmd(Serial4, HDR_ABBA, TRL_5556, 2, 4, 2);
+            
             sensor_raw = {}; // reset sensor_raw
             sensor_cali = {}; // reset sensor_cali
 
