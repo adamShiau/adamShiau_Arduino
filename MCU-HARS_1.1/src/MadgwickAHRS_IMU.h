@@ -157,6 +157,8 @@ private:
 public:
     Madgwick();
 
+    void init(float data_rate); // 設置初始狀態
+
     // 將 Local frame 設為 NED（true）或 ENU（false, 預設）
     void setLocalFrameNED(bool enable);
 
@@ -177,6 +179,14 @@ public:
     // 取消 yaw 零位（回到絕對 yaw）
     void clearYawZero();
 
+    // ---- Gyro 偏置學習速率（alpha）快速調整 ----
+    void  setGyroBiasAlpha(float a);
+    float getGyroBiasAlpha() const;
+
+    // 取得目前 q_WS（world ← sensor）
+    void getQuatWS(float& w, float& x, float& y, float& z) const;
+
+
 
     // 基本設定
     void begin(float sampleFrequency) { invSampleFreq = 1.0f / sampleFrequency; }
@@ -186,6 +196,14 @@ public:
                 float mx, float my, float mz);
     // 更新（IMU only）
     void updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
+
+    // 在 public: 加一個新介面
+    void updateIMU_dualAccel(float gx, float gy, float gz,
+                            float ax_lp, float ay_lp, float az_lp,   // 給姿態修正
+                            float ax_raw, float ay_raw, float az_raw);// 給權重判斷
+    // （ax_lp,ay_lp,az_lp）是經過低通濾波的加速度，用來給姿態修正
+    // （ax_raw,ay_raw,az_raw）是原始加速度，用來給動態權重判斷
+
 
     // 取得「sensor frame」對世界的 RPY（deg / rad）
     float getRoll()        { if (!anglesComputed) computeAngles(); return roll  * 57.29578f; }

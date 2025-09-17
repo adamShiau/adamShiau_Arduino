@@ -36,7 +36,8 @@ Madgwick::Madgwick() {
     // ---- 陀螺偏置學習（靜止時）----
     gyroBiasEnable = true;                   // 自動學偏置，降漂移
     bgx_dps = bgy_dps = bgz_dps = 0.0f;      // 當前學到的偏置（deg/s）
-    biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    // biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    biasAlpha = 0.0f;                        // 初始值，之後由BIAS_ALPHA_BASE覆蓋  
     stillGyroThreshDps = 1.0f;               // 靜止判定角速閾值(合計)：0.5~2 dps
     stillAccTolG       = 0.05f;              // 靜止判定加速度容忍(‖a‖ vs 1g)：0.03~0.07
 
@@ -51,6 +52,17 @@ Madgwick::Madgwick() {
 
     // ---- Sensor→Case 固定旋轉（幾何對應）----
     qc0 = 1.0f; qc1 = 0.0f; qc2 = 0.0f; qc3 = 0.0f; // 預設 case==sensor；用 setSensorToCase* 設定
+}
+
+void Madgwick::init(float data_rate) {
+    begin(data_rate); // 設定採樣率
+    // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 }; // 原始 Sensor frame，對應 ENU
+    const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };   // case frame, 對應 NED 座標系
+    setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
+    setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
+    setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
+    setDynamicAccelWeight(true); // 啟用動態加權
+    setGimbalLockGuard(true, 89.0f); // 啟用奇異點保護
 }
 
 //=============================================================================================
@@ -278,6 +290,71 @@ void Madgwick::updateIMU(float gx, float gy, float gz, float ax, float ay, float
     anglesComputed = 0;
 }
 
+void Madgwick::updateIMU_dualAccel(float gx, float gy, float gz,
+                                   float ax_lp, float ay_lp, float az_lp,
+                                   float ax_raw, float ay_raw, float az_raw) {
+    float recipNorm;
+    float s0, s1, s2, s3;
+    float qDot1, qDot2, qDot3, qDot4;
+    float _2q0,_2q1,_2q2,_2q3,_4q0,_4q1,_4q2,_8q1,_8q2;
+    float q0q0,q1q1,q2q2,q3q3;
+
+    // 偏置學習（用原始量測判斷 still/否；沿用原本 isStill()）
+    if (gyroBiasEnable && isStill(gx, gy, gz, ax_raw, ay_raw, az_raw)) {
+        bgx_dps = (1.0f - biasAlpha) * bgx_dps + biasAlpha * gx;
+        bgy_dps = (1.0f - biasAlpha) * bgy_dps + biasAlpha * gy;
+        bgz_dps = (1.0f - biasAlpha) * bgz_dps + biasAlpha * gz;
+    }
+    gx -= bgx_dps; gy -= bgy_dps; gz -= bgz_dps;
+
+    const float d2r = 0.0174533f;
+    float gx_rad = gx*d2r, gy_rad = gy*d2r, gz_rad = gz*d2r;
+
+    // gyro 推進
+    qDot1 = 0.5f * (-q1 * gx_rad - q2 * gy_rad - q3 * gz_rad);
+    qDot2 = 0.5f * ( q0 * gx_rad + q2 * gz_rad - q3 * gy_rad);
+    qDot3 = 0.5f * ( q0 * gy_rad - q1 * gz_rad + q3 * gx_rad);
+    qDot4 = 0.5f * ( q0 * gz_rad + q1 * gy_rad - q2 * gx_rad);
+
+    // 用低通後的加速度做 normalize 與梯度下降
+    if (!((ax_lp == 0.0f) && (ay_lp == 0.0f) && (az_lp == 0.0f))) {
+        recipNorm = invSqrt(ax_lp*ax_lp + ay_lp*ay_lp + az_lp*az_lp);
+        float axu = ax_lp*recipNorm, ayu = ay_lp*recipNorm, azu = az_lp*recipNorm;
+
+        _2q0 = 2.0f*q0; _2q1 = 2.0f*q1; _2q2 = 2.0f*q2; _2q3 = 2.0f*q3;
+        _4q0 = 4.0f*q0; _4q1 = 4.0f*q1; _4q2 = 4.0f*q2;
+        _8q1 = 8.0f*q1; _8q2 = 8.0f*q2;
+        q0q0 = q0*q0; q1q1 = q1*q1; q2q2 = q2*q2; q3q3 = q3*q3;
+
+        s0 = _4q0*q2q2 + _2q2*axu + _4q0*q1q1 - _2q1*ayu;
+        s1 = _4q1*q3q3 - _2q3*axu + 4.0f*q0q0*q1 - _2q0*ayu - _4q1 + _8q1*q1q1 + _8q1*q2q2 + _4q1*azu;
+        s2 = 4.0f*q0q0*q2 + _2q0*axu + _4q2*q3q3 - _2q3*ayu - _4q2 + _8q2*q1q1 + _8q2*q2q2 + _4q2*azu;
+        s3 = 4.0f*q1*q1*q3 - _2q1*axu + 4.0f*q2*q2*q3 - _2q2*ayu;
+
+        recipNorm = invSqrt(s0*s0 + s1*s1 + s2*s2 + s3*s3);
+        s0*=recipNorm; s1*=recipNorm; s2*=recipNorm; s3*=recipNorm;
+
+        // 動態 β：用「原始（未低通）」加速度判斷
+        float betaEff = computeBetaEffective(gx, gy, gz, ax_raw, ay_raw, az_raw);
+        qDot1 -= betaEff * s0;
+        qDot2 -= betaEff * s1;
+        qDot3 -= betaEff * s2;
+        qDot4 -= betaEff * s3;
+    }
+
+    // 積分 + 正規化
+    q0 += qDot1 * invSampleFreq;
+    q1 += qDot2 * invSampleFreq;
+    q2 += qDot3 * invSampleFreq;
+    q3 += qDot4 * invSampleFreq;
+
+    recipNorm = invSqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    q0*=recipNorm; q1*=recipNorm; q2*=recipNorm; q3*=recipNorm;
+
+    anglesComputed = 0;
+}
+
+
 //=============================================================================================
 // Euler 計算（含奇異點保護 + yaw 連續化）
 
@@ -493,6 +570,21 @@ void Madgwick::sensorVecToCase(const float vS[3], float vC[3]) const {
     vC[1] = vS[1] + w*ty + (z*tx - x*tz);
     vC[2] = vS[2] + w*tz + (x*ty - y*tx);
 }
+
+void Madgwick::setGyroBiasAlpha(float a) {
+    // 夾一個合理範圍，避免填入 0 或過大
+    if (a < 1e-6f) a = 1e-6f;
+    if (a > 0.1f)  a = 0.1f;
+    biasAlpha = a;
+}
+float Madgwick::getGyroBiasAlpha() const {
+    return biasAlpha;
+}
+
+void Madgwick::getQuatWS(float& w, float& x, float& y, float& z) const {
+    w = q0; x = q1; y = q2; z = q3;
+}
+
 
 
 

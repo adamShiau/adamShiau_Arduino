@@ -1,7 +1,7 @@
-#ifndef EEPROM_MANAGE_H
-#define EEPROM_MANAGE_H
+#pragma once
+#include <Arduino.h>
 
-/*** EEPROM ADDR*/
+// ===== EEPROM addresses (你原本的 #define 保留即可) =====
 #define EEPROM_ADDR_FOG_STATUS 4095
 #define EEPROM_ADDR_DVT_TEST_1 4092
 #define EEPROM_ADDR_DVT_TEST_2 4093
@@ -173,116 +173,118 @@
 #define EEPROM_ADDR_THRESHOLD_WY      EEPROM_BASEADDR_ATTITUDE+1
 #define EEPROM_ADDR_THRESHOLD_WZ      EEPROM_BASEADDR_ATTITUDE+2
 
-/**Global Variable for EEPROM*/
-int EEPROM_Parameter_exist=0; 
-//Output configuration
-int EEPROM_BAUDRATE, EEPROM_DATARATE, EEPROM_SYSCLK, EEPROM_EXTWDT;
-//Misalignment calibration
-int EEPROM_CALI_AX, EEPROM_CALI_AY, EEPROM_CALI_AZ;
-int EEPROM_CALI_A11, EEPROM_CALI_A12, EEPROM_CALI_A13;
-int EEPROM_CALI_A21, EEPROM_CALI_A22, EEPROM_CALI_A23;
-int EEPROM_CALI_A31, EEPROM_CALI_A32, EEPROM_CALI_A33;
-int EEPROM_CALI_GX, EEPROM_CALI_GY, EEPROM_CALI_GZ;
-int EEPROM_CALI_G11, EEPROM_CALI_G12, EEPROM_CALI_G13;
-int EEPROM_CALI_G21, EEPROM_CALI_G22, EEPROM_CALI_G23;
-int EEPROM_CALI_G31, EEPROM_CALI_G32, EEPROM_CALI_G33;
-//Attitude filter
-int EEPROM_THRESHOLD_WX, EEPROM_THRESHOLD_WY, EEPROM_THRESHOLD_WZ;
+/** Global Variables for EEPROM (只宣告，不定義/不給初值) */
+extern int EEPROM_Parameter_exist; 
+// Output configuration
+extern int EEPROM_BAUDRATE, EEPROM_DATARATE, EEPROM_SYSCLK, EEPROM_EXTWDT;
+// Misalignment calibration
+extern int EEPROM_CALI_AX, EEPROM_CALI_AY, EEPROM_CALI_AZ;
+extern int EEPROM_CALI_A11, EEPROM_CALI_A12, EEPROM_CALI_A13;
+extern int EEPROM_CALI_A21, EEPROM_CALI_A22, EEPROM_CALI_A23;
+extern int EEPROM_CALI_A31, EEPROM_CALI_A32, EEPROM_CALI_A33;
+extern int EEPROM_CALI_GX, EEPROM_CALI_GY, EEPROM_CALI_GZ;
+extern int EEPROM_CALI_G11, EEPROM_CALI_G12, EEPROM_CALI_G13;
+extern int EEPROM_CALI_G21, EEPROM_CALI_G22, EEPROM_CALI_G23;
+extern int EEPROM_CALI_G31, EEPROM_CALI_G32, EEPROM_CALI_G33;
+// Attitude filter
+extern int EEPROM_THRESHOLD_WX, EEPROM_THRESHOLD_WY, EEPROM_THRESHOLD_WZ;
 
+// ===== eeprom_obj 定義（型別定義放 header 沒問題）=====
 struct eeprom_obj{
-    const uint32_t EEPROM_ADDR_MOD_FREQ        ;
-    const uint32_t EEPROM_ADDR_WAIT_CNT        ;
-    const uint32_t EEPROM_ADDR_ERR_AVG         ;
-    const uint32_t EEPROM_ADDR_MOD_AMP_H       ;
-    const uint32_t EEPROM_ADDR_MOD_AMP_L       ;
-    const uint32_t EEPROM_ADDR_ERR_TH          ;
-    const uint32_t EEPROM_ADDR_ERR_OFFSET      ;
-    const uint32_t EEPROM_ADDR_POLARITY        ;
-    const uint32_t EEPROM_ADDR_CONST_STEP      ;
-    const uint32_t EEPROM_ADDR_FPGA_Q          ;
-    const uint32_t EEPROM_ADDR_FPGA_R          ;
-    const uint32_t EEPROM_ADDR_GAIN1           ;
-    const uint32_t EEPROM_ADDR_GAIN2           ;
-    const uint32_t EEPROM_ADDR_FB_ON           ;
-    const uint32_t EEPROM_ADDR_DAC_GAIN        ;
-    const uint32_t EEPROM_ADDR_DATA_DELAY      ;
-    const uint32_t EEPROM_ADDR_SF_0            ;
-    const uint32_t EEPROM_ADDR_SF_1            ;
-    const uint32_t EEPROM_ADDR_SF_2            ;
-    const uint32_t EEPROM_ADDR_SF_3            ;
-    const uint32_t EEPROM_ADDR_SF_4            ;
-    const uint32_t EEPROM_ADDR_SF_5            ;
-    const uint32_t EEPROM_ADDR_SF_6            ;
-    const uint32_t EEPROM_ADDR_SF_7            ;
-    const uint32_t EEPROM_ADDR_SF_8            ;
-    const uint32_t EEPROM_ADDR_SF_9            ;
-    const uint32_t EEPROM_ADDR_TMIN            ;
-    const uint32_t EEPROM_ADDR_TMAX            ;
-    const uint32_t EEPROM_ADDR_SFB             ;
-    const uint32_t EEPROM_ADDR_CUTOFF          ;
-    const uint32_t EEPROM_ADDR_BIAS_COMP_T1    ;
-    const uint32_t EEPROM_ADDR_BIAS_COMP_T2    ;
-    const uint32_t EEPROM_ADDR_SFB_1_SLOPE     ;
-    const uint32_t EEPROM_ADDR_SFB_1_OFFSET    ;
-    const uint32_t EEPROM_ADDR_SFB_2_SLOPE     ;
-    const uint32_t EEPROM_ADDR_SFB_2_OFFSET    ;
-    const uint32_t EEPROM_ADDR_SFB_3_SLOPE     ;
-    const uint32_t EEPROM_ADDR_SFB_3_OFFSET    ;
+    const uint32_t EEPROM_ADDR_MOD_FREQ;
+    const uint32_t EEPROM_ADDR_WAIT_CNT;
+    const uint32_t EEPROM_ADDR_ERR_AVG;
+    const uint32_t EEPROM_ADDR_MOD_AMP_H;
+    const uint32_t EEPROM_ADDR_MOD_AMP_L;
+    const uint32_t EEPROM_ADDR_ERR_TH;
+    const uint32_t EEPROM_ADDR_ERR_OFFSET;
+    const uint32_t EEPROM_ADDR_POLARITY;
+    const uint32_t EEPROM_ADDR_CONST_STEP;
+    const uint32_t EEPROM_ADDR_FPGA_Q;
+    const uint32_t EEPROM_ADDR_FPGA_R;
+    const uint32_t EEPROM_ADDR_GAIN1;
+    const uint32_t EEPROM_ADDR_GAIN2;
+    const uint32_t EEPROM_ADDR_FB_ON;
+    const uint32_t EEPROM_ADDR_DAC_GAIN;
+    const uint32_t EEPROM_ADDR_DATA_DELAY;
+    const uint32_t EEPROM_ADDR_SF_0;
+    const uint32_t EEPROM_ADDR_SF_1;
+    const uint32_t EEPROM_ADDR_SF_2;
+    const uint32_t EEPROM_ADDR_SF_3;
+    const uint32_t EEPROM_ADDR_SF_4;
+    const uint32_t EEPROM_ADDR_SF_5;
+    const uint32_t EEPROM_ADDR_SF_6;
+    const uint32_t EEPROM_ADDR_SF_7;
+    const uint32_t EEPROM_ADDR_SF_8;
+    const uint32_t EEPROM_ADDR_SF_9;
+    const uint32_t EEPROM_ADDR_TMIN;
+    const uint32_t EEPROM_ADDR_TMAX;
+    const uint32_t EEPROM_ADDR_SFB;
+    const uint32_t EEPROM_ADDR_CUTOFF;
+    const uint32_t EEPROM_ADDR_BIAS_COMP_T1;
+    const uint32_t EEPROM_ADDR_BIAS_COMP_T2;
+    const uint32_t EEPROM_ADDR_SFB_1_SLOPE;
+    const uint32_t EEPROM_ADDR_SFB_1_OFFSET;
+    const uint32_t EEPROM_ADDR_SFB_2_SLOPE;
+    const uint32_t EEPROM_ADDR_SFB_2_OFFSET;
+    const uint32_t EEPROM_ADDR_SFB_3_SLOPE;
+    const uint32_t EEPROM_ADDR_SFB_3_OFFSET;
+
+    // runtime 值
     int EEPROM_Gain1; int EEPROM_Gain2; int EEPROM_Polarity;
     int EEPROM_FB_ON; int EEPROM_DAC_gain; int EEPROM_Data_delay;
     int EEPROM_Mod_freq; int EEPROM_Wait_cnt; int EEPROM_Err_avg; 
     int EEPROM_Fpga_Q; int EEPROM_Fpga_R;
-    int EEPROM_Amp_H; int  EEPROM_Amp_L; int EEPROM_Err_offset; int EEPROM_Err_th; int EEPROM_Const_step;
+    int EEPROM_Amp_H; int EEPROM_Amp_L; int EEPROM_Err_offset; int EEPROM_Err_th; int EEPROM_Const_step;
     int EEPROM_SF0; int EEPROM_SF1; int EEPROM_SF2; int EEPROM_SF3; int EEPROM_SF4;
     int EEPROM_SF5; int EEPROM_SF6; int EEPROM_SF7; int EEPROM_SF8; int EEPROM_SF9; 
     int EEPROM_TMIN; int EEPROM_TMAX; int EEPROM_SFB; int EEPROM_CUTOFF;
     int EEPROM_BIAS_COMP_T1; int EEPROM_BIAS_COMP_T2; int EEPROM_SFB_1_SLOPE; int EEPROM_SFB_1_OFFSET; 
     int EEPROM_SFB_2_SLOPE; int EEPROM_SFB_2_OFFSET; int EEPROM_SFB_3_SLOPE; int EEPROM_SFB_3_OFFSET;  
 
-     // Constructor
-    eeprom_obj(uint32_t add) :
-        EEPROM_ADDR_MOD_FREQ(add),
-        EEPROM_ADDR_WAIT_CNT(add + 1),
-        EEPROM_ADDR_ERR_AVG (add + 2),
-        EEPROM_ADDR_MOD_AMP_H (add + 3),
-        EEPROM_ADDR_MOD_AMP_L (add + 4),
-        EEPROM_ADDR_ERR_TH  (add + 5),
-        EEPROM_ADDR_ERR_OFFSET(add + 6),
-        EEPROM_ADDR_POLARITY(add + 7),
-        EEPROM_ADDR_CONST_STEP(add + 8),
-        EEPROM_ADDR_FPGA_Q  (add + 9),
-        EEPROM_ADDR_FPGA_R  (add + 10),
-        EEPROM_ADDR_GAIN1   (add + 11),
-        EEPROM_ADDR_GAIN2   (add + 12),
-        EEPROM_ADDR_FB_ON   (add + 13),
-        EEPROM_ADDR_DAC_GAIN(add + 14),
-        EEPROM_ADDR_DATA_DELAY(add + 15),
-        EEPROM_ADDR_SF_0    (add + 16),
-        EEPROM_ADDR_SF_1    (add + 17),
-        EEPROM_ADDR_SF_2    (add + 18),
-        EEPROM_ADDR_SF_3    (add + 19),
-        EEPROM_ADDR_SF_4    (add + 20),
-        EEPROM_ADDR_SF_5    (add + 21),
-        EEPROM_ADDR_SF_6    (add + 22),
-        EEPROM_ADDR_SF_7    (add + 23),
-        EEPROM_ADDR_SF_8    (add + 24),
-        EEPROM_ADDR_SF_9    (add + 25),
-        EEPROM_ADDR_TMIN    (add + 26),
-        EEPROM_ADDR_TMAX    (add + 27),
-        EEPROM_ADDR_SFB     (add + 28),
-        EEPROM_ADDR_CUTOFF  (add + 29),
-        EEPROM_ADDR_BIAS_COMP_T1(add + 30),
-        EEPROM_ADDR_BIAS_COMP_T2(add + 31),
-        EEPROM_ADDR_SFB_1_SLOPE (add + 32),
-        EEPROM_ADDR_SFB_1_OFFSET(add + 33),
-        EEPROM_ADDR_SFB_2_SLOPE (add + 34),
-        EEPROM_ADDR_SFB_2_OFFSET(add + 35),
-        EEPROM_ADDR_SFB_3_SLOPE (add + 36),
-        EEPROM_ADDR_SFB_3_OFFSET(add + 37){}
+    // constructor
+    explicit eeprom_obj(uint32_t add)
+    : EEPROM_ADDR_MOD_FREQ(add),
+      EEPROM_ADDR_WAIT_CNT(add + 1),
+      EEPROM_ADDR_ERR_AVG (add + 2),
+      EEPROM_ADDR_MOD_AMP_H (add + 3),
+      EEPROM_ADDR_MOD_AMP_L (add + 4),
+      EEPROM_ADDR_ERR_TH  (add + 5),
+      EEPROM_ADDR_ERR_OFFSET(add + 6),
+      EEPROM_ADDR_POLARITY(add + 7),
+      EEPROM_ADDR_CONST_STEP(add + 8),
+      EEPROM_ADDR_FPGA_Q  (add + 9),
+      EEPROM_ADDR_FPGA_R  (add + 10),
+      EEPROM_ADDR_GAIN1   (add + 11),
+      EEPROM_ADDR_GAIN2   (add + 12),
+      EEPROM_ADDR_FB_ON   (add + 13),
+      EEPROM_ADDR_DAC_GAIN(add + 14),
+      EEPROM_ADDR_DATA_DELAY(add + 15),
+      EEPROM_ADDR_SF_0    (add + 16),
+      EEPROM_ADDR_SF_1    (add + 17),
+      EEPROM_ADDR_SF_2    (add + 18),
+      EEPROM_ADDR_SF_3    (add + 19),
+      EEPROM_ADDR_SF_4    (add + 20),
+      EEPROM_ADDR_SF_5    (add + 21),
+      EEPROM_ADDR_SF_6    (add + 22),
+      EEPROM_ADDR_SF_7    (add + 23),
+      EEPROM_ADDR_SF_8    (add + 24),
+      EEPROM_ADDR_SF_9    (add + 25),
+      EEPROM_ADDR_TMIN    (add + 26),
+      EEPROM_ADDR_TMAX    (add + 27),
+      EEPROM_ADDR_SFB     (add + 28),
+      EEPROM_ADDR_CUTOFF  (add + 29),
+      EEPROM_ADDR_BIAS_COMP_T1(add + 30),
+      EEPROM_ADDR_BIAS_COMP_T2(add + 31),
+      EEPROM_ADDR_SFB_1_SLOPE (add + 32),
+      EEPROM_ADDR_SFB_1_OFFSET(add + 33),
+      EEPROM_ADDR_SFB_2_SLOPE (add + 34),
+      EEPROM_ADDR_SFB_2_OFFSET(add + 35),
+      EEPROM_ADDR_SFB_3_SLOPE (add + 36),
+      EEPROM_ADDR_SFB_3_OFFSET(add + 37) {}
 };
 
-eeprom_obj eeprom_x(EEPROM_BASEADDR_X), eeprom_y(EEPROM_BASEADDR_Y), eeprom_z(EEPROM_BASEADDR_Z);
-
-
-
-#endif
+// 這三個只宣告
+extern eeprom_obj eeprom_x;
+extern eeprom_obj eeprom_y;
+extern eeprom_obj eeprom_z;

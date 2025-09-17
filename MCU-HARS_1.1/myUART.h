@@ -1,96 +1,44 @@
-#ifndef MYUART_H
-#define MYUART_H
-/** define all of the UART resource used in GP1Z
- * 11/23/2023
-*/
-/***
-SERCOM0: I2C     (PA08, PA09) [sda, scl]
-SERCOM1: serial3 (PA17, PA18) [rx, tx]
-SERCOM2: serial2 (PA15, PA14) [rx, tx]
-SERCOM3: serial4 (PA21, PA20) [rx, tx]
-SERCOM4: SPI     (PB10, PB11, PA12, PA13) [ss, miso, mosi, sck]
-SERCOM5: serial1 (PB23, PB22) [rx, tx]
-  
-***/
+#pragma once
+#include <Arduino.h>
 #include "uartRT.h"
-// cmd read from GUI
-uint8_t myCmd_header[] = {0xAB, 0xBA};
-uint8_t myCmd_trailer[] = {0x55, 0x56};
-uint16_t myCmd_try_cnt;
-const uint8_t myCmd_sizeofheader = sizeof(myCmd_header);
-const uint8_t myCmd_sizeoftrailer = sizeof(myCmd_trailer);
-
-uartRT myCmd(Serial1, 6);
-
-uint8_t header[] = {0xAB, 0xBA};
-uint8_t trailer[] = {0x55};
-uint16_t try_cnt;
-const uint8_t sizeofheader = sizeof(header);
-const uint8_t sizeoftrailer = sizeof(trailer);
-byte uart_cmd, fog_ch;
-int uart_value;
-bool cmd_complete, fog_woke_flag = 0;
-
-/** Move Serial1 definition from variant.cpp to here*/
-Uart Serial1( &sercom5, PIN_SERIAL1_RX, PIN_SERIAL1_TX, PAD_SERIAL1_RX, PAD_SERIAL1_TX ) ;
-Uart Serial2 (&sercom2, 25, 24, SERCOM_RX_PAD_3, UART_TX_PAD_2);
-Uart Serial3 (&sercom1, 13, 8, SERCOM_RX_PAD_1, UART_TX_PAD_2);
-Uart Serial4 (&sercom3, 10, 9, SERCOM_RX_PAD_3, UART_TX_PAD_2);
-void SERCOM2_Handler() {Serial2.IrqHandler();}
-void SERCOM1_Handler() {Serial3.IrqHandler();}
-void SERCOM3_Handler() {Serial4.IrqHandler();}
-void SERCOM5_Handler()
-{
-  Serial1.IrqHandler();
-
-  byte *cmd;
-  
-  cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader, &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer);
-
-  if(cmd){
-    uart_cmd = cmd[0];
-    uart_value = cmd[1]<<24 | cmd[2]<<16 | cmd[3]<<8 | cmd[4];
-    fog_ch = cmd[5];
-    cmd_complete = 1;
-
-    Serial.print("cmd, value, ch: ");
-    Serial.print(uart_cmd);
-    Serial.print(", ");
-    Serial.print(uart_value);
-    Serial.print(", ");
-    Serial.println(fog_ch);
-    fog_woke_flag = 1;
-  }
-}
-
-void msg_out(char *msg)
-{
-  Serial.println(msg);
-  Serial1.println(msg);
-}
-
 #include "pig_v2.h"
-PIG sp13(Serial2, 16); //SP13
-PIG sp14(Serial3, 16); //SP14
-PIG sp9(Serial4, 16); //SP14
 
-void myUART_init(void)
-{
-    Serial.begin(230400); //debug
-    Serial1.begin(230400); //to PC
-    Serial2.begin(115200); //fog
-    Serial3.begin(115200);
-    Serial4.begin(115200);
-    cmd_complete = 0;
+// ---- command buffers & flags (在 .cpp 定義) ----
+extern uint8_t  myCmd_header[];
+extern uint8_t  myCmd_trailer[];
+extern uint16_t myCmd_try_cnt;
+extern const uint8_t myCmd_sizeofheader;
+extern const uint8_t myCmd_sizeoftrailer;
 
-    pinPeripheral(24, PIO_SERCOM);
-    pinPeripheral(25, PIO_SERCOM);
+extern uint8_t  header[];
+extern uint8_t  trailer[];
+extern uint16_t try_cnt;
+extern const uint8_t sizeofheader;
+extern const uint8_t sizeoftrailer;
 
-    pinPeripheral(8, PIO_SERCOM);
-    pinPeripheral(13, PIO_SERCOM);
-    
-    pinPeripheral(10, PIO_SERCOM_ALT);
-    pinPeripheral(9, PIO_SERCOM_ALT);
-}
+extern byte uart_cmd, fog_ch;
+extern int  uart_value;
+extern volatile bool cmd_complete;   // ISR 會改寫 → volatile
+extern volatile bool fog_woke_flag;
 
-#endif
+// ---- UART 實例（若你真的自建 Serial1~4）----
+extern Uart Serial1;
+extern Uart Serial2;
+extern Uart Serial3;
+extern Uart Serial4;
+
+// ---- 高層通道物件 ----
+extern uartRT myCmd;
+extern PIG sp13;   // SP13 on Serial2
+extern PIG sp14;   // SP14 on Serial3
+extern PIG sp9;    // SP9  on Serial4
+
+// ---- API ----
+void myUART_init(void);
+void msg_out(char *msg);
+
+// ---- SERCOM ISRs（只宣告）----
+void SERCOM1_Handler();
+void SERCOM2_Handler();
+void SERCOM3_Handler();
+void SERCOM5_Handler();
