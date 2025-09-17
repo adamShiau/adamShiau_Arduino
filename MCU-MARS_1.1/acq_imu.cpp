@@ -16,7 +16,7 @@ void clear_SEL_EN(byte &select_fn); // define  in .ino
 // ===== 參數設定（可調整）=====
 #define ACC_MIN        (0.05f * 9.80665f)   // Accel 最低閥值 (m/s^2)
 #define ACC_MAX        (16.0f * 9.80665f)   // Accel 飽和值 (m/s^2)
-#define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps)
+#define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps) => 此處是由記憶體內數值決定
 #define GYRO_MAX_DPS   (660.0f)             // Gyro 飽和值 (dps)
 #define ACC_LP_ALPHA   (0.2f)               // Acc 低通係數 0.1~0.3
                                             // 100 Hz 時等效 τ ≈ (1-α)/α * Ts ≈ 0.04 s，fc ~ 4 Hz
@@ -268,11 +268,16 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     // 3-1) 閥值與飽和值篩選
         my_acc_t my_GYRO_att_calculate, my_ACCL_att_calculate;
-        for (int i = 0; i < 3; ++i) {
+        
             // Gyro: 死區 + 飽和
-            my_GYRO_att_calculate.float_val[i] =
-            apply_deadband_and_sat(my_GYRO_cali.float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
+            my_GYRO_att_calculate.float_val[0] =
+            apply_deadband_and_sat(my_GYRO_cali.float_val[0], attitude_cali_coe._f.std_wx, GYRO_MAX_DPS);
+            my_GYRO_att_calculate.float_val[1] =
+            apply_deadband_and_sat(my_GYRO_cali.float_val[1], attitude_cali_coe._f.std_wy, GYRO_MAX_DPS);
+            my_GYRO_att_calculate.float_val[2] =
+            apply_deadband_and_sat(my_GYRO_cali.float_val[2], attitude_cali_coe._f.std_wz, GYRO_MAX_DPS);
 
+        for (int i = 0; i < 3; ++i) {
             // Accel: 死區 + 飽和
             my_ACCL_att_calculate.float_val[i] =
             apply_deadband_and_sat(my_ACCL_cali.float_val[i], ACC_MIN, ACC_MAX);
