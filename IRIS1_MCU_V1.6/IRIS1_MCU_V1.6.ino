@@ -22,7 +22,7 @@ Madgwick ahrs_attitude;
 void setup() {
   myUART_init();
   crc32_init_table();
-  delay(100);
+  delay(1000); // wait FPGA init done before boot_capture_all()
   DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
 
   // delay(2000);
