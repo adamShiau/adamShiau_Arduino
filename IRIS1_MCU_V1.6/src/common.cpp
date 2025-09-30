@@ -1136,6 +1136,11 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						dump_SN(fog_inst);
 						break;
 					} 
+          case CMD_DUMP_CFG: {
+						DEBUG_PRINT("CMD_DUMP_CFG:\n");
+						dump_cfg_param(fog_inst);
+						break;
+					} 
 					case CMD_DATA_OUT_START: { // not use now
 						DEBUG_PRINT("CMD_DATA_OUT_START:\n");
 						// start_flag = rx->value;
@@ -1370,6 +1375,15 @@ static void imu_cali_store_cb(int key, int32_t val, void* user)
   if (key < 0 || key >= MIS_LEN) return;  // arrays are 0..MIS_LEN-1
 
   C->fog->misalignment[key].data.int_val = val;
+}
+
+static void cfg_store_cb(int key, int32_t val, void* user)
+{
+  fog_cb_ctx_t* C = (fog_cb_ctx_t*)user;
+  if (!C || !C->fog) return;
+  if (key < 0 || key >= CFG_LEN) return;  // arrays are 0..CFG_LEN-1
+
+  C->fog->config[key].data.int_val = val;
 }
 
 // ---- SN 的 callback：把 payload 字串寫入 fog->sn（長度保護 + NUL 結尾）----
@@ -1910,7 +1924,12 @@ static bool recv_and_store(fog_parameter_t* fog,
 	// SN → 純字串，走 parse_string + sn_store_cb
     fog_cb_ctx_t ctx{ fog, 5 };
     parse_string(scratch, sn_store_cb, &ctx);
+  } else if (expect_ch == 6) {
+	// config → JSON
+    fog_cb_ctx_t ctx{ fog, 6 };
+    parse_simple_json_ints(scratch, cfg_store_cb, &ctx);
   }
+  
   // RS422 輸出
   Serial1.write((const uint8_t*)scratch, strlen(scratch));
   Serial1.write('\n');
@@ -1932,8 +1951,24 @@ static bool request_and_update(fog_parameter_t* fog,
 
   for (int attempt = 0; attempt < max_retry; ++attempt) {
     // 普通 REQ
-    send_cmd_seq((ch==4)?CMD_DUMP_MIS:((ch==5)?CMD_DUMP_SN:CMD_DUMP_FOG),
-                 ch, g_seq, /*nack*/false);
+    uint8_t cmd;
+
+    switch (ch) {
+        case 4:
+            cmd = CMD_DUMP_MIS;
+            break;
+        case 5:
+            cmd = CMD_DUMP_SN;
+            break;
+        case 6:
+            cmd = CMD_DUMP_CFG;
+            break;
+        default:
+            cmd = CMD_DUMP_FOG;
+            break;
+    }
+
+    send_cmd_seq(cmd, ch, g_seq, /*nack*/false);
 
     if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
       g_seq = (g_seq + 1) & 0x7FFFFFFF;
@@ -1941,8 +1976,7 @@ static bool request_and_update(fog_parameter_t* fog,
     }
 
     // NACK（若 Nios II 尚未支援，等效於再送一次）
-    send_cmd_seq((ch==4)?CMD_DUMP_MIS:((ch==5)?CMD_DUMP_SN:CMD_DUMP_FOG),
-                 ch, g_seq, /*nack*/true);
+    send_cmd_seq(cmd, ch, g_seq, /*nack*/false);
 
     if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
       g_seq = (g_seq + 1) & 0x7FFFFFFF;
@@ -1983,6 +2017,14 @@ bool dump_SN(fog_parameter_t* fog_inst) {
 }
 
 /**
+ * @brief 抓 configuration（ch=6），payload 是 JSON。
+ */
+bool dump_cfg_param(fog_parameter_t* fog_inst) {
+  if (!fog_inst) return false;
+  return request_and_update(fog_inst, /*ch*/6, FOG_TIMEOUT_MS, /*retries*/5);
+}
+
+/**
  * @brief 上電後一次抓齊：FOG X/Y/Z、Mis-alignment、SN。
  * @return 全部都成功則回 true；只要有一項失敗就回 false。
  */
@@ -1997,6 +2039,8 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
   ok &= dump_fog_param(fog_inst, 3);   // Z
   delay(10);
   ok &= dump_misalignment_param(fog_inst); // MIS
+  delay(10);
+  ok &= dump_cfg_param(fog_inst); // config
   delay(10);
 //   ok &= dump_SN(fog_inst);             // SN -> 寫進 fog_inst->sn
 

@@ -113,6 +113,7 @@ enum {
     CMD_HW_TIMER_RST = 100,     //0x64
     CMD_SYNC_CNT = 101,         //0x65
     CMD_DUMP_FOG = 102, //0x66
+    CMD_DUMP_CFG = 103, //0x67
     CMD_WRITE_SN = 110,  //0x6E
     CMD_DUMP_MIS = 129,  //0x81
     CMD_DUMP_SN = 130  //0x82
