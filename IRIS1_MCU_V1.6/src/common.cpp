@@ -347,6 +347,61 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
       }
       break;
 
+    case 6: // configuration
+      if (idx < CFG_LEN) {
+        fog_inst->cnofig[idx].data.int_val = rx->value;
+        DEBUG_PRINT("cnofig[%d] = %d\n", idx, fog_inst->cnofig[idx].data.int_val);
+      }
+      break;
+
+    default:
+      // unknown channel -> ignore
+      break;
+  }
+}
+
+void readout_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx)
+{
+  if (!rx || !fog_inst) return;
+
+  data_t data;
+
+  switch (rx->ch) {
+    case 3: // paramX
+      if (idx < PAR_LEN) {
+        data.int_val = fog_inst->paramX[idx].data.int_val;
+        DEBUG_PRINT("paramX[%d] = %d\n", idx, fog_inst->paramX[idx].data.int_val);
+      }
+      break;
+
+    case 2: // paramY
+      if (idx < PAR_LEN) {
+        data.int_val = fog_inst->paramY[idx].data.int_val;
+        DEBUG_PRINT("paramY[%d] = %d\n", idx, fog_inst->paramY[idx].data.int_val);
+      }
+      break;
+
+    case 1: // paramZ
+      if (idx < PAR_LEN) {
+        data.int_val = fog_inst->paramZ[idx].data.int_val;
+        DEBUG_PRINT("paramZ[%d] = %d\n", idx, fog_inst->paramZ[idx].data.int_val);
+      }
+      break;
+
+    case 4: // misalignment
+      if (idx < MIS_LEN) {
+        data.int_val = fog_inst->misalignment[idx].data.int_val;
+        DEBUG_PRINT("misalignment[%d] = %d\n", idx, fog_inst->misalignment[idx].data.int_val);
+      }
+      break;
+
+    case 6: // configuration
+      if (idx < CFG_LEN) {
+        data.int_val = fog_inst->cnofig[idx].data.int_val;
+        DEBUG_PRINT("configuration[%d] = %d\n", idx, fog_inst->misalignment[idx].data.int_val);
+      }
+      break;
+
     default:
       // unknown channel -> ignore
       break;
@@ -1121,6 +1176,35 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						}
 						break;
 					}
+          /***------------- configuration */
+          case CMD_CFG_DR: {
+						DEBUG_PRINT("CMD_CFG_DR:\n");
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+              sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_CFG_DR, rx->value, rx->ch);
+              update_parameter_container(rx, fog_inst, CMD_CFG_DR - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+              readout_parameter_container(rx, fog_inst, CMD_CFG_DR - CFG_CONTAINER_TO_CMD_OFFSET);
+						}
+						break;
+					}
+
+          case CMD_CFG_BR: {
+						DEBUG_PRINT("CMD_CFG_BR:\n");
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+              sendCmd(Serial4, HDR_ABBA, TRL_5556, CMD_CFG_BR, rx->value, rx->ch);
+              update_parameter_container(rx, fog_inst, CMD_CFG_BR - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+              readout_parameter_container(rx, fog_inst, CMD_CFG_BR - CFG_CONTAINER_TO_CMD_OFFSET);
+						}
+						break;
+					}
+
 					case CMD_DUMP_FOG: {
 						DEBUG_PRINT("CMD_DUMP_FOG:\n");
 						dump_fog_param(fog_inst, rx->ch);
