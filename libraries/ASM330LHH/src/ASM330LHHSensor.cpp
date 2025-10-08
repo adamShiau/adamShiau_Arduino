@@ -84,7 +84,7 @@ void ASM330LHHSensor::init()
   Set_X_ODR(416.0);
   Set_X_FS(16);  
   Set_G_ODR(416.0);
-  Set_G_FS(500);
+  Set_G_FS(1000);
 
   Get_X_ODR(&var_f);
   Serial.print("XLM ODR: ");
