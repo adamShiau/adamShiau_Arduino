@@ -300,8 +300,8 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
     eeprom_obj *eeprom_ptr;
 
     if(fog_ch==1){
-      sp = &sp13;
-      SER = &Serial2;
+      // sp = &sp13;
+      // SER = &Serial2;
       eeprom_ptr = &eeprom_z;
     }
     else if(fog_ch==2){
@@ -1958,9 +1958,10 @@ void update_fpga_fog_parameter_init(int dly_time, unsigned char fog_ch)
   Serial.println(fog_ch);
 
   PIG *sp;
-  if(fog_ch==1) sp=&sp13;
-  else if(fog_ch==2) sp=&sp14;
-  else if(fog_ch=3) sp=&sp9;
+  // if(fog_ch==1) sp=&sp13;
+  // else if(fog_ch==2) sp=&sp14;
+  // else if(fog_ch=3) sp=&sp9;
+  sp=&sp14;
 
   eeprom_obj *eeprom_ptr;
 
@@ -2075,8 +2076,8 @@ void Wait_FPGA_Wakeup(byte &flag, byte fog_ch)
   byte times=0;
 
   if(fog_ch==1){
-    sp = &sp13;
-    SER = &Serial2;
+    // sp = &sp13;
+    // SER = &Serial2;
   }
   else if(fog_ch==2){
     sp = &sp14;

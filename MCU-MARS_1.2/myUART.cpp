@@ -27,7 +27,7 @@ Uart Serial4(&sercom3, 10, 9,  SERCOM_RX_PAD_3, UART_TX_PAD_2);
 
 // ---- 上層物件 ----
 uartRT myCmd(Serial1, 6);
-PIG sp13(Serial2, 16);
+// PIG sp13(Serial2, 16);
 PIG sp14(Serial3, 16);
 PIG sp9 (Serial4, 16);
 
