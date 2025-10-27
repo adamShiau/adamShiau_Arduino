@@ -26,18 +26,16 @@ Uart Serial3(&sercom1, 13, 8,  SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4(&sercom3, 10, 9,  SERCOM_RX_PAD_3, UART_TX_PAD_2);
 
 // ---- 上層物件 ----
-uartRT myCmd(Serial1, 6);
+// uartRT myCmd(Serial1, 6);
+uartRT myCmd(Serial2, 6);
 // PIG sp13(Serial2, 16);
 PIG sp14(Serial3, 16);
 PIG sp9 (Serial4, 16);
 
 // ---- ISRs ----
-void SERCOM2_Handler() { Serial2.IrqHandler(); }
-void SERCOM1_Handler() { Serial3.IrqHandler(); }
-void SERCOM3_Handler() { Serial4.IrqHandler(); }
-
-void SERCOM5_Handler() {
-  Serial1.IrqHandler();
+// void SERCOM2_Handler() { Serial2.IrqHandler(); }
+void SERCOM2_Handler() { 
+  Serial2.IrqHandler(); 
   if (uint8_t* cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader,
                                     &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer)) {
     uart_cmd   = cmd[0];
@@ -50,14 +48,38 @@ void SERCOM5_Handler() {
     Serial.print(uart_cmd); Serial.print(", ");
     Serial.print(uart_value); Serial.print(", ");
     Serial.println(fog_ch);
+
+    Serial2.print("cmd, value, ch: ");
+    Serial2.print(uart_cmd); Serial.print(", ");
+    Serial2.print(uart_value); Serial.print(", ");
+    Serial2.println(fog_ch);
   }
+}
+void SERCOM1_Handler() { Serial3.IrqHandler(); }
+void SERCOM3_Handler() { Serial4.IrqHandler(); }
+
+void SERCOM5_Handler() {
+  Serial1.IrqHandler();
+  // if (uint8_t* cmd = myCmd.readData(myCmd_header, myCmd_sizeofheader,
+  //                                   &myCmd_try_cnt, myCmd_trailer, myCmd_sizeoftrailer)) {
+  //   uart_cmd   = cmd[0];
+  //   uart_value = (cmd[1]<<24) | (cmd[2]<<16) | (cmd[3]<<8) | cmd[4];
+  //   fog_ch     = cmd[5];
+  //   cmd_complete = true;
+  //   fog_woke_flag = true;
+
+  //   Serial.print("cmd, value, ch: ");
+  //   Serial.print(uart_cmd); Serial.print(", ");
+  //   Serial.print(uart_value); Serial.print(", ");
+  //   Serial.println(fog_ch);
+  // }
 }
 
 // ---- API ----
 void myUART_init(void) {
   Serial.begin(230400);   // debug
   Serial1.begin(230400);  // to PC
-  Serial2.begin(115200);  // fog
+  Serial2.begin(230400);  // fog
   Serial3.begin(115200);
   Serial4.begin(115200);
 
