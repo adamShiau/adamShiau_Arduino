@@ -157,6 +157,7 @@ static inline void quat_to_Rwb(float w,float x,float y,float z, float R[9]) {
 }
 
 static byte *reg_fog;
+static byte cnt_tt = 0;
 
 void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
@@ -173,10 +174,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 	{
         CtrlReg = value;
 
-        // if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
-        // else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
-        // else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
-        run_fog_flag = sp14.setSyncMode(CtrlReg);
+        if(ch==1) run_fog_flag = sp13.setSyncMode(CtrlReg);
+        else if(ch==2) run_fog_flag = sp14.setSyncMode(CtrlReg);
+        else if(ch==3) run_fog_flag = sp9.setSyncMode(CtrlReg);
 
         switch(CtrlReg){
             case INT_SYNC:
@@ -231,6 +231,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     }
     
     if(run_fog_flag) {
+    Serial2.write(cnt_tt++);
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) {
       reg_fog = fog;
