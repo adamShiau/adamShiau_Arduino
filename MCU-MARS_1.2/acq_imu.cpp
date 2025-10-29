@@ -231,7 +231,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     }
     
     if(run_fog_flag) {
-    Serial2.write(cnt_tt++);
+
     fog = sp14.readData(header, sizeofheader, &try_cnt);
     if(fog) {
       reg_fog = fog;
@@ -244,6 +244,13 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 
     if(ISR_PEDGE)
     {
+
+    if ((cnt_tt++ % 100) == 0) {
+        cnt_tt = 1;
+        // Serial.println("IN");
+        byte data[] = {0xAB, 0xBA, 0x65, 0x00, 0x00, 0x00, 0x02, 0x02, 0x55, 0x56};
+        Serial2.write(data, sizeof(data));
+    }
       uint8_t* imu_data = (uint8_t*)malloc(36+12); // KVH_HEADER:4 + adxl355:9 + nano33_w:6 + nano33_a:6 + pig:14
       data_cnt++;
       mcu_time.ulong_val = millis() - t_previous;

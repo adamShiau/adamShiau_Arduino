@@ -30,6 +30,7 @@ unsigned char* uartRT::readData(uint8_t* expected_header, uint8_t header_size, u
     
     if (port.available() == 0) return nullptr; //return immediately if no serial data in buffer 
     uint8_t data = port.read();
+    // Serial.println(data, HEX);
     #if defined(TEST_MODE)
         if(print==1){
             Serial.print("\ndata in: ");

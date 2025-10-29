@@ -27,9 +27,7 @@ Uart Serial4(&sercom3, 10, 9,  SERCOM_RX_PAD_3, UART_TX_PAD_2);
 
 // ---- 上層物件 ----
 uartRT myCmd(Serial1, 6);
-PIG sp13(Serial2, 16);
-PIG sp14(Serial3, 16);
-PIG sp9 (Serial4, 16);
+
 
 // ---- ISRs ----
 void SERCOM2_Handler() { Serial2.IrqHandler(); }
@@ -56,10 +54,10 @@ void SERCOM5_Handler() {
 // ---- API ----
 void myUART_init(void) {
   Serial.begin(230400);   // debug
-  Serial1.begin(230400);  // to PC
-  Serial2.begin(230400);  // MINS
+  Serial1.begin(230400);  // to FOG AHRS
+  Serial2.begin(115200); 
   Serial3.begin(115200);
-  Serial4.begin(115200);
+  Serial4.begin(115200); // Locosys RTK_dual GNSS
 
   pinPeripheral(24, PIO_SERCOM);
   pinPeripheral(25, PIO_SERCOM);
@@ -69,7 +67,3 @@ void myUART_init(void) {
   pinPeripheral(9,  PIO_SERCOM_ALT);
 }
 
-void msg_out(char *msg) {
-  Serial.println(msg);
-  Serial1.println(msg);
-}
