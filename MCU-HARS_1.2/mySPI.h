@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <SPI.h>
-#include <ASM330LHHSensor.h>
+#include "src/ASM330LHHSensor.h"
 
 // SPI 速度常數（用 constexpr 避免巨集汙染）
 constexpr uint32_t SPI_CLOCK_8M = 8000000;
@@ -14,7 +14,7 @@ constexpr uint32_t SPI_CLOCK_1M = 1000000;
 
 // 只做 extern 宣告
 extern SPIClassSAMD mySPI;
-// extern ASM330LHHSensor IMU;
+extern ASM330LHHSensor IMU;
 
 // 初始化 API
 void mySPI_init(void);
