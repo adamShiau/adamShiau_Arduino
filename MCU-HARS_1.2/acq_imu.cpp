@@ -696,28 +696,6 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       #endif  
       resetWDT(); 
       reset_EXT_WDI(WDI); 
-
-      /***
-      my_acc_t my_GYRO_att_calculate;
-      if(abs(my_GYRO_cali.float_val[0]) > attitude_cali_coe._f.std_wx) my_GYRO_att_calculate.float_val[0] = my_GYRO_cali.float_val[0];
-      else my_GYRO_att_calculate.float_val[0] = 0.0f;
-      if(abs(my_GYRO_cali.float_val[1]) > attitude_cali_coe._f.std_wy) my_GYRO_att_calculate.float_val[1] = my_GYRO_cali.float_val[1];
-      else my_GYRO_att_calculate.float_val[1] = 0.0f;
-      if(abs(my_GYRO_cali.float_val[2]) > attitude_cali_coe._f.std_wz) my_GYRO_att_calculate.float_val[2] = my_GYRO_cali.float_val[2];
-      else my_GYRO_att_calculate.float_val[2] = 0.0f;
-
-
-      ahrs_attitude.updateIMU(my_GYRO_att_calculate.float_val[0], my_GYRO_att_calculate.float_val[1], my_GYRO_att_calculate.float_val[2],
-         my_ACCL_cali.float_val[0], my_ACCL_cali.float_val[1], my_ACCL_cali.float_val[2]);
-      
-
-      float r = ahrs_attitude.getLocalCaseRoll();
-      float p = ahrs_attitude.getLocalCasePitch();
-      float y = ahrs_attitude.getLocalCaseYaw();
-      my_att.float_val[0] =  p; // pitch
-      my_att.float_val[1] =  r; // roll
-      my_att.float_val[2] =  y; //
-       */
     }
 	}
 	clear_SEL_EN(select_fn);
