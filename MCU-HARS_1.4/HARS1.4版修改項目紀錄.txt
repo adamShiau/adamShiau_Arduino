@@ -1,0 +1,50 @@
+修改日期: 2025/12/01
+進行人員: 葉建麟
+
+基礎版本修改資訊:
+原始版本資料夾名稱: MCU-HARS_1.3
+修改版本資料夾名稱: MCU-HARS_1.4
+1) Arduino程式檔名修改，修改為MCU-HARS_1.4.ino
+2) IMU_PIG_DEFINE.h 修改
+#define MCU_VERSION "MCU-HARS_1.4"
+
+
+1. 對libraries進行修改 ASM330LHH
+ASM330LHHSensor.cpp 針對MEMS Gyro輸出範圍由原本+/- 500dps，修改為+/-1000 dps。
+  // Set_G_FS(500);    // 2025/12/01 original parameter = 500, mems gyro measurement range = ±500 dps
+  Set_G_FS(1000);      // 2025/12/01 change parameter = 1000, mems gyro measurement range = ±1000 dps
+
+2. 對acq_imu.cpp進行AHRS演算法，飽和數值修改為1000 dps，用來符合第一項修改。
+#define GYRO_MAX_DPS   (1000.0f)            // 2025/12/01, Change paramater, Gyro 飽和值 (dps), HARS Gyro MEMS 最高支援到 ±1000 dps.
+
+3. 修改MadgwickAHRS_IMU.cpp、MadgwickAHRS_IMU.h
+演算法修改後新增相關參數: 
+// --- 為了 exp-map / 梯形積分保留上一筆 gyro (rad/s) ---
+// 2025/10/31 added for trapezoidal integration.
+hasPrevW   = false;
+prevWx_rad = 0.0f;
+prevWy_rad = 0.0f;
+prevWz_rad = 0.0f;
+
+(1) 修改beta計算方式，修改computeBetaEffective function
+(2) 修改updateIMU_dualAccel function
+    (2-1) 移除gyro bias補償計算，用來處理在低轉速(<1dps)情況下，Yaw(Heading)角度計算錯誤問題。
+    (2-2) 加入EXP計算方式，用於陀螺儀積分計算。
+    目前代處理問題:
+    (2-3) updateIMU_dualAccel function，有設定一參數Beta_tune_para=3 或 Beta_tune_para=1，用來進行加速度修正量程式調整與測試，但數值的高低對於效能的影響，目前還沒有明確量化。目前程式中設定Beta_tune_para=3進行使用。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

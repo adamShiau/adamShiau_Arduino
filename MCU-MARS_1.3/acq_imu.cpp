@@ -17,7 +17,7 @@ void clear_SEL_EN(byte &select_fn); // define  in .ino
 #define ACC_MIN        (0.0f * 9.80665f)   // Accel 最低閥值 (m/s^2)
 #define ACC_MAX        (16.0f * 9.80665f)   // Accel 飽和值 (m/s^2)
 #define GYRO_MIN_DPS   (0.01f)              // Gyro 最低閥值 (dps) => 此處是由記憶體內數值決定
-#define GYRO_MAX_DPS   (1000.0f)            // 2025/12/01, Change paramater, Gyro 飽和值 (dps), HARS Gyro MEMS 最高支援到 ±1000 dps.
+#define GYRO_MAX_DPS   (1000.0f)            // 2025/12/01, Change paramater, Gyro 飽和值 (dps), MARS Gyro MEMS 最高支援到 ±1000 dps.
 #define ACC_LP_ALPHA   (0.2f)               // Acc 低通係數 0.1~0.3
                                             // 100 Hz 時等效 τ ≈ (1-α)/α * Ts ≈ 0.04 s，fc ~ 4 Hz
                                             // 若殘留振動多，可試 0.12~0.16（fc ~2–3 Hz）；太鈍則往 0.25 調
@@ -259,8 +259,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       IMU.Get_G_Axes_f(my_memsGYRO.float_val);// get mems GYRO data in degree/s
       my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
       my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
-      my_GYRO.float_val[2] = myfog_GYRO.float_val;
-
+      my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
+      // my_GYRO.float_val[2] = myfog_GYRO.float_val;
+      // my_GYRO.float_val[2] = myfog_GYRO.float_val * DEG_TO_RAD;
       /*** ------mis-alignment calibration gyro raw data -----***/
       gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
 
@@ -465,7 +466,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
       memcpy(imu_data, KVH_HEADER, 4);
       memcpy(imu_data+4, my_GYRO_case_frame.bin_val, 12);//wx, wy, wz
       memcpy(imu_data+16, my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
-      memcpy(imu_data+28, reg_fog+12, 4);// PD temp
+      memcpy(imu_data+28, MARS_PD_TEMP, 4);// PD temp
       memcpy(imu_data+32, mcu_time.bin_val, 4);
       memcpy(imu_data+36, my_att.bin_val, 12);
       myCRC.crc_32(imu_data, 48, CRC32);
@@ -480,7 +481,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         // Serial1.write(my_ACCL_cali.bin_val, 12);//ax, ay, az
         Serial1.write(my_GYRO_case_frame.bin_val, 12);   //wx, wy, wz
         Serial1.write(my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
-        Serial1.write(reg_fog+12, 4);         // PD temp
+        Serial1.write(MARS_PD_TEMP, 4);         // PD temp
         Serial1.write(mcu_time.bin_val, 4);
         Serial1.write(my_att.bin_val, 12);
         Serial1.write(CRC32, 4);
