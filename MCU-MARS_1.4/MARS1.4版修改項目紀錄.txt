@@ -1,0 +1,27 @@
+修改日期: 2025/12/08
+進行人員: 葉建麟
+
+
+基礎版本修改資訊:
+原始版本資料夾名稱: MCU-MARS_1.3
+修改版本資料夾名稱: MCU-MARS_1.4
+1) Arduino程式檔名修改，修改為MCU-MARS_1.4.ino
+2) IMU_PIG_DEFINE.h 修改
+#define MCU_VERSION "MCU-HARS_1.4"
+
+
+1. 以MCU-MARS_1.3版為基礎，Roll, Pitch, Yaw 輸出數值Moving average filter，改為圓形Moving average filter，修改Roll原本-180~180度數值計算錯誤問題、使用修改後方法Pitch角度計算結果不受影響、Yaw角度計算結果不受影響。
+acq_imu.cpp檔案修改，加入circle_ma_filter_deg function，取代原本moving average filter計算功能。
+
+2. 修改updataIMU_dualAccel function，
+
+(1) 參數Beta_tune_para = 1.0f 修改，降低加速度修正比例。
+
+(2) 原本AHRS使用加速度濾波後資料用於計算，修改使用加速度Raw data用於AHRS演算法計算，降低靜止姿態情況下Roll, Pitch角度計算數值震盪問題。
+
+
+
+
+
+
+
