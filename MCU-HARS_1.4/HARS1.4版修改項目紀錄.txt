@@ -33,6 +33,11 @@ prevWz_rad = 0.0f;
     目前代處理問題:
     (2-3) updateIMU_dualAccel function，有設定一參數Beta_tune_para=3 或 Beta_tune_para=1，用來進行加速度修正量程式調整與測試，但數值的高低對於效能的影響，目前還沒有明確量化。目前程式中設定Beta_tune_para=3進行使用。
 
+4. 修改GUI，起始記錄時間非從0開始問題。
+修改acq_imu.cpp，case EXT_SYNC: 程式內容加入
+// 設定 t_previous 為當前時間，實現計時歸零
+t_previous = millis();
+
 
 
 

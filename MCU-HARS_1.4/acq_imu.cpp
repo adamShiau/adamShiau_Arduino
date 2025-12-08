@@ -201,6 +201,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
                 setupWDT(11);
                 enable_EXT_WDT(EXT_WDT_EN);
                 reset_EXT_WDI(WDI);
+                
+                // 設定 t_previous 為當前時間，實現計時歸零
+                t_previous = millis();
+                
             break;
 
             case EXT_SYNC2:

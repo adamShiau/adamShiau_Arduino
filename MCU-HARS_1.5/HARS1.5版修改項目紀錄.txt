@@ -1,0 +1,22 @@
+修改日期: 2025/12/01
+進行人員: 葉建麟
+
+基礎版本修改資訊:
+原始版本資料夾名稱: MCU-HARS_1.4
+修改版本資料夾名稱: MCU-HARS_1.5
+1) Arduino程式檔名修改，修改為MCU-HARS_1.5.ino
+2) IMU_PIG_DEFINE.h 修改
+#define MCU_VERSION "MCU-HARS_1.5"
+
+
+1. 以MCU-HARS_1.4版為基礎，移除Roll, Pitch Moving average filter，直接輸出計算數值。
+修改acq_imu.cpp
+// pitch / roll：線性平均；yaw：圓形平均
+float ma_pitch = my_att.float_val[0];
+float ma_roll  = my_att.float_val[1];
+
+
+
+
+
+
