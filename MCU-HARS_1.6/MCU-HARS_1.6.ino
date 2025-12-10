@@ -856,10 +856,19 @@ void parameter_setting(byte &mux_flag, byte cmd, int value, byte fog_ch)
       break;}
 
       case CMD_FPGA_VERSION: {
-        Serial.print("MCU_VERSION");
+        String fpga_version;
+        for(int i=0; i<255; i++) SER->read();//clear serial buffer
+        sp->updateParameter(myCmd_header, FPGA_VERSION_ADDR, myCmd_trailer, value, 0xCC);
+        while(!SER->available());
+        if(SER->available()) fpga_version = SER->readStringUntil('\n');
+        Serial.print("CH: ");
+        Serial.println(fog_ch);
         Serial.print(MCU_VERSION);
-        Serial1.println(MCU_VERSION);
-
+        Serial1.print(MCU_VERSION);
+        Serial.print(',');
+        Serial1.print(',');
+        Serial.println(fpga_version);
+        Serial1.println(fpga_version);
         break;
       }
 
