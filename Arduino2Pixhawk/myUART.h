@@ -29,10 +29,10 @@ void SERCOM5_Handler() {Serial1.IrqHandler();}
 void myUART_init(void)
 {
     Serial.begin(115200);  // debug
-    Serial1.begin(230400); // output (PX4)
-    Serial2.begin(115200); // Xsens
-    Serial3.begin(115200); // NMEA_OUT_Serial
-    Serial4.begin(115200); // NMEA_IN_Serial
+    Serial1.begin(115200); // to HINS FPGA
+    Serial2.begin(230400); // data out UART connector J1
+    Serial3.begin(115200); // to CV7
+    Serial4.begin(115200); // to GNSS recv
 
 
     pinPeripheral(24, PIO_SERCOM);
