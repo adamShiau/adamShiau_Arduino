@@ -8,7 +8,6 @@
 #include "memory_manage.h"
 #include "output_mode_config.h"
 #include "output_mode_setting.h"
-// #include "MyNavigation.h"
 #include "MadgwickAHRS_IMU.h"
 
 
