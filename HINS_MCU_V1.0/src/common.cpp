@@ -1950,8 +1950,8 @@ static bool recv_and_store(fog_parameter_t* fog,
     parse_string(scratch, sn_store_cb, &ctx);
   }
   // RS422 輸出
-  Serial1.write((const uint8_t*)scratch, strlen(scratch));
-  Serial1.write('\n');
+  Serial2.write((const uint8_t*)scratch, strlen(scratch));
+  Serial2.write('\n');
   return true;
 }
 
