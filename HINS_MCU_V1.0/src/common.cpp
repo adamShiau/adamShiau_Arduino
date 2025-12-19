@@ -184,6 +184,18 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
     // time
     memcpy(out->time.time.bin_val,      &pkt[idx], 4); idx += 4;
 
+    // Serial.print(out->fog.fogz.step.int_val);Serial.print(",");
+    // Serial.print(out->fog.fogy.step.float_val);Serial.print(",");
+    // Serial.print(out->fog.fogx.step.float_val);Serial.print(",");
+    // Serial.print(out->adxl357.ax.float_val);Serial.print(",");
+    // Serial.print(out->adxl357.ay.float_val);Serial.print(",");
+    // Serial.print(out->adxl357.az.float_val);Serial.print(",");
+    // Serial.print(out->temp.tempz.float_val);Serial.print(",");
+    // Serial.print(out->temp.tempy.float_val);Serial.print(",");
+    // Serial.print(out->temp.tempx.float_val);Serial.print(",");
+    // Serial.print(out->adxl357.temp.float_val);Serial.print(",");
+    // Serial.println(out->time.time.float_val);
+
     return 0;
 }
 

@@ -68,9 +68,9 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
                 // 5) 依序送出：Header + Calibrated Payload + CRC
                 if(data_cnt >= DATA_DELAY_CNT) {
-                    Serial2.write(KVH_HEADER, sizeof(KVH_HEADER));
-                    Serial2.write(out, SENSOR_PAYLOAD_LEN);
-                    Serial2.write(crc, 4);
+                    // Serial2.write(KVH_HEADER, sizeof(KVH_HEADER));
+                    // Serial2.write(out, SENSOR_PAYLOAD_LEN);
+                    // Serial2.write(crc, 4);
                 }       
             }
         }
