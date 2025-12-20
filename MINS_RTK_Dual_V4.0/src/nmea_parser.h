@@ -63,6 +63,8 @@ struct GpsData {
     float altitude_std_dev;     // 標準差
     bool altitude_stable;       // 海拔是否穩定
 
+    volatile uint32_t gga_epoch;   // 每成功解析到一筆GGA就+1
+
     // 四個衛星系統的 CNO 資料
     SatelliteSystem sat_systems[SAT_SYSTEM_COUNT];
 
@@ -100,6 +102,8 @@ struct GpsData {
             altitude_history[i] = 0.0;
         }
 
+        gga_epoch = 0;
+
         // 初始化頻率計算變量
         gga_count = 0;
         gga_start_time = millis();
@@ -124,6 +128,9 @@ public:
 
     // 主要解析函數
     bool parseLine(const char* nmea_line);
+
+    // 12/20 新增：以 GGA 為 epoch 的解析版本
+    bool parseGGA_epoch(const char* line);  // 以GGA時間變化推進epoch
 
     // 資料存取
     GpsData* getData() { return &gps_data; }

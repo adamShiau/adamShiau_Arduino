@@ -31,7 +31,8 @@ bool NmeaParser::parseLine(const char* nmea_line) {
     const char* msg_type = nmea_line + 3; // 跳過 $xx 部分
 
     if (strncmp(msg_type, "GGA", 3) == 0) {
-        return parseGGA(nmea_line);
+        // return parseGGA(nmea_line);
+        return parseGGA_epoch(nmea_line);
     }
     // 不再使用RMC句子，改為完全依賴GGA
     // else if (strncmp(msg_type, "RMC", 3) == 0) {
@@ -49,6 +50,105 @@ bool NmeaParser::parseLine(const char* nmea_line) {
 
     return false; // 未知句子類型
 }
+
+bool NmeaParser::parseGGA_epoch(const char* line) {
+    // $GNGGA,time,lat,lat_dir,lon,lon_dir,quality,sats,hdop,alt,alt_unit,height,height_unit,dgps,dgps_id*checksum
+
+    // ✅ 保留：更新 GGA 頻率統計
+    updateGGAFrequency();
+
+    char fields[15][20];
+    int field_count = splitFields(line, fields, 15);
+    if (field_count < 10) {
+        return false;
+    }
+
+    // --- 先記住舊時間（用來判斷「時間是否真的更新」）---
+    uint8_t prev_h = gps_data.hour;
+    uint8_t prev_m = gps_data.minute;
+    uint8_t prev_s = gps_data.second;
+    uint16_t prev_ms = gps_data.millisecond;
+
+    bool time_ok = false;
+
+    // 解析UTC時間 (GGA句子的第1個欄位)
+    if (strlen(fields[1]) > 0) {
+        time_ok = parseTime(fields[1]);  // 你的 parseTime 會在沒有 .sss 時把 millisecond 設 0
+        if (time_ok) {
+            gps_data.valid_time = true;
+
+            // 你原本的日期處理保留
+            gps_data.day = 16;
+            gps_data.month = 12;
+            gps_data.year = 2025;
+
+            // ⭐ 只有「時間真的變了」才推進 epoch
+            if (gps_data.hour != prev_h ||
+                gps_data.minute != prev_m ||
+                gps_data.second != prev_s ||
+                gps_data.millisecond != prev_ms) {
+                gps_data.gga_epoch++;
+            }
+        }
+    }
+
+    // 解析緯度
+    if (strlen(fields[2]) > 0 && strlen(fields[3]) > 0) {
+        gps_data.latitude = parseCoordinate(fields[2], fields[3]);
+        gps_data.valid_position = true;
+    }
+
+    // 解析經度
+    if (strlen(fields[4]) > 0 && strlen(fields[5]) > 0) {
+        gps_data.longitude = parseCoordinate(fields[4], fields[5]);
+        gps_data.valid_position = true;
+    }
+
+    // 解析定位品質
+    if (strlen(fields[6]) > 0) {
+        int quality = parseInt(fields[6]);
+        switch (quality) {
+            case 0: gps_data.fix_type = GPS_NO_FIX; break;
+            case 1: gps_data.fix_type = GPS_3D_FIX; break;
+            case 2: gps_data.fix_type = GPS_DGPS; break;
+            case 4: gps_data.fix_type = GPS_RTK_FIXED; break;
+            case 5: gps_data.fix_type = GPS_RTK_FLOAT; break;
+            default: gps_data.fix_type = GPS_3D_FIX; break;
+        }
+    }
+
+    // 解析衛星數
+    if (strlen(fields[7]) > 0) {
+        gps_data.satellites_used = parseInt(fields[7]);
+    }
+
+    // 解析 HDOP
+    if (strlen(fields[8]) > 0) {
+        gps_data.hdop = parseFloat(fields[8]);
+    }
+
+    // 解析實際海拔
+    if (strlen(fields[9]) > 0) {
+        float msl_altitude = parseFloat(fields[9]);  // MSL高度
+        float geoid_separation = 0.0f;
+
+        // 取得橢球面分離度修正值
+        if (strlen(fields[11]) > 0) {
+            geoid_separation = parseFloat(fields[11]);
+        }
+
+        float raw_altitude = msl_altitude + geoid_separation;
+
+        // 使用海拔濾波器處理
+        if (!updateAltitudeFilter(raw_altitude)) {
+            gps_data.altitude = raw_altitude;
+        }
+    }
+
+    gps_data.last_update = millis();
+    return true;
+}
+
 
 bool NmeaParser::parseGGA(const char* line) {
     // $GNGGA,time,lat,lat_dir,lon,lon_dir,quality,sats,hdop,alt,alt_unit,height,height_unit,dgps,dgps_id*checksum

@@ -21,6 +21,8 @@ struct DataOutput {
     uint32_t last_send_time;
     uint8_t packet_type;
     uint8_t channel;  // 關聯的通道
+    uint32_t last_sent_gga_epoch;   // 新增：避免重送同一筆GGA時間
+
 };
 
 // ---- API ----

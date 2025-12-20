@@ -54,8 +54,26 @@ void processDataOutputs() {
 
     if (output->enabled && (current_time - output->last_send_time >= output->interval_ms)) {
       bool packet_created = false;
-      bool packet_created_UTC = false;
       uint8_t gps_status = PacketProtocol::determineGpsStatus(gps);
+
+      // ★ epoch gate：processCommand2 使用 PKT_POSITION，封包內含UTC+ms
+    if (output->packet_type == PKT_POSITION) {
+        uint32_t cur_epoch = gps->gga_epoch;
+
+        // 還沒收到第一筆GGA，不送（避免送到 00:00:00.000）
+        if (cur_epoch == 0) {
+            continue;
+        }
+
+        // 同一個GGA epoch 只送一次，避免UTC ms重複
+        if (cur_epoch == output->last_sent_gga_epoch) {
+            // 注意：這裡不要更新 last_send_time，否則會延遲下一筆新GGA
+            continue;
+        }
+
+        output->last_sent_gga_epoch = cur_epoch;
+    }
+
 
       switch (output->packet_type) {
         case PKT_HEADING:
@@ -203,5 +221,6 @@ void command_init(void) {
     data_outputs[i].last_send_time = 0;
     data_outputs[i].packet_type = 0;
     data_outputs[i].channel = 0;
+    data_outputs[i].last_sent_gga_epoch = 0;  // 新增
   }
 }
