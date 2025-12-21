@@ -28,6 +28,7 @@ const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 // Forward declare Serial1 (constructed in myUART.cpp)
 class Uart;
 extern Uart Serial1;
+extern Uart Serial3;
 // -----------------------------------------------------------------------------
 
 /* ===================== serial_printf implementation ===================== */
@@ -1165,6 +1166,40 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, rx->value, rx->ch);
 						}			
+						break;
+					}
+
+          case CMD_HINS_PING: {
+						DEBUG_PRINT("CMD_HINS_PING:\n");	
+						uint8_t cmd[] = { 
+              0x75, 0x65, 0x01, 0x02, 0x02, 0x01, 0xE0, 0xC6 
+            };
+
+            // 送出指令
+            Serial3.write(cmd, sizeof(cmd));
+            Serial3.flush();   // 確保送完
+            Serial.println("Command sent");
+
+            // 設定 timeout = 1.5 秒
+            unsigned long startTime = millis();
+            const unsigned long timeoutMs = 1500;
+
+            // 等待回傳並印出
+            while (millis() - startTime < timeoutMs) {
+              Serial.println(Serial3.available());
+              if (Serial3.available() > 0) {
+                uint8_t b = Serial3.read();
+                
+                // 以 HEX 格式印出
+                if (b < 0x10) Serial.print("0");
+                Serial.print(b, HEX);
+                Serial.print(" ");
+              }
+            }
+
+            Serial.println("\nTimeout reached\n");
+
+
 						break;
 					}
 					default:{

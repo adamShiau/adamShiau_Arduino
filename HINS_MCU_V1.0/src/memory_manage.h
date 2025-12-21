@@ -111,7 +111,11 @@ enum {
     CMD_DUMP_FOG = 102, //0x66
     CMD_WRITE_SN = 110,  //0x6E
     CMD_DUMP_MIS = 129,  //0x81
-    CMD_DUMP_SN = 130  //0x82
+    CMD_DUMP_SN = 130,  //0x82
+
+    /*** HINS CMD */
+
+    CMD_HINS_PING = 150 //0x96
 
 
 };
