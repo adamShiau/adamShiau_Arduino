@@ -373,10 +373,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     static uint8_t packet_buffer[64];
     static uint16_t buffer_index = 0;
     static bool expecting_packet = false;
-    static unsigned long gps_last_time = 0;
-    static bool gps_timer_enabled = false;
-    static GnssData last_valid_gps_data;
-    static bool has_valid_gps_data = false;
+    // 移除定時器相關變數 (改為收到即發送)
+    // static unsigned long gps_last_time = 0;
+    // static bool gps_timer_enabled = false;
+    // static GnssData last_valid_gps_data;
+    // static bool has_valid_gps_data = false;
 
     // 初始化GPS通訊 (只執行一次)
     if (!cmd1_sent) {
@@ -385,8 +386,6 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         Serial2.write(data1, sizeof(data1));
         Serial.println("📤 發送CMD 1: 設定MINS為5Hz");
         expecting_packet = true;
-        gps_timer_enabled = true;
-        gps_last_time = millis();
     }
 
     // 延遲發送CMD 2 (只執行一次)
@@ -429,10 +428,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
                                 updateGNSSHeading(gnss_data.heading, gnss_data.status);
                             }
 
-                            // 儲存最新的有效GPS數據
+                            // 收到GPS位置封包立即發送 (不使用定時器控制)
                             if (gnss_data.packet_type == PKT_POSITION) {
-                                last_valid_gps_data = gnss_data;
-                                has_valid_gps_data = true;
+                                #ifdef UART_RS422_CMD
+                                sendGpsPacketKVH(gnss_data);
+                                #endif
                             }
                         }
 
@@ -455,17 +455,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         }
     }
 
-    // 5Hz GPS封包輸出 - 每200ms輸出最後一次有效的GPS數據
-    if (gps_timer_enabled && (millis() - gps_last_time >= 1000)) {
-        gps_last_time = millis();
-
-        if (has_valid_gps_data) {
-            // 以 KVH 格式 (0x82) 發送 GPS 位置數據到 Serial1
-            #ifdef UART_RS422_CMD
-            sendGpsPacketKVH(last_valid_gps_data);
-            #endif
-        }
-    }
+    // GPS封包輸出已改為收到即發送，不再使用定時器控制
 
     if(ISR_PEDGE)
     {

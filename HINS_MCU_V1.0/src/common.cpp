@@ -1186,7 +1186,7 @@ void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 
             // 等待回傳並印出
             while (millis() - startTime < timeoutMs) {
-              Serial.println(Serial3.available());
+              // Serial.println(Serial3.available());
               if (Serial3.available() > 0) {
                 uint8_t b = Serial3.read();
                 
