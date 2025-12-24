@@ -1,6 +1,6 @@
 #include "src/app/app_state.h"         // g_cmd / g_fog_params / g_output_fn / g_auto_rst / ahrs_attitude
 #include "src/myUART.h"               // myUART_init / readDataDynamic
-#include "src/common.h"               // get_uart_cmd / cmd_mux / fog_parameter / boot_capture_all / crc32_init_table
+#include "src/common.h"               
 #include "src/output_mode_setting.h"  // output_mode_setting
 
 
@@ -43,7 +43,7 @@ void loop() {
   uint8_t* buf = readDataDynamic(&try_cnt);
   if (!buf) return;
 
-  get_uart_cmd(buf, &g_cmd);
+  decode_cmd_v1(buf, &g_cmd);
   cmd_mux(&g_cmd);
 
   // 1) parameter

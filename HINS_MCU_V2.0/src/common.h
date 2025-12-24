@@ -1,3 +1,4 @@
+#include "domain/protocol/cmd_codec_v1.h"
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -148,7 +149,6 @@ typedef struct {
 } auto_rst_t;
 
 /* ---------- API ---------- */
-void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
 void cmd_mux(cmd_ctrl_t* rx);
 void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
 void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
