@@ -1,5 +1,6 @@
 #include "app_state.h"
 #include "../output_mode_config.h"   // 確保 fn_ptr/輸出函式宣告一致
+#include <Arduino.h>
 
 cmd_ctrl_t g_cmd = {
   .condition = RX_CONDITION_INIT,
@@ -19,3 +20,5 @@ fog_parameter_t g_fog_params;     // 原本就是容器
 fn_ptr g_output_fn = acq_rst;     // 原本預設指向 rst
 
 Madgwick ahrs_attitude;           // ★集中定義點（取代分散在 .ino 或其他地方）
+
+Print& g_cmd_port = Serial1;      //使用在common.cpp 的 switch case

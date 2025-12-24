@@ -6,7 +6,7 @@
 #include "memory_manage.h"
 #include "MadgwickAHRS_IMU.h"
 
-extern Madgwick ahrs_attitude; //define in IRIS1_MCU.ino, declare here for use in acq_ahrs.cpp
+// extern Madgwick ahrs_attitude; //define in IRIS1_MCU.ino, declare here for use in acq_ahrs.cpp
 
 typedef void (*fn_ptr) (cmd_ctrl_t*, fog_parameter_t*);
 
