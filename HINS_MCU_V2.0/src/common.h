@@ -1,4 +1,3 @@
-#include "domain/protocol/cmd_codec_v1.h"
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -8,8 +7,8 @@
 #include <stdarg.h>
 #include "memory_manage.h"
 #include "utils/serial_printf.h"
-#include "utils/crc32.h"
-#include "drivers/link/nios_link.h"
+
+
 #define DEBUG_PRINT
 
 #ifdef DEBUG_PRINT
@@ -21,6 +20,7 @@
 extern const uint8_t HDR_ABBA[2];
 extern const uint8_t TRL_5556[2];
 extern const uint8_t KVH_HEADER[4];
+#define POLYNOMIAL_32 0x04C11DB7
 
 // first order temperature compensation, one T
 #define SF_TEMP_COMPENSATION_1ST_ORDER(temp, slope, offset) ((temp) * (slope) + (offset))
@@ -149,8 +149,11 @@ typedef struct {
 } auto_rst_t;
 
 /* ---------- API ---------- */
+void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
 void cmd_mux(cmd_ctrl_t* rx);
 void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
+size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
+    int32_t value, uint8_t ch);
 void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
 
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-
+#warning "crc32.h included"
 
 /**
  * @brief Initialize the CRC32 lookup table.

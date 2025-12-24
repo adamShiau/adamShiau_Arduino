@@ -2,7 +2,7 @@
  * common.cpp
  *
  * Arduino implementation of helpers defined in common.h
- * - decode_cmd_v1(): interprets a parsed packet (data pointer) into cmd_ctrl_t.
+ * - get_uart_cmd(): interprets a parsed packet (data pointer) into cmd_ctrl_t.
  * - cmd_mux(): selects the MUX group based on cmd range.
  *
  * Assumptions:
@@ -16,7 +16,6 @@
  */
 
 #include "common.h"
-#include "app/app_state.h"  // for g_cmd_port
 #include <ctype.h>
 #include <string.h>
 // #include "utils/serial_printf.h"
@@ -49,6 +48,16 @@ static inline float bias_temp_comp_1st_3t(float temp,
   return slope * temp + offset;
 }
 
+/* Helper: assemble big-endian 4 bytes into signed 32-bit */
+static inline int32_t be_bytes_to_i32(uint8_t b3, uint8_t b2, uint8_t b1, uint8_t b0)
+{
+  uint32_t u =
+      ((uint32_t)b3 << 24) |
+      ((uint32_t)b2 << 16) |
+      ((uint32_t)b1 <<  8) |
+      ((uint32_t)b0 <<  0);
+  return (int32_t)u;  // interpret as signed if needed
+}
 
 void dumpPkt(uint8_t *pkt, int len) {
     if (!pkt) {
@@ -107,18 +116,53 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
     return 0;
 }
 
-/**
- * @brief Generate CRC32 for KVH_HEADER + payload
- * 
- * @param header  pointer to 4-byte KVH header
- * @param payload pointer to 44-byte payload
- * @param payload_len length of payload (should be 44)
- * @param crc_out pointer to 4-byte array for output (big-endian)
- */
+
 
 /* -------------------------------------------------------------------------- */
 /* Parse a UART command buffer into cmd_ctrl_t                                 */
 /* -------------------------------------------------------------------------- */
+void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx)
+{
+  if (!data || !rx) return;
+
+  rx->condition = (rx_condition_t)data[0];
+
+  if (rx->condition == RX_CONDITION_ABBA_5556) {
+    // payload: [cmd][v3][v2][v1][v0][ch]  (6 bytes total)
+    rx->complete = 1;
+    rx->cmd      = data[1];
+    rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
+    rx->ch       = data[6];
+
+    DEBUG_PRINT("condition: %d, ", RX_CONDITION_ABBA_5556);
+    DEBUG_PRINT("cmd: %x, value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
+
+  }
+  else if (rx->condition == RX_CONDITION_CDDC_5758) {
+    // payload: [cmd][SN[0..11]] (12 bytes SN, not including NUL)
+    rx->complete = 1;
+    rx->cmd      = data[1];
+
+    for (int i = 0; i < 12; i++) {
+      rx->SN[i] = data[i + 2];
+    }
+    rx->SN[12] = '\0';
+
+  }
+  else if (rx->condition == RX_CONDITION_EFFE_5354) {
+    // payload: [cmd][v3][v2][v1][v0][ch]
+    rx->complete = 1;
+    rx->cmd      = data[1];
+    rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
+    rx->ch       = data[6];
+
+    DEBUG_PRINT("condition: %d, ", RX_CONDITION_EFFE_5354);
+    DEBUG_PRINT("cmd: %x, value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
+  }
+  else {
+    // Unknown condition; leave rx->complete unchanged (typically 0)
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /* Choose MUX group based on cmd (same logic as your Nios version)             */
@@ -190,856 +234,18 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
   }
 }
 
-/**
- * @brief 傳送一個帶有標頭、指令、數值與標尾的封包到指定輸出埠
- *
- * 將輸入參數組裝成一個完整的通訊封包，並透過繼承自 Arduino Print
- * 類別的物件（如 Serial, Serial1, EthernetClient 等）送出。
- *
- * 封包格式一般為：
- *   [header(2 bytes)] [cmd(1 byte)] [ch(1 byte)] [value(4 bytes)] [trailer(2 bytes)]
- *
- * @param port    目標輸出埠，需為 Print 介面的物件 (ex: Serial)
- * @param header  封包的標頭 (2 bytes)，用來識別封包開始
- * @param trailer 封包的標尾 (2 bytes)，用來識別封包結束
- * @param cmd     指令代碼 (1 byte)，表明要執行的命令
- * @param value   指令參數或資料 (4 bytes, int32_t)
- * @param ch      通道或子代碼 (1 byte)，用來區分不同通道或資料類型
- *
- * @return 實際送出的位元組數
- */
-
-void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
-{
-
-	if(rx->mux == MUX_PARAMETER){
-        DEBUG_PRINT("fog_parameter mode\n");
-        rx->mux = MUX_ESCAPE;
-
-			if(rx->condition == RX_CONDITION_ABBA_5556 || rx->condition == RX_CONDITION_EFFE_5354) {
-		
-        switch(rx->cmd ){
-					case CMD_MOD_FREQ: {
-						DEBUG_PRINT("CMD_MOD_FREQ:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MOD_FREQ, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MOD_FREQ - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_MOD_AMP_H: {
-						DEBUG_PRINT("CMD_MOD_AMP_H:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MOD_AMP_H, rx->value, rx->ch);
-							update_parameter_container(rx, fog_inst, CMD_MOD_AMP_H - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_MOD_AMP_L: {
-						DEBUG_PRINT("CMD_MOD_AMP_L:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MOD_AMP_L, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_MOD_AMP_L - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_POLARITY: {
-						DEBUG_PRINT("CMD_POLARITY:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_POLARITY, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_POLARITY - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_WAIT_CNT: {
-						DEBUG_PRINT("CMD_WAIT_CNT:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_WAIT_CNT, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_WAIT_CNT - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_ERR_AVG: {
-						DEBUG_PRINT("CMD_ERR_AVG:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_ERR_AVG, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_ERR_AVG - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_GAIN1: {
-						DEBUG_PRINT("CMD_GAIN1:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_GAIN1, rx->value, rx->ch);
-             				 update_parameter_container(rx, fog_inst, CMD_GAIN1 - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_CONST_STEP: {
-						DEBUG_PRINT("CMD_CONST_STEP:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_CONST_STEP, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_CONST_STEP - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_FB_ON: {
-						DEBUG_PRINT("CMD_FB_ON:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_FB_ON, rx->value, rx->ch);
-             			 	update_parameter_container(rx, fog_inst, CMD_FB_ON - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_GAIN2: {
-						DEBUG_PRINT("CMD_GAIN2:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_GAIN2, rx->value, rx->ch);
-              				update_parameter_container(rx, fog_inst, CMD_GAIN2 - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_ERR_OFFSET: {
-						DEBUG_PRINT("CMD_ERR_OFFSET:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_ERR_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_ERR_OFFSET - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					} 
-					case CMD_DAC_GAIN: {
-						DEBUG_PRINT("CMD_DAC_GAIN:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_DAC_GAIN, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_DAC_GAIN - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_CUT_OFF: {
-						DEBUG_PRINT("CMD_CUT_OFF:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_CUT_OFF, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_CUT_OFF - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_COMP_T1: {
-						DEBUG_PRINT("CMD_SF_COMP_T1:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_COMP_T1, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_COMP_T2: {
-						DEBUG_PRINT("CMD_SF_COMP_T2:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_COMP_T2, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_COMP_T2 - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_1_SLOPE: {
-						DEBUG_PRINT("CMD_SF_1_SLOPE:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_1_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_1_SLOPE - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_1_OFFSET: {
-						DEBUG_PRINT("CMD_SF_1_OFFSET:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_1_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_1_OFFSET - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_2_SLOPE: {
-						DEBUG_PRINT("CMD_SF_2_SLOPE:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_2_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_2_SLOPE - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_2_OFFSET: {
-						DEBUG_PRINT("CMD_SF_2_OFFSET:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_2_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_2_OFFSET - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_3_SLOPE: {
-						DEBUG_PRINT("CMD_SF_3_SLOPE:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_3_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_3_SLOPE - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_SF_3_OFFSET: {
-						DEBUG_PRINT("CMD_SF_3_OFFSET:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_3_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_3_OFFSET - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_BIAS_COMP_T1: {
-						DEBUG_PRINT("CMD_BIAS_COMP_T1:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_COMP_T1, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
-							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == RX_CONDITION_EFFE_5354) {
-							
-						}			
-						break;
-					}
-					case CMD_BIAS_COMP_T2: {
-						DEBUG_PRINT("CMD_BIAS_COMP_T2:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_COMP_T2, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_COMP_T2 - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_1_SLOPE: {
-						DEBUG_PRINT("CMD_BIAS_1_SLOPE:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_1_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_1_SLOPE - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_1_OFFSET: {
-						DEBUG_PRINT("CMD_BIAS_1_OFFSET:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_1_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_1_OFFSET - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_2_SLOPE: {
-						DEBUG_PRINT("CMD_BIAS_2_SLOPE:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_2_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_2_SLOPE - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_2_OFFSET: {
-						DEBUG_PRINT("CMD_BIAS_2_OFFSET:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_2_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_2_OFFSET - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_3_SLOPE: {
-						DEBUG_PRINT("CMD_BIAS_3_SLOPE:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_3_SLOPE, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_3_SLOPE - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_3_OFFSET: {
-						DEBUG_PRINT("CMD_BIAS_3_OFFSET:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_3_OFFSET, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_3_OFFSET - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_SF_SLOPE_XLM: {
-						DEBUG_PRINT("CMD_SF_SLOPE_XLM:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_SLOPE_XLM, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_SLOPE_XLM - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_SF_OFFSET_XLM: {
-						DEBUG_PRINT("CMD_SF_OFFSET_XLM:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SF_OFFSET_XLM, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_OFFSET_XLM - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_SLOPE_XLM: {
-						DEBUG_PRINT("CMD_BIAS_SLOPE_XLM:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_SLOPE_XLM, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_SLOPE_XLM - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					case CMD_BIAS_OFFSET_XLM: {
-						DEBUG_PRINT("CMD_BIAS_OFFSET_XLM:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_BIAS_OFFSET_XLM, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_OFFSET_XLM - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
-
-            }			
-						break;
-					}
-					/***------------- mis-alignment command, accl */
-					case CMD_MIS_AX: {
-						DEBUG_PRINT("CMD_MIS_AX:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_AX, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_AX - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_AY: {
-						DEBUG_PRINT("CMD_MIS_AY:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_AY, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_AY - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_AZ: {
-						DEBUG_PRINT("CMD_MIS_AZ:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_AZ, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_AZ - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A11: {
-						DEBUG_PRINT("CMD_MIS_A11:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A11, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A11 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A12: {
-						DEBUG_PRINT("CMD_MIS_A12:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A12, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A12 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A13: {
-						DEBUG_PRINT("CMD_MIS_A13:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A13, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A13 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A21: {
-						DEBUG_PRINT("CMD_MIS_A21:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A21, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A21 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A22: {
-						DEBUG_PRINT("CMD_MIS_A22:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A22, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A22 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A23: {
-						DEBUG_PRINT("CMD_MIS_A23:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A23, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A23 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A31: {
-						DEBUG_PRINT("CMD_MIS_A31:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A31, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A31 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A32: {
-						DEBUG_PRINT("CMD_MIS_A32:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A32, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A32 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_A33: {
-						DEBUG_PRINT("CMD_MIS_A33:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_A33, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_A33 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					/***------------- mis-alignment command, gyro */
-					case CMD_MIS_GX: {
-						DEBUG_PRINT("CMD_MIS_GX:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_GX, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_GX - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_GY: {
-						DEBUG_PRINT("CMD_MIS_GY:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_GY, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_GY - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_GZ: {
-						DEBUG_PRINT("CMD_MIS_GZ:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_GZ, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_GZ - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G11: {
-						DEBUG_PRINT("CMD_MIS_G11:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G11, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G11 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G12: {
-						DEBUG_PRINT("CMD_MIS_G12:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G12, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G12 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G13: {
-						DEBUG_PRINT("CMD_MIS_G13:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G13, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G13 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G21: {
-						DEBUG_PRINT("CMD_MIS_G21:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G21, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G21 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G22: {
-						DEBUG_PRINT("CMD_MIS_G22:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G22, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G22 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G23: {
-						DEBUG_PRINT("CMD_MIS_G23:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G23, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G23 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G31: {
-						DEBUG_PRINT("CMD_MIS_G31:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G31, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G31 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G32: {
-						DEBUG_PRINT("CMD_MIS_G32:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G32, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G32 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_MIS_G33: {
-						DEBUG_PRINT("CMD_MIS_G33:\n");
-						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_MIS_G33, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G33 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-						}
-						else if(rx->condition == 3) {
-							
-						}
-						break;
-					}
-					case CMD_DUMP_FOG: {
-						DEBUG_PRINT("CMD_DUMP_FOG:\n");
-						dump_fog_param(fog_inst, rx->ch);
-						break;
-					} 
-					case CMD_DUMP_MIS: {
-						DEBUG_PRINT("CMD_DUMP_MIS:\n");
-						dump_misalignment_param(fog_inst);
-						break;
-					} 
-					case CMD_DUMP_SN: {
-						DEBUG_PRINT("CMD_DUMP_SN:\n");
-						dump_SN(fog_inst);
-						break;
-					} 
-					case CMD_DATA_OUT_START: { // not use now
-						DEBUG_PRINT("CMD_DATA_OUT_START:\n");
-						// start_flag = rx->value;
-						break;
-					}
-					case CMD_SYNC_CNT: {
-						DEBUG_PRINT("CMD_SYNC_CNT:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rx->value, rx->ch);
-						}			
-						break;
-					} 
-					case CMD_HW_TIMER_RST: {
-						DEBUG_PRINT("CMD_HW_TIMER_RST:\n");	
-						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, rx->value, rx->ch);
-						}			
-						break;
-					}
-
-          case CMD_HINS_PING: {
-						DEBUG_PRINT("CMD_HINS_PING:\n");	
-						uint8_t cmd[] = { 
-              0x75, 0x65, 0x01, 0x02, 0x02, 0x01, 0xE0, 0xC6 
-            };
-
-            // // 送出指令
-            // Serial3.write(cmd, sizeof(cmd));
-            // Serial3.flush();   // 確保送完
-            // Serial.println("Command sent");
-
-            // // 設定 timeout = 1.5 秒
-            // unsigned long startTime = millis();
-            // const unsigned long timeoutMs = 1500;
-
-            // // 等待回傳並印出
-            // while (millis() - startTime < timeoutMs) {
-            //   // Serial.println(Serial3.available());
-            //   if (Serial3.available() > 0) {
-            //     uint8_t b = Serial3.read();
-                
-            //     // 以 HEX 格式印出
-            //     if (b < 0x10) Serial.print("0");
-            //     Serial.print(b, HEX);
-            //     Serial.print(" ");
-            //   }
-            // }
-
-            Serial.println("\nTimeout reached\n");
-
-						break;
-					}
-
-					default:{
-						DEBUG_PRINT("condition 1 default case\n");
-					} 
-				}
-		
-			}
-			else if(rx->condition == RX_CONDITION_CDDC_5758) {
-				switch(rx->cmd ){
-					// case CMD_WRITE_SN: {
-					// 	DEBUG_PRINT("CMD_WRITE_SN:\n");
-					// 	alt_32 SN1, SN2, SN3;
-					// 	SN1 =  rx->SN[0]<<24 | rx->SN[1]<<16 | rx->SN[2]<<8 | rx->SN[3];
-					// 	SN2 =  rx->SN[4]<<24 | rx->SN[5]<<16 | rx->SN[6]<<8 | rx->SN[7];
-					// 	SN3 =  rx->SN[8]<<24 | rx->SN[9]<<16 | rx->SN[10]<<8 | rx->SN[11];
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 0, SN1);
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 1, SN2);
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 2, SN3);
-					// 	for (alt_u8 i = 0; i < 13; i++) {
-					// 		fog_inst->sn[i] = rx->SN[i];
-					// 	}
-					// 	break;
-					// }
-					// default:{
-					// 	DEBUG_PRINT("condition 2 default case\n");
-					// } 
-				}
-			}
-			
-		}
-
-}
 
 void reset_FPGA_timer(void)
 {
 	DEBUG_PRINT("reset_FPGA_timer\n");
-	sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 1, 1);
+	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 1, 1);
 	delay(10); 
-	sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
+	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
 }
 
 void set_data_rate(uint32_t rate)
 {
-	sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
+	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
 }
 
 #ifndef FOG_JSON_TIMEOUT_MS
@@ -1235,7 +441,7 @@ void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch)
   // 1) Send command to FPGA over Serial1
   // static const uint8_t HDR[2] = {0xAB, 0xBA};
   // static const uint8_t TRL[2] = {0x55, 0x56};
-  sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_DUMP_FOG, 2, ch);
+  sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_DUMP_FOG, 2, ch);
 
   // 2) Receive a full JSON object from Serial1
   char json_buf[FOG_JSON_BUF_SIZE];
@@ -1262,7 +468,7 @@ void dump_misalignment_param(fog_parameter_t* fog_inst)
 
   // 1) Send command to FPGA over Serial1
 
-  sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, CMD_DUMP_MIS, 2, 4);
+  sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_DUMP_MIS, 2, 4);
 
   // 2) Receive a full JSON object from Serial1
   char json_buf[FOG_JSON_BUF_SIZE];
@@ -1739,7 +945,7 @@ static DumpReadResult read_dump_packet(Stream& port,
  */
 static inline void send_cmd_seq(uint8_t cmd, uint8_t ch, uint32_t seq, bool nack_flag=false) {
   uint32_t val = ((seq & 0x7FFFFFFFu) << 1) | (nack_flag ? 1u : 0u);
-  sendCmd(g_cmd_port, HDR_ABBA, TRL_5556, cmd, (int32_t)val, ch);
+  sendCmd(Serial1, HDR_ABBA, TRL_5556, cmd, (int32_t)val, ch);
 }
 
 // =====================  中層（Mid-level）  =====================
@@ -1874,3 +1080,13 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
 
   return ok;
 }
+
+#include "usecase/parameter_service.h"
+#include "app/app_state.h"
+
+// Backward-compatible wrapper (keeps existing call sites unchanged)
+void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
+{
+    parameter_service_handle(g_cmd_port, rx, fog_inst);
+}
+

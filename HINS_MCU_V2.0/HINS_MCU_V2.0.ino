@@ -2,6 +2,11 @@
 #include "src/myUART.h"               // myUART_init / readDataDynamic
 #include "src/common.h"               
 #include "src/output_mode_setting.h"  // output_mode_setting
+#include "src/domain/protocol/cmd_codec_v1.h"
+#include "src/utils/crc32.h"
+
+
+
 
 
 
