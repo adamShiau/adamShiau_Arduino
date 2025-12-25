@@ -19,6 +19,8 @@
 #include <ctype.h>
 #include <string.h>
 #include "app/app_state.h"
+#include "domain/protocol/ack_codec_v1.h"
+
 // #include "utils/serial_printf.h"
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
@@ -897,7 +899,7 @@ static inline void send_cmd_seq(uint8_t cmd, uint8_t ch, uint32_t seq, bool nack
 // =====================  中層（Mid-level）  =====================
 
 static uint32_t g_seq = 0;               // 成功收到並驗證通過後才 ++
-static const uint32_t FOG_TIMEOUT_MS = 500;
+static const uint32_t FOG_TIMEOUT_MS = 1500;
 static const size_t   SCRATCH_MAX    = 1024;
 
 /**
@@ -937,8 +939,16 @@ static bool recv_and_store(fog_parameter_t* fog,
     parse_string(scratch, sn_store_cb, &ctx);
   }
   // RS422 輸出
-  g_cmd_port_output.write((const uint8_t*)scratch, strlen(scratch));
-  g_cmd_port_output.write('\n');
+  // g_cmd_port_output.write((const uint8_t*)scratch, strlen(scratch));
+  // g_cmd_port_output.write('\n');
+  const uint8_t cmd_id =
+      (expect_ch == 4) ? CMD_DUMP_MIS :
+      (expect_ch == 5) ? CMD_DUMP_SN  :
+                         CMD_DUMP_FOG;
+  const uint16_t out_len = (uint16_t)strlen(scratch);
+  send_result_v1(g_cmd_port_output, cmd_id, AckStatus::OK,
+                 (const uint8_t*)scratch, out_len);
+  
   return true;
 }
 
@@ -976,6 +986,14 @@ static bool request_and_update(fog_parameter_t* fog,
 
     delay(20 + attempt * 10);
   }
+  // 全部 retry 都失敗：回 TIMEOUT RESULT
+  const uint8_t cmd_id =
+      (ch == 4) ? CMD_DUMP_MIS :
+      (ch == 5) ? CMD_DUMP_SN  :
+                  CMD_DUMP_FOG;
+
+  send_result_v1(g_cmd_port_output, cmd_id, AckStatus::TIMEOUT, nullptr, 0);
+
   return false;
 }
 

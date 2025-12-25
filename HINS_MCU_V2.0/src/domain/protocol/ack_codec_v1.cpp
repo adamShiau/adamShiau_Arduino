@@ -62,12 +62,9 @@ bool send_result_v1(Stream& pc_port, uint8_t cmd_id, AckStatus st)
   return send_frame(pc_port, TYPE_RESULT, cmd_id, (uint8_t)st, nullptr, 0);
 }
 
-bool send_result_v1(Stream& pc_port,
-                    uint8_t cmd_id,
-                    AckStatus st,
-                    const uint8_t* payload,
-                    uint16_t payload_len)
+bool send_result_v1(Stream& pc_port, uint8_t cmd_id, AckStatus st,
+                    const uint8_t* payload, uint16_t payload_len)
 {
   if (payload_len > MAX_PAYLOAD) return false; 
-  return send_frame(pc_port, TYPE_RESULT, cmd_id, (uint8_t)st, payload, (uint8_t)payload_len);
+  return send_frame(pc_port, TYPE_RESULT, cmd_id, (uint8_t)st, payload, payload_len);
 }

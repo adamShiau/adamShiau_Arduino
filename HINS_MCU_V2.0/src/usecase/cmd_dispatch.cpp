@@ -49,6 +49,14 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
   return spec;
 }
 
+static inline bool is_dump_cmd(uint8_t cmd_id)
+{
+  return (cmd_id == CMD_DUMP_FOG) ||
+         (cmd_id == CMD_DUMP_MIS) ||
+         (cmd_id == CMD_DUMP_SN);
+}
+
+
 // -----------------------------
 // 2) Port selection
 // -----------------------------
@@ -133,8 +141,18 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
 
     // dump/query 才回 RESULT（payload A：只回 status）
     if (spec.expect_response) {
-      (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+      if (is_dump_cmd(cmd->cmd)) {
+        // dump 類：成功時不要在這裡送 RESULT，避免和 common::recv_and_store() 的 payload RESULT 重複
+        // 若 dump 流程一開始就失敗（例如 BAD_PARAM/BUSY），才在這裡回一包「空 RESULT」錯誤碼
+        if (r.status != Status::OK) {
+          (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+        }
+      } else {
+        // 非 dump 類：維持原本行為（status-only RESULT）
+        (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+      }
     }
+
     
     return;
   }
