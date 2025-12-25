@@ -433,61 +433,6 @@ static void sn_store_cb(const char* s, void* user)
   C->fog->sn[n] = '\0';                    // 以 C-string NUL 結尾
 }
 
-/***
-void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch)
-{
-  if (!fog_inst) return;
-
-  // 1) Send command to FPGA over Serial1
-  // static const uint8_t HDR[2] = {0xAB, 0xBA};
-  // static const uint8_t TRL[2] = {0x55, 0x56};
-  sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_DUMP_FOG, 2, ch);
-
-  // 2) Receive a full JSON object from Serial1
-  char json_buf[FOG_JSON_BUF_SIZE];
-  size_t n = read_json_object(Serial1, json_buf, sizeof(json_buf), FOG_JSON_TIMEOUT_MS);
-  if (n == 0) {
-    // debug
-    DEBUG_PRINT("dump_fog_param: timeout or malformed JSON from Serial1");
-    return;
-  }
-
-  // 3) Parse and store into fog_inst->paramX/Y/Z by channel
-  fog_cb_ctx_t ctx = { fog_inst, ch };
-  parse_simple_json_ints(json_buf, fog_store_cb, &ctx);
-
-  // 4) Forward the raw JSON to PC via Serial1 (TX)
-  Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
-  Serial1.write('\n');  // optional newline for readability
-}
- */
-/***
-void dump_misalignment_param(fog_parameter_t* fog_inst)
-{
-  if (!fog_inst) return;
-
-  // 1) Send command to FPGA over Serial1
-
-  sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_DUMP_MIS, 2, 4);
-
-  // 2) Receive a full JSON object from Serial1
-  char json_buf[FOG_JSON_BUF_SIZE];
-  size_t n = read_json_object(Serial1, json_buf, sizeof(json_buf), FOG_JSON_TIMEOUT_MS);
-  if (n == 0) {
-    // debug
-    DEBUG_PRINT("dump_imu_mis-alignment: timeout or malformed JSON from Serial1");
-    return;
-  }
-
-  // 3) Parse and store into fog_inst->paramX/Y/Z by channel
-  fog_cb_ctx_t ctx = { fog_inst, 4 };
-  parse_simple_json_ints(json_buf, imu_cali_store_cb, &ctx);
-
-  // 4) Forward the raw JSON to PC via Serial1 (TX)
-  Serial1.write((const uint8_t*)json_buf, strlen(json_buf));
-  Serial1.write('\n');  // optional newline for readability
-} 
- */
 void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out)
 {
   if (!cali || !out) return;

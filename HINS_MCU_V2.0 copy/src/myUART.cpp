@@ -174,9 +174,16 @@ void SERCOM5_Handler(void) { Serial1.IrqHandler(); }
  */
 uint8_t* readDataDynamic(uint32_t* try_cnt)
 {
-  if (Serial2.available() == 0) return NULL;
+  // Legacy behavior: use Serial2 as the command input port.
+  // Prefer calling readDataDynamic(Stream& port, ...) in new code.
+  return readDataDynamic(Serial2, try_cnt);
+}
 
-  int di = Serial2.read();
+uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
+{
+  if (port.available() == 0) return NULL;
+
+  int di = port.read();
   if (di == -1) return NULL;           // no data; defensive guard
   uint8_t data = (uint8_t)di;
 
@@ -279,6 +286,7 @@ uint8_t* readDataDynamic(uint32_t* try_cnt)
 
   return NULL;  // not complete yet
 }
+
 
 /* ----------------------------------------------------------------------------
  * Serial4 generic parser (FPGA data)

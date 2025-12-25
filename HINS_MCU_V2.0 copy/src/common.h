@@ -7,7 +7,6 @@
 #include <stdarg.h>
 #include "memory_manage.h"
 #include "utils/serial_printf.h"
-#include "utils/crc32.h"
 
 
 #define DEBUG_PRINT
@@ -21,6 +20,7 @@
 extern const uint8_t HDR_ABBA[2];
 extern const uint8_t TRL_5556[2];
 extern const uint8_t KVH_HEADER[4];
+#define POLYNOMIAL_32 0x04C11DB7
 
 // first order temperature compensation, one T
 #define SF_TEMP_COMPENSATION_1ST_ORDER(temp, slope, offset) ((temp) * (slope) + (offset))

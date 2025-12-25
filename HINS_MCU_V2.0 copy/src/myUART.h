@@ -22,9 +22,6 @@ extern Uart Serial2;
 extern Uart Serial3;
 extern Uart Serial4;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* Initialization                                                             */
@@ -77,6 +74,9 @@ void SERCOM5_Handler(void);
  */
 uint8_t* readDataDynamic(uint32_t* try_cnt);
 
+// New overload: caller provides the UART port (preferred for future refactors)
+uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt);
+
 /* -------------------------------------------------------------------------- */
 /* Serial4 (FPGA data): generic header/trailer + fixed data length            */
 /* -------------------------------------------------------------------------- */
@@ -113,10 +113,6 @@ uint8_t* readDataStream(const uint8_t* header, uint8_t header_len,
 uint8_t* readDataBytewise(const uint8_t* header, uint8_t header_len,
                   const uint8_t* trailer, uint8_t trailer_len,
                   uint16_t datalen, uint32_t* try_cnt);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
 
 /* NOTE:
  * Do NOT redeclare 'extern Uart SerialX' here; the Arduino core already declares

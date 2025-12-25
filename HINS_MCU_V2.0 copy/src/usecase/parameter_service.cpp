@@ -2,20 +2,6 @@
 
 void parameter_service_handle(Print& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 {
-	TransactionSpec spec; // default: no response
-  	(void)parameter_service_handle_ex(port, rx, fog_inst, spec);
-}
-
-UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst, const TransactionSpec& spec)
-{
-
-	UsecaseResult result;
-	result.cmd_id = rx ? rx->cmd : 0; // make sure rx is not null, oherwise cmd id is 0
-
-	if (!rx || !fog_inst) {
-		result.status = Status::BAD_PARAM;
-		return result;
-	}
 
 	if(rx->mux == MUX_PARAMETER){
         DEBUG_PRINT("fog_parameter mode\n");
@@ -736,20 +722,17 @@ UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_param
 					}
 					case CMD_DUMP_FOG: {
 						DEBUG_PRINT("CMD_DUMP_FOG:\n");
-						bool ok = dump_fog_param(fog_inst, rx->ch);
-						result.status = ok ? Status::OK : Status::TIMEOUT;
+						dump_fog_param(fog_inst, rx->ch);
 						break;
 					} 
 					case CMD_DUMP_MIS: {
 						DEBUG_PRINT("CMD_DUMP_MIS:\n");
-						bool ok = dump_misalignment_param(fog_inst);
-						result.status = ok ? Status::OK : Status::TIMEOUT;
+						dump_misalignment_param(fog_inst);
 						break;
 					} 
 					case CMD_DUMP_SN: {
 						DEBUG_PRINT("CMD_DUMP_SN:\n");
-						bool ok = dump_SN(fog_inst);
-						result.status = ok ? Status::OK : Status::TIMEOUT;
+						dump_SN(fog_inst);
 						break;
 					} 
 					case CMD_DATA_OUT_START: { // not use now

@@ -1,4 +1,4 @@
-#include "drivers/link/nios_link.h"
+#include "nios_link.h"
 
 size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
   int32_t value, uint8_t ch)

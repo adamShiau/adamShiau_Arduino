@@ -4,11 +4,7 @@
 #include "src/output_mode_setting.h"  // output_mode_setting
 #include "src/domain/protocol/cmd_codec_v1.h"
 #include "src/utils/crc32.h"
-
-
-
-
-
+#include "src/usecase/cmd_dispatch.h"
 
 // #define INT_SYNC 1
 // #define EXT_SYNC 2
@@ -49,16 +45,20 @@ void loop() {
   if (!buf) return;
 
   decode_cmd_v1(buf, &g_cmd);
-  cmd_mux(&g_cmd);
 
-  // 1) parameter
-  fog_parameter(&g_cmd, &g_fog_params);
+  cmd_dispatch(&g_cmd, &g_fog_params, &g_output_fn, &g_auto_rst);
 
-  // 2) output mode select
-  output_mode_setting(&g_cmd, &g_output_fn, &g_auto_rst);
 
-  // 3) run output
-  g_output_fn(&g_cmd, &g_fog_params);
+  // cmd_mux(&g_cmd);
+
+  // // 1) parameter
+  // fog_parameter(&g_cmd, &g_fog_params);
+
+  // // 2) output mode select
+  // output_mode_setting(&g_cmd, &g_output_fn, &g_auto_rst);
+
+  // // 3) run output
+  // g_output_fn(&g_cmd, &g_fog_params);
 }
 
 
