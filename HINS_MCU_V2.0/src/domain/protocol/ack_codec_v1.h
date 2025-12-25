@@ -15,11 +15,11 @@ enum class AckStatus : uint8_t {
 };
 
 // 只提供送出 API：router 不需要知道封包細節
-bool send_ack_v1(Print& pc_port, uint8_t cmd_id, AckStatus st);
-bool send_result_v1(Print& pc_port, uint8_t cmd_id, AckStatus st);
+bool send_ack_v1(Stream& pc_port, uint8_t cmd_id, AckStatus st);
+bool send_result_v1(Stream& pc_port, uint8_t cmd_id, AckStatus st);
 
 // 之後 payload B 要加資料時，再擴充這個，不用動 cmd_dispatch
-bool send_result_v1(Print& pc_port,
+bool send_result_v1(Stream& pc_port,
                     uint8_t cmd_id,
                     AckStatus st,
                     const uint8_t* payload,
