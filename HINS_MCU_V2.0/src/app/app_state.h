@@ -12,8 +12,9 @@ extern auto_rst_t      g_auto_rst;
 extern fog_parameter_t g_fog_params;
 extern fn_ptr          g_output_fn;
 
-//使用在common.cpp 的 switch case
-extern Print& g_cmd_port;
+
+extern Stream& g_cmd_port_fpga;      // fpga
+extern Stream& g_cmd_port_output;    // output port
 
 
 // acq_ahrs.cpp 會用到

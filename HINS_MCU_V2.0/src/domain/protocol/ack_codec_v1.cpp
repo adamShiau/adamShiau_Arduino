@@ -20,7 +20,7 @@ namespace {
   constexpr uint8_t TYPE_RESULT = 0xA2;
 
   // 最大 payload
-  constexpr uint16_t MAX_PAYLOAD = 128;
+  constexpr uint16_t MAX_PAYLOAD = 512;
 
   static bool send_frame(Print& port, uint8_t type, uint8_t cmd_id,
                          uint8_t status, const uint8_t* payload, uint8_t len)

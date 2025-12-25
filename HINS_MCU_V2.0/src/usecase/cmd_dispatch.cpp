@@ -24,12 +24,19 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
     case CMD_DUMP_SN:
       spec.expect_response = true;
       spec.route = IoRoute::FPGA;
-      spec.timeout_ms = 300;
+      spec.timeout_ms = 500;
       spec.max_retry = 0;
       break;
 
     case CMD_TEST_ACK_RESULT:
       // 測試 gating：需要 RESULT，但不做任何 I/O
+      spec.expect_response = true;
+      spec.route = IoRoute::NONE;
+      spec.timeout_ms = 0;
+      spec.max_retry = 0;
+      break;
+
+    case CMD_TEST_TIMEOUT:
       spec.expect_response = true;
       spec.route = IoRoute::NONE;
       spec.timeout_ms = 0;
@@ -46,18 +53,18 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
 // 2) Port selection
 // -----------------------------
 // PC 回覆 port：建議用 Serial（若你已用 app_state 封裝 g_cmd_port，可以換成 g_cmd_port）
-static inline Print& pc_port()
+static inline Stream& pc_port()
 {
   return Serial; // <-- 若你要走 g_cmd_port，改成：return g_cmd_port;
 }
 
 // FPGA link port：你目前與 FPGA 溝通看起來是 Serial1（sendCmd(Serial1, ...)）
-static inline Print& fpga_port()
+static inline Stream& fpga_port()
 {
   return Serial1; // <-- 若你 FPGA port 不同，改這裡即可
 }
 
-static inline Print& output_port()
+static inline Stream& output_port()
 {
   return Serial2; // <-- 若你 FPGA port 不同，改這裡即可
 }
@@ -91,27 +98,28 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
     return;
   }
 
-  // Decide mux (你的既有邏輯：cmd > 7 => MUX_OUTPUT / else MUX_PARAMETER)
-  cmd_mux(cmd);
+  const TransactionSpec spec = get_command_spec(cmd->cmd); // spec（決定是否要 RESULT、timeout 等）
 
-  // 先送 ACK：目前先一律 OK（之後可以加入更嚴格的條件檢查再回 BAD_PARAM/NOT_SUPPORTED）
-  (void)send_ack_v1(output_port(), cmd->cmd, AckStatus::OK);
+  cmd_mux(cmd); // Decide mux (你的既有邏輯：cmd > 7 => MUX_OUTPUT / else MUX_PARAMETER)
 
-    // ---- Route C test commands: no side effects ----
-  const TransactionSpec spec = get_command_spec(cmd->cmd);
+  (void)send_ack_v1(output_port(), cmd->cmd, AckStatus::OK); // ACK 一律回（使用 output_port，避免跟 debug 文本混在一起）
 
-    // 0xF0: ACK only (no RESULT, no behavior)
+  // ---- Route C test commands: no side effects ----
   if (cmd->cmd == CMD_TEST_ACK_ONLY) {
     return;
   }
 
- if (cmd->cmd == CMD_TEST_ACK_RESULT) {
-  (void)send_result_v1(output_port(), cmd->cmd, AckStatus::OK);
-  return;
+  if (cmd->cmd == CMD_TEST_ACK_RESULT) {
+    if (spec.expect_response) {
+      (void)send_result_v1(output_port(), cmd->cmd, AckStatus::OK);
+    }
+    return;
   }
 
   if (cmd->cmd == CMD_TEST_TIMEOUT) {
-    (void)send_result_v1(output_port(), cmd->cmd, AckStatus::TIMEOUT);
+    if (spec.expect_response) {
+      (void)send_result_v1(output_port(), cmd->cmd, AckStatus::TIMEOUT);
+    }
     return;
   }
 
@@ -119,16 +127,15 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
   // Parameter path (FPGA/INS related)
   // -------------------------
   if (cmd->mux == MUX_PARAMETER) {
-    // spec 決定這個命令需不需要 RESULT
-    const TransactionSpec spec = get_command_spec(cmd->cmd);
 
     // 新版 parameter_service：回 UsecaseResult（payload A：先不用 payload）
     UsecaseResult r = parameter_service_handle_ex(fpga_port(), cmd, params, spec);
 
     // dump/query 才回 RESULT（payload A：只回 status）
     if (spec.expect_response) {
-      (void)send_result_v1(pc_port(), cmd->cmd, to_ack_status(r.status));
+      (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
     }
+    
     return;
   }
 

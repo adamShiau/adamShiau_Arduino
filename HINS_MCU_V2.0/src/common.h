@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include "memory_manage.h"
 #include "utils/serial_printf.h"
+#include "drivers/link/nios_link.h"
 
 
 #define DEBUG_PRINT
@@ -152,8 +153,8 @@ typedef struct {
 void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
 void cmd_mux(cmd_ctrl_t* rx);
 void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
-size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
-    int32_t value, uint8_t ch);
+// size_t sendCmd(Print& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
+//     int32_t value, uint8_t ch);
 void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
 
 

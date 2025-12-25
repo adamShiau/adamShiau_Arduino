@@ -18,6 +18,7 @@
 #include "common.h"
 #include <ctype.h>
 #include <string.h>
+#include "app/app_state.h"
 // #include "utils/serial_printf.h"
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
@@ -26,8 +27,8 @@ const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
 // -----------------------------------------------------------------------------
 // Forward declare Serial1 (constructed in myUART.cpp)
-class Uart;
-extern Uart Serial1;
+// class Uart;
+// extern Uart Serial1;
 // -----------------------------------------------------------------------------
 
 // first order temperature compensation, one T
@@ -238,14 +239,14 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
 void reset_FPGA_timer(void)
 {
 	DEBUG_PRINT("reset_FPGA_timer\n");
-	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 1, 1);
+	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 1, 1);
 	delay(10); 
-	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
+	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
 }
 
 void set_data_rate(uint32_t rate)
 {
-	sendCmd(Serial1, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
+	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
 }
 
 #ifndef FOG_JSON_TIMEOUT_MS
@@ -787,7 +788,7 @@ enum DumpReadResult : uint8_t {
  * - 驗證 payload 的長度與 CRC16。
  * - 若驗證通過，將 payload 複製到呼叫者提供的緩衝區，並補上 '\0' 結尾。
  *
- * @param port            要讀取的串口物件 (例如 Serial1)。
+ * @param port            要讀取的串口物件 (例如 g_cmd_port_fpga)。
  * @param timeout_ms      逾時時間（毫秒）。
  * @param out_seq         指向變數，用來存放解析出的序號，可為 nullptr。
  * @param out_ch          指向變數，用來存放解析出的通道，可為 nullptr。
@@ -890,7 +891,7 @@ static DumpReadResult read_dump_packet(Stream& port,
  */
 static inline void send_cmd_seq(uint8_t cmd, uint8_t ch, uint32_t seq, bool nack_flag=false) {
   uint32_t val = ((seq & 0x7FFFFFFFu) << 1) | (nack_flag ? 1u : 0u);
-  sendCmd(Serial1, HDR_ABBA, TRL_5556, cmd, (int32_t)val, ch);
+  sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, cmd, (int32_t)val, ch);
 }
 
 // =====================  中層（Mid-level）  =====================
@@ -911,7 +912,7 @@ static bool recv_and_store(fog_parameter_t* fog,
                            char* scratch, size_t scratch_cap)
 {
   uint32_t seq=0; uint8_t ch=0; size_t plen=0;
-  DumpReadResult r = read_dump_packet(Serial1, timeout_ms, &seq, &ch,
+  DumpReadResult r = read_dump_packet(g_cmd_port_fpga, timeout_ms, &seq, &ch,
                                       scratch, scratch_cap, &plen);
   if (r != DUMP_OK) return false;
   // 若要嚴格比對 echo 的 seq/ch，可加入：
@@ -936,8 +937,8 @@ static bool recv_and_store(fog_parameter_t* fog,
     parse_string(scratch, sn_store_cb, &ctx);
   }
   // RS422 輸出
-  Serial1.write((const uint8_t*)scratch, strlen(scratch));
-  Serial1.write('\n');
+  g_cmd_port_output.write((const uint8_t*)scratch, strlen(scratch));
+  g_cmd_port_output.write('\n');
   return true;
 }
 
@@ -1032,6 +1033,6 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
 // Backward-compatible wrapper (keeps existing call sites unchanged)
 void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 {
-    parameter_service_handle(g_cmd_port, rx, fog_inst);
+    parameter_service_handle(g_cmd_port_fpga, rx, fog_inst);
 }
 
