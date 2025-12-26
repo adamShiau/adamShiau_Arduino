@@ -18,7 +18,7 @@ UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_param
 	}
 
 	if(rx->mux == MUX_PARAMETER){
-        DEBUG_PRINT("fog_parameter mode\n");
+        DEBUG_PRINT("fog_parameter mode, condition: %d:\n", rx->condition);
         rx->mux = MUX_ESCAPE;
 
 			if(rx->condition == RX_CONDITION_ABBA_5556 || rx->condition == RX_CONDITION_EFFE_5354) {
@@ -814,23 +814,26 @@ UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_param
 			}
 			else if(rx->condition == RX_CONDITION_CDDC_5758) {
 				switch(rx->cmd ){
-					// case CMD_WRITE_SN: {
-					// 	DEBUG_PRINT("CMD_WRITE_SN:\n");
-					// 	alt_32 SN1, SN2, SN3;
-					// 	SN1 =  rx->SN[0]<<24 | rx->SN[1]<<16 | rx->SN[2]<<8 | rx->SN[3];
-					// 	SN2 =  rx->SN[4]<<24 | rx->SN[5]<<16 | rx->SN[6]<<8 | rx->SN[7];
-					// 	SN3 =  rx->SN[8]<<24 | rx->SN[9]<<16 | rx->SN[10]<<8 | rx->SN[11];
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 0, SN1);
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 1, SN2);
-					// 	PARAMETER_Write_f(MEM_BASE_SN, 2, SN3);
-					// 	for (alt_u8 i = 0; i < 13; i++) {
-					// 		fog_inst->sn[i] = rx->SN[i];
-					// 	}
-					// 	break;
-					// }
-					// default:{
-					// 	DEBUG_PRINT("condition 2 default case\n");
-					// } 
+					case CMD_WRITE_SN: {
+						DEBUG_PRINT("CMD_WRITE_SN:\n");
+						DEBUG_PRINT("SN: %s\n", rx->SN);
+						// DEBUG_PRINT("%x, %x\n", rx->SN[0], rx->SN[1]);
+						// alt_32 SN1, SN2, SN3;
+						// SN1 =  rx->SN[0]<<24 | rx->SN[1]<<16 | rx->SN[2]<<8 | rx->SN[3];
+						// SN2 =  rx->SN[4]<<24 | rx->SN[5]<<16 | rx->SN[6]<<8 | rx->SN[7];
+						// SN3 =  rx->SN[8]<<24 | rx->SN[9]<<16 | rx->SN[10]<<8 | rx->SN[11];
+						// sendCmd(port, HDR_ABBA, TRL_5556, CMD_WRITE_SN, rx->SN, rx->ch);
+						// PARAMETER_Write_f(MEM_BASE_SN, 0, SN1);
+						// PARAMETER_Write_f(MEM_BASE_SN, 1, SN2);
+						// PARAMETER_Write_f(MEM_BASE_SN, 2, SN3);
+						// for (alt_u8 i = 0; i < 13; i++) {
+						// 	fog_inst->sn[i] = rx->SN[i];
+						// }
+						break;
+					}
+					default:{
+						DEBUG_PRINT("condition 2 default case\n");
+					} 
 				}
 			}
 			
