@@ -12,7 +12,7 @@
 NmeaParser gps_parser;
 
 void setup() {
-  set_system_clk(EXTERNAL_CLK);
+  set_system_clk(INTERNAL_CLK);
   pwm_init();
   pwm.timer(1, 2, int(60000), false); //12M/2/60000 = 100Hz
   pwm.analogWrite(PWM100, 500);  
