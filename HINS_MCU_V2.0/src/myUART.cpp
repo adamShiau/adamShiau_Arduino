@@ -233,6 +233,35 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
       break;
 
     case EXPECTING_PAYLOAD:
+
+      // ---- special handling for SN write (condition 2, cmd=0x6E) ----
+      // Packet format (condition 2):
+      //   HEADER2 (2B) + payload[13B] + TRAILER2(2B)
+      //   payload[0] = cmd (0x6E), payload[1..12] = SN ASCII
+      //
+      // Allow GUI to send fewer than 12 SN chars:
+      //   after receiving cmd(0x6E), if we see TRAILER2 starting early,
+      //   pad the remaining payload bytes with ASCII space (0x20) and
+      //   continue trailer matching.
+      if (C->condition == 2 &&
+          C->bytes_received >= 1 &&              // cmd already received
+          C->buffer[1] == 0x6E &&                // CMD_WRITE_SN
+          C->expected_trailer &&
+          data == C->expected_trailer[0] &&      // early trailer byte 0
+          C->bytes_received < C->data_size_expected)
+      {
+        // pad remaining payload with spaces
+        for (uint8_t i = C->bytes_received; i < C->data_size_expected; i++) {
+          C->buffer[i + 1] = 0x20;               // ASCII space
+        }
+
+        // we've already matched trailer[0] with 'data'
+        C->state          = EXPECTING_TRAILER;
+        C->bytes_received = 1;                   // next byte should match trailer[1]
+        break;
+      }
+
+      // ---- normal payload collecting ----
       if (C->bytes_received < MAX_DATA_SIZE) {
         C->buffer[C->bytes_received + 1] = data;  // payload begins at buffer[1]
         C->bytes_received++;
