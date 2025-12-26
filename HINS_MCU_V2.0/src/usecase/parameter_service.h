@@ -9,10 +9,10 @@
  * Caller provides the Print stream to use for sending commands.
  * This function does NOT perform UART framing/reading; it only interprets an already-decoded cmd_ctrl_t.
  */
-void parameter_service_handle(Print& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst);
+void parameter_service_handle(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst);
 
 
-UsecaseResult parameter_service_handle_ex(Print& port,
+UsecaseResult parameter_service_handle_ex(Stream& port,
                                          cmd_ctrl_t* rx,
                                          fog_parameter_t* fog_inst,
                                          const TransactionSpec& spec);

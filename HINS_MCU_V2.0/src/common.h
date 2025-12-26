@@ -19,7 +19,11 @@
 #endif
 
 extern const uint8_t HDR_ABBA[2];
+extern const uint8_t HDR_CDDC[2];
+extern const uint8_t HDR_EFFE[2];
+extern const uint8_t TRL_5354[2];
 extern const uint8_t TRL_5556[2];
+extern const uint8_t TRL_5758[2];
 extern const uint8_t KVH_HEADER[4];
 #define POLYNOMIAL_32 0x04C11DB7
 

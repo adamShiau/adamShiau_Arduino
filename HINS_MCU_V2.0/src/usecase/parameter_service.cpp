@@ -1,12 +1,12 @@
 #include "parameter_service.h"
 
-void parameter_service_handle(Print& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
+void parameter_service_handle(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 {
 	TransactionSpec spec; // default: no response
   	(void)parameter_service_handle_ex(port, rx, fog_inst, spec);
 }
 
-UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst, const TransactionSpec& spec)
+UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst, const TransactionSpec& spec)
 {
 
 	UsecaseResult result;
@@ -816,19 +816,14 @@ UsecaseResult parameter_service_handle_ex(Print& port, cmd_ctrl_t* rx, fog_param
 				switch(rx->cmd ){
 					case CMD_WRITE_SN: {
 						DEBUG_PRINT("CMD_WRITE_SN:\n");
-						DEBUG_PRINT("SN: %s\n", rx->SN);
-						// DEBUG_PRINT("%x, %x\n", rx->SN[0], rx->SN[1]);
-						// alt_32 SN1, SN2, SN3;
-						// SN1 =  rx->SN[0]<<24 | rx->SN[1]<<16 | rx->SN[2]<<8 | rx->SN[3];
-						// SN2 =  rx->SN[4]<<24 | rx->SN[5]<<16 | rx->SN[6]<<8 | rx->SN[7];
-						// SN3 =  rx->SN[8]<<24 | rx->SN[9]<<16 | rx->SN[10]<<8 | rx->SN[11];
-						// sendCmd(port, HDR_ABBA, TRL_5556, CMD_WRITE_SN, rx->SN, rx->ch);
-						// PARAMETER_Write_f(MEM_BASE_SN, 0, SN1);
-						// PARAMETER_Write_f(MEM_BASE_SN, 1, SN2);
-						// PARAMETER_Write_f(MEM_BASE_SN, 2, SN3);
-						// for (alt_u8 i = 0; i < 13; i++) {
-						// 	fog_inst->sn[i] = rx->SN[i];
+						sendSN(port, HDR_CDDC, TRL_5758, CMD_WRITE_SN, rx->SN);
+						// for (int i=0; i<13; i++) {
+						// 	DEBUG_PRINT("i: %d, SN: %x\n", i, rx->SN[i]);
 						// }
+						for (int i = 0; i < 13; i++) {
+							fog_inst->sn[i] = rx->SN[i];
+						}
+						DEBUG_PRINT("SN: %s\n", fog_inst->sn);
 						break;
 					}
 					default:{

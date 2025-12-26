@@ -11,9 +11,17 @@
  *
  * @return number of bytes written (expected 10)
  */
-size_t sendCmd(Print& port,
+size_t sendCmd(Stream& port,
                const uint8_t header[2],
                const uint8_t trailer[2],
                uint8_t cmd,
                int32_t value,
                uint8_t ch);
+
+
+bool sendSN(Stream& port,
+            const uint8_t header[2],
+            const uint8_t trailer[2],
+            uint8_t cmd,
+            const uint8_t sn_ascii[12]); // 12 bytes
+

@@ -24,7 +24,11 @@
 // #include "utils/serial_printf.h"
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
+const uint8_t HDR_CDDC[2] = {0xCD, 0xDC};
+const uint8_t HDR_EFFE[2] = {0xEF, 0xFE};
 const uint8_t TRL_5556[2] = {0x55, 0x56};
+const uint8_t TRL_5758[2] = {0x57, 0x58};
+const uint8_t TRL_5354[2] = {0x53, 0x54};
 const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
 // -----------------------------------------------------------------------------
