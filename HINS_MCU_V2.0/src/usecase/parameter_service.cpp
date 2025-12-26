@@ -752,6 +752,12 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						result.status = ok ? Status::OK : Status::TIMEOUT;
 						break;
 					} 
+					case CMD_DUMP_VERSION: {
+						DEBUG_PRINT("CMD_DUMP_VERSION:\n");
+						bool ok = dump_version(fog_inst);
+						result.status = ok ? Status::OK : Status::TIMEOUT;
+						break;
+					} 
 					case CMD_DATA_OUT_START: { // not use now
 						DEBUG_PRINT("CMD_DATA_OUT_START:\n");
 						// start_flag = rx->value;

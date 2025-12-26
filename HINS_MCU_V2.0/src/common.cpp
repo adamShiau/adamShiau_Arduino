@@ -20,6 +20,7 @@
 #include <string.h>
 #include "app/app_state.h"
 #include "domain/protocol/ack_codec_v1.h"
+#include "version_info.h"
 
 // #include "utils/serial_printf.h"
 
@@ -941,13 +942,34 @@ static bool recv_and_store(fog_parameter_t* fog,
 	// SN → 純字串，走 parse_string + sn_store_cb
     fog_cb_ctx_t ctx{ fog, 5 };
     parse_string(scratch, sn_store_cb, &ctx);
+
+  } else if (expect_ch == 7) {
+    // VERSION → 純字串（不一定要存進 fog_inst，先只回傳給 PC 也 OK）
+    // 若你之後想存到 fog_inst，可再做 version_store_cb
+    // 這裡不做 store 也沒問題：send_result_v1 仍會把 scratch 回給 PC
+
+    // scratch 目前是 FPGA payload string，例如 "HINS_TOP_V1,HINS_CPU_V1_0"
+    // 合併成 "HINS_MCU_V2.0,<fpga_str>"
+    char merged[SCRATCH_MAX + 64];  // 夠用即可；最後仍會被截到 scratch_cap
+    const char* fpga_str = scratch;
+
+    // 如果 FPGA 回空字串，也不要多出逗號
+    if (fpga_str && fpga_str[0] != '\0') {
+      snprintf(merged, sizeof(merged), "%s,%s", MCU_VERSION, fpga_str);
+    } else {
+      snprintf(merged, sizeof(merged), "%s", MCU_VERSION);
+    }
+
+    // copy 回 scratch（注意 cap）
+    strncpy(scratch, merged, scratch_cap - 1);
+    scratch[scratch_cap - 1] = '\0';
+
   }
-  // RS422 輸出
-  // g_cmd_port_output.write((const uint8_t*)scratch, strlen(scratch));
-  // g_cmd_port_output.write('\n');
+
   const uint8_t cmd_id =
       (expect_ch == 4) ? CMD_DUMP_MIS :
       (expect_ch == 5) ? CMD_DUMP_SN  :
+      (expect_ch == 7) ? CMD_DUMP_VERSION :
                          CMD_DUMP_FOG;
   const uint16_t out_len = (uint16_t)strlen(scratch);
   send_result_v1(g_cmd_port_output, cmd_id, AckStatus::OK,
@@ -968,11 +990,16 @@ static bool request_and_update(fog_parameter_t* fog,
   if (!fog) return false;
 
   static char scratch[SCRATCH_MAX];
+  
+  uint8_t req_cmd =
+    (ch == 4) ? CMD_DUMP_MIS :
+    (ch == 5) ? CMD_DUMP_SN  :
+    (ch == 7) ? CMD_DUMP_VERSION :
+                CMD_DUMP_FOG;
 
   for (int attempt = 0; attempt < max_retry; ++attempt) {
     // 普通 REQ
-    send_cmd_seq((ch==4)?CMD_DUMP_MIS:((ch==5)?CMD_DUMP_SN:CMD_DUMP_FOG),
-                 ch, g_seq, /*nack*/false);
+    send_cmd_seq(req_cmd, ch, g_seq, /*nack*/false);
 
     if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
       g_seq = (g_seq + 1) & 0x7FFFFFFF;
@@ -980,8 +1007,7 @@ static bool request_and_update(fog_parameter_t* fog,
     }
 
     // NACK（若 Nios II 尚未支援，等效於再送一次）
-    send_cmd_seq((ch==4)?CMD_DUMP_MIS:((ch==5)?CMD_DUMP_SN:CMD_DUMP_FOG),
-                 ch, g_seq, /*nack*/true);
+    send_cmd_seq(req_cmd, ch, g_seq, /*nack*/true);
 
     if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
       g_seq = (g_seq + 1) & 0x7FFFFFFF;
@@ -992,9 +1018,10 @@ static bool request_and_update(fog_parameter_t* fog,
   }
   // 全部 retry 都失敗：回 TIMEOUT RESULT
   const uint8_t cmd_id =
-      (ch == 4) ? CMD_DUMP_MIS :
-      (ch == 5) ? CMD_DUMP_SN  :
-                  CMD_DUMP_FOG;
+    (ch == 4) ? CMD_DUMP_MIS :
+    (ch == 5) ? CMD_DUMP_SN  :
+    (ch == 7) ? CMD_DUMP_VERSION :
+                CMD_DUMP_FOG;
 
   send_result_v1(g_cmd_port_output, cmd_id, AckStatus::TIMEOUT, nullptr, 0);
 
@@ -1027,6 +1054,12 @@ bool dump_SN(fog_parameter_t* fog_inst) {
   if (!fog_inst) return false;
   return request_and_update(fog_inst, /*ch*/5, FOG_TIMEOUT_MS, /*retries*/5);
 }
+
+bool dump_version(fog_parameter_t* fog_inst) {
+  if (!fog_inst) return false;
+  return request_and_update(fog_inst, /*ch*/7, FOG_TIMEOUT_MS, /*retries*/5);
+}
+
 
 /**
  * @brief 上電後一次抓齊：FOG X/Y/Z、Mis-alignment、SN。

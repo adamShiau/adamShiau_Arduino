@@ -170,6 +170,7 @@ bool dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
 // void dump_misalignment_param(fog_parameter_t* fog_inst);
 bool dump_misalignment_param(fog_parameter_t* fog_inst); 
 bool dump_SN(fog_parameter_t* fog_inst);
+bool dump_version(fog_parameter_t* fog_inst);   // ch=7, string payload
 bool boot_capture_all(fog_parameter_t* fog_inst);
 size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms);
 void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
