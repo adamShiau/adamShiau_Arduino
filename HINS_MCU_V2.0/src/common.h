@@ -167,7 +167,6 @@ typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
 
 // void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
 bool dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
-// void dump_misalignment_param(fog_parameter_t* fog_inst);
 bool dump_misalignment_param(fog_parameter_t* fog_inst); 
 bool dump_SN(fog_parameter_t* fog_inst);
 bool dump_version(fog_parameter_t* fog_inst);   // ch=7, string payload
