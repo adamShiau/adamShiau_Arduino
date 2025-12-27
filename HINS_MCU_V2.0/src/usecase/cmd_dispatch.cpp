@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include "../domain/protocol/ack_codec_v1.h"   // send_ack_v1 / send_result_v1
 #include "parameter_service.h"      // parameter_service_handle_ex
-#include "../output_mode_setting.h"         // output_mode_setting
+#include "../usecase/output_service/output_mode_setting.h"         // output_mode_setting
 #include "../common.h"                      // cmd_mux(), fog_parameter() etc.
 
 static constexpr uint8_t CMD_TEST_ACK_ONLY   = 0xF0;

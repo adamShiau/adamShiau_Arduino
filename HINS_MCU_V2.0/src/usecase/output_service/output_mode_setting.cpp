@@ -1,4 +1,5 @@
 #include "output_mode_setting.h"
+#include "output_modes.h"
 
 
 int output_mode_setting(cmd_ctrl_t* rx, fn_ptr* output_fn, auto_rst_t* auto_rst)

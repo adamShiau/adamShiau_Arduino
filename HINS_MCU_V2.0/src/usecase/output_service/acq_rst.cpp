@@ -1,6 +1,6 @@
-#include "common.h"
-#include "domain/model/memory_manage.h"
-#include "output_mode_config.h"
+#include "../../common.h"
+#include "../../domain/model/memory_manage.h"
+// #include "output_mode_config.h"
 
 static unsigned int t_start = 0;
 

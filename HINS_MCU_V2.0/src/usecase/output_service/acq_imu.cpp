@@ -1,7 +1,7 @@
-#include "common.h"
-#include "output_mode_config.h"
-#include "myUART.h"
-#include "utils/crc32.h"
+#include "../../common.h"
+// #include "output_mode_config.h"
+#include "../../myUART.h"
+#include "../../utils/crc32.h"
 
 #define INT_SYNC 1
 #define EXT_SYNC 2

@@ -1,9 +1,9 @@
-#include "common.h"
-#include "output_mode_config.h"
-#include "myUART.h"
+#include "../../common.h"
+// #include "output_mode_config.h"
+#include "../../myUART.h"
 #include <math.h>   // fabsf, sqrtf, isfinite
-#include "app/app_state.h"
-#include "utils/crc32.h"
+#include "../../app/app_state.h"
+#include "../../utils/crc32.h"
 
 #define INT_SYNC 1
 #define EXT_SYNC 2

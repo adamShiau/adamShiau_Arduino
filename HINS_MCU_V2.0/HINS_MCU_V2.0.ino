@@ -1,7 +1,7 @@
 #include "src/app/app_state.h"         // g_cmd / g_fog_params / g_output_fn / g_auto_rst / ahrs_attitude
 #include "src/myUART.h"               // myUART_init / readDataDynamic
 #include "src/common.h"               
-#include "src/output_mode_setting.h"  // output_mode_setting
+#include "src/usecase/output_service/output_mode_setting.h"  // output_mode_setting
 #include "src/domain/protocol/cmd_codec_v1.h"
 #include "src/utils/crc32.h"
 #include "src/usecase/cmd_dispatch.h"
@@ -47,7 +47,7 @@ void loop() {
     decode_cmd_v1(buf, &g_cmd);
     cmd_dispatch(&g_cmd, &g_fog_params, &g_output_fn, &g_auto_rst);
   }
-  
+
   if (g_output_fn) {
     g_output_fn(&g_cmd, &g_fog_params);
   }
