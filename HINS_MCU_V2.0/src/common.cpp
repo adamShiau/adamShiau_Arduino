@@ -20,7 +20,7 @@
 #include <string.h>
 #include "app/app_state.h"
 #include "domain/protocol/ack_codec_v1.h"
-#include "version_info.h"
+#include "utils/version_info.h"
 
 // #include "utils/serial_printf.h"
 
