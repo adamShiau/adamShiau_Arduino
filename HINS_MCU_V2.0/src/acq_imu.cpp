@@ -58,7 +58,7 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 // 3) 用 sensor_cali 打包成 44 bytes
                 uint8_t out[SENSOR_PAYLOAD_LEN];
                 pack_sensor_payload_from_cali(&sensor_cali, out);
-                // pack_sensor_payload_from_cali(&sensor_raw, out);
+                // pack_sensor_payload_from_cali(&sensor_raw, out); // for test
 
                 // 4) 以 (KVH_HEADER + out) 產生 CRC
                 uint8_t crc[4];

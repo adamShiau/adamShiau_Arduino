@@ -507,7 +507,8 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 uint8_t out[TOTAL_PAYLOAD_LEN];
 
                 // 4-1) 先打包原本 44B 感測 payload
-                pack_sensor_payload_from_cali(&sensor_cali, out);
+                // pack_sensor_payload_from_cali(&sensor_cali, out);
+                pack_sensor_payload_from_cali(&sensor_raw, out); // test
 
                 // 4-2) 再把 12B 姿態 append 在後面
                 memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
