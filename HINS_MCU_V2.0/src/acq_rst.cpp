@@ -1,5 +1,5 @@
 #include "common.h"
-#include "memory_manage.h"
+#include "domain/model/memory_manage.h"
 #include "output_mode_config.h"
 
 static unsigned int t_start = 0;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "memory_manage.h"
+#include "domain/model/memory_manage.h"
 #include "output_mode_config.h"        // legacy fn_ptr
 #include "domain/model/output_fn_t.h"  // new output_fn_t
 

@@ -3,7 +3,7 @@
 
 // #include <Arduino.h> 
 #include "common.h"
-#include "memory_manage.h"
+#include "domain/model/memory_manage.h"
 #include "MadgwickAHRS_IMU.h"
 
 // extern Madgwick ahrs_attitude; //define in IRIS1_MCU.ino, declare here for use in acq_ahrs.cpp

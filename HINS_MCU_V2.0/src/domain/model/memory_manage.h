@@ -2,7 +2,7 @@
 #define __MEMORY_MANAGE_H
 
 #include <Arduino.h>
-#include "domain/model/command_id.h"
+#include "command_id.h"
 
 #define PAR_LEN 40 // 定義陣列大小
 #define MIS_LEN 30

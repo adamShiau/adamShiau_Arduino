@@ -1,6 +1,6 @@
 #pragma once
 #include "../common.h"
-#include "../memory_manage.h"
+#include "../domain/model/memory_manage.h"
 #include "../output_mode_config.h"
 #include "../MadgwickAHRS_IMU.h"
 #include <Arduino.h>
