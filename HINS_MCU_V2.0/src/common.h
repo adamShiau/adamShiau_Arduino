@@ -9,6 +9,8 @@
 #include "utils/serial_printf.h"
 #include "drivers/link/nios_link.h"
 
+#include "usecase/dump_service.h"
+
 
 #define DEBUG_PRINT
 
@@ -163,17 +165,17 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
 
 
 /*** Key-value callback interface 型別宣告 */
-typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
+// typedef void (*kv_cb_t)(int key, int32_t val, void* ctx);
 
 // void dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
-bool dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
-bool dump_misalignment_param(fog_parameter_t* fog_inst); 
-bool dump_SN(fog_parameter_t* fog_inst);
-bool dump_version(fog_parameter_t* fog_inst);   // ch=7, string payload
-bool boot_capture_all(fog_parameter_t* fog_inst);
+// bool dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch);
+// bool dump_misalignment_param(fog_parameter_t* fog_inst); 
+// bool dump_SN(fog_parameter_t* fog_inst);
+// bool dump_version(fog_parameter_t* fog_inst);   // ch=7, string payload
+// bool boot_capture_all(fog_parameter_t* fog_inst);
 size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_ms);
-void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
-void parse_string(const char* payload, void (*cb)(const char* s, void*), void* ctx);
+// void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx);
+// void parse_string(const char* payload, void (*cb)(const char* s, void*), void* ctx);
 void dumpPkt(uint8_t *pkt, int len);
 int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
 void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter);

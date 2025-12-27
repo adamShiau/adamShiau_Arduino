@@ -19,8 +19,8 @@
 #include <ctype.h>
 #include <string.h>
 #include "app/app_state.h"
-#include "domain/protocol/ack_codec_v1.h"
-#include "utils/version_info.h"
+// #include "domain/protocol/ack_codec_v1.h"
+// #include "utils/version_info.h"
 
 // #include "utils/serial_printf.h"
 
@@ -337,64 +337,64 @@ size_t read_json_object(Stream& s, char* out, size_t out_cap, uint32_t timeout_m
  * @param cb   使用者提供的 callback 函數 (型別 kv_cb_t)
  * @param ctx  使用者上下文指標，會原封不動傳回給 callback
  */
-void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx)
-{
-  if (!js || !cb) return;
+// void parse_simple_json_ints(const char* js, kv_cb_t cb, void* ctx)
+// {
+//   if (!js || !cb) return;
 
-  const char* p = js;
-  while (*p) { // 外層迴圈：確保還沒走到字串結尾 '\0'
+//   const char* p = js;
+//   while (*p) { // 外層迴圈：確保還沒走到字串結尾 '\0'
 
-    // 1. 找下一個 key 的起始引號 '"'
-    while (*p && *p != '"') p++;   // 跳過無關字元直到找到引號
-    if (*p != '"') break;          // 如果不是 '"'（可能到結尾），就跳出迴圈
-    p++;                           // 跳過這個起始引號，使 p 指到 key 的第一個字元
+//     // 1. 找下一個 key 的起始引號 '"'
+//     while (*p && *p != '"') p++;   // 跳過無關字元直到找到引號
+//     if (*p != '"') break;          // 如果不是 '"'（可能到結尾），就跳出迴圈
+//     p++;                           // 跳過這個起始引號，使 p 指到 key 的第一個字元
 
-    // 2. 擷取 key 數字（JSON 格式假設 key 是 "0", "1", ...）
-    int key = 0; 
-    while (*p >= '0' && *p <= '9') {  // 確定當前字元是Ascii數字 '0' ~ '9' 區間內
-        key = key * 10 + (*p - '0');  // 轉成整數（例如 '2''3' → 23）
-        p++;                          // 移動到下一個字元
-    }
+//     // 2. 擷取 key 數字（JSON 格式假設 key 是 "0", "1", ...）
+//     int key = 0; 
+//     while (*p >= '0' && *p <= '9') {  // 確定當前字元是Ascii數字 '0' ~ '9' 區間內
+//         key = key * 10 + (*p - '0');  // 轉成整數（例如 '2''3' → 23）
+//         p++;                          // 移動到下一個字元
+//     }
 
-    // 3. 找 key 的結尾引號
-    while (*p && *p != '"') p++;      // 跳過數字後，直到遇到結束引號
-    if (*p == '"') p++;               // 如果確實遇到 '"', 就略過它
+//     // 3. 找 key 的結尾引號
+//     while (*p && *p != '"') p++;      // 跳過數字後，直到遇到結束引號
+//     if (*p == '"') p++;               // 如果確實遇到 '"', 就略過它
 
-    // 4. 找冒號 ':'（key 和 value 的分隔符號）
-    while (*p && *p != ':') p++;      // 跳過空白或其他符號
-    if (*p == ':') p++;               // 略過 ':'，使 p 指向 value 開頭
+//     // 4. 找冒號 ':'（key 和 value 的分隔符號）
+//     while (*p && *p != ':') p++;      // 跳過空白或其他符號
+//     if (*p == ':') p++;               // 略過 ':'，使 p 指向 value 開頭
 
-    // 5. 擷取 value 整數（允許負號）
-    int sign = 1; 
-    if (*p == '-') {                  // 如果有負號
-        sign = -1;
-        p++;
-    }
+//     // 5. 擷取 value 整數（允許負號）
+//     int sign = 1; 
+//     if (*p == '-') {                  // 如果有負號
+//         sign = -1;
+//         p++;
+//     }
 
-    int32_t val = 0;
-    while (*p >= '0' && *p <= '9') {  // 當前字元是數字
-        val = val * 10 + (*p - '0');  // 組成整數
-        p++;
-    }
-    val *= sign;                      // 套用正負號
+//     int32_t val = 0;
+//     while (*p >= '0' && *p <= '9') {  // 當前字元是數字
+//         val = val * 10 + (*p - '0');  // 組成整數
+//         p++;
+//     }
+//     val *= sign;                      // 套用正負號
 
-    // 6. 把解析出的 key/value 傳給 callback
-    cb(key, val, ctx);
+//     // 6. 把解析出的 key/value 傳給 callback
+//     cb(key, val, ctx);
 
-    // 7. 跳過逗號或空白，繼續下一輪
-    while (*p && *p != ',' && *p != '}') p++;
-    if (*p == ',') p++;               // 如果是逗號，移到下一個項目
-    else if (*p == '}') break;        // 如果是物件結尾 '}', 結束迴圈
+//     // 7. 跳過逗號或空白，繼續下一輪
+//     while (*p && *p != ',' && *p != '}') p++;
+//     if (*p == ',') p++;               // 如果是逗號，移到下一個項目
+//     else if (*p == '}') break;        // 如果是物件結尾 '}', 結束迴圈
 
-  }
-}
+//   }
+// }
 
-// ---- 通用的「字串 payload」解析器：單純把 payload 當成 C-string 丟入 callback ----
-void parse_string(const char* payload, void (*cb)(const char* s, void*), void* ctx)
-{
-  if (!payload || !cb) return;
-  cb(payload, ctx);
-}
+// // ---- 通用的「字串 payload」解析器：單純把 payload 當成 C-string 丟入 callback ----
+// void parse_string(const char* payload, void (*cb)(const char* s, void*), void* ctx)
+// {
+//   if (!payload || !cb) return;
+//   cb(payload, ctx);
+// }
 
 // Context used by the callback to know where to store values
 typedef struct {
@@ -696,390 +696,6 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->temp.tempz.float_val = tz;
   cali->adxl357.temp.float_val = tacc;
   cali->time.time.float_val = raw->time.time.float_val;
-}
-
-/* ---------- Dump interface ---------- */
-
-// =====================  底層（Low-level）  =====================
-
-/**
- * @brief 計算 CRC16-CCITT 校驗碼 (poly=0x1021, init=0xFFFF)
- */
-static uint16_t crc16_ccitt_update(uint16_t crc, uint8_t b) {
-  crc ^= (uint16_t)b << 8;
-  for (uint8_t i = 0; i < 8; ++i) {
-    crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021) : (uint16_t)(crc << 1);
-  }
-  return crc;
-}
-static uint16_t crc16_ccitt_buf(const uint8_t* data, size_t len) {
-  uint16_t crc = 0xFFFF;
-  for (size_t i = 0; i < len; ++i) crc = crc16_ccitt_update(crc, data[i]);
-  return crc;
-}
-
-/**
- * @brief 從串口讀取一行字串直到遇到 '\n' 或逾時。
- *
- * 這個函式會從指定的串口中讀取資料，直到：
- *  - 讀到換行字元 '\n'（表示一行結束）
- *  - 或者超過設定的逾時時間。
- * 
- * 它會去除行尾的 '\r'，並確保結果字串有 '\0' 結尾。
- * 緩衝區必須至少能存 1 個字元和結尾符。
- *
- * @param port        要讀取的串口物件（例如 Serial、Serial1）。
- * @param line        存放讀到的一行字串的緩衝區。
- * @param line_cap    緩衝區大小（包含結尾 '\0' 的空間）。
- * @param timeout_ms  逾時時間（毫秒）。
- *
- * @return 讀取到的字元數（不包含結尾 '\0'）。若超時或無資料則回傳 0。
- */
-static size_t readline_with_timeout(Stream& port, char* line, size_t line_cap, uint32_t timeout_ms)
-{
-    if (line_cap == 0) return 0;          // 緩衝區大小不夠
-    size_t n = 0;                         // 已讀取的字元數
-    uint32_t t0 = millis();               // 記錄開始時間
-
-    while ((millis() - t0) < timeout_ms)  // 檢查是否逾時
-    {
-        while (port.available())          // 串口有資料可讀
-        {
-            int c = port.read();          // 讀取一個字元
-            if (c < 0) break;             // 讀取失敗就跳出
-
-            if (c == '\n') {              // 遇到換行表示一行結束
-                while (n > 0 && line[n-1] == '\r') n--;  // 移除尾端 '\r'
-                line[n] = '\0';           // 補上字串結尾
-                return n;                 // 回傳已讀字數
-            }
-
-            if (n + 1 < line_cap) {       // 還有空間可寫
-                line[n++] = (char)c;      // 存入字元
-            } else {
-                line[line_cap - 1] = '\0'; // 滿了就補結尾
-                return n;                  // 回傳已讀字數
-            }
-        }
-        delay(1); // 稍微休息，避免忙迴圈
-    }
-
-    return 0;  // 逾時
-}
-
-// ---- framing 封包讀取的結果 ----
-enum DumpReadResult : uint8_t {
-  DUMP_OK = 0,
-  DUMP_TIMEOUT,
-  DUMP_FORMAT_ERR,
-  DUMP_LEN_MISMATCH,
-  DUMP_CRC_FAIL,
-  DUMP_OVERFLOW
-};
-
-/**
- * @brief 從串口讀取並解析一個完整的 dump 封包。
- *
- * 封包格式為：
- * @<seq>,<ch>,<len>,<payload>*<CRC16>\r\n
- *
- * - @ 符號開頭。
- * - 以逗號分隔的三個欄位：序號 (seq)、通道號 (ch)、資料長度 (len)。
- * - 接著一段 payload，可為 JSON 或一般字串。
- * - 以星號 '*' 後接 4 個十六進位字元表示 CRC16 (CCITT)。
- * - 行尾為 "\r\n"。
- *
- * 函式會：
- * - 在 timeout_ms 毫秒內讀取一整行封包。
- * - 解析 seq、ch、payload。
- * - 驗證 payload 的長度與 CRC16。
- * - 若驗證通過，將 payload 複製到呼叫者提供的緩衝區，並補上 '\0' 結尾。
- *
- * @param port            要讀取的串口物件 (例如 g_cmd_port_fpga)。
- * @param timeout_ms      逾時時間（毫秒）。
- * @param out_seq         指向變數，用來存放解析出的序號，可為 nullptr。
- * @param out_ch          指向變數，用來存放解析出的通道，可為 nullptr。
- * @param payload_buf     用來存放 payload 的緩衝區。
- * @param payload_cap     緩衝區大小（包含結尾 '\0'），必須足夠容納 payload。
- * @param out_payload_len 指向變數，用來存放 payload 的實際長度（不含 '\0'），可為 nullptr。
- *
- * @return DumpReadResult
- * - DUMP_OK：成功解析封包。
- * - DUMP_TIMEOUT：在 timeout_ms 內未讀到完整封包。
- * - DUMP_FORMAT_ERR：格式錯誤（缺逗號、缺 '*'、非數字等）。
- * - DUMP_LEN_MISMATCH：payload 長度與 len 不符。
- * - DUMP_CRC_FAIL：CRC 驗證失敗。
- * - DUMP_OVERFLOW：payload 超過緩衝區容量。
- *
- * @note
- * - 這個函式不會清空 port buffer，請在呼叫前確保緩衝區中資料是正確的封包。
- * - 會自動去掉結尾的 '\r'。
- * - 適用於各種 dump：FOG JSON、mis-alignment JSON、序號字串等。
- */
-static DumpReadResult read_dump_packet(Stream& port,
-                                       uint32_t timeout_ms,
-                                       uint32_t* out_seq,
-                                       uint8_t*  out_ch,
-                                       char*     payload_buf,
-                                       size_t    payload_cap,
-                                       size_t*   out_payload_len)
-{
-    if (!payload_buf || payload_cap < 2) return DUMP_OVERFLOW;
-    if (out_payload_len) *out_payload_len = 0;
-    if (out_seq) *out_seq = 0;
-    if (out_ch)  *out_ch  = 0;
-
-    // 1) 讀取一整行（直到 '\n' 或 timeout）
-    char line[1024];
-    size_t ln = readline_with_timeout(port, line, sizeof(line), timeout_ms);
-    if (ln == 0) return DUMP_TIMEOUT;
-
-    // 2) 檢查開頭是否為 '@'
-    char* p = line;
-    while (*p && isspace((unsigned char)*p)) ++p;
-    if (*p != '@') return DUMP_FORMAT_ERR;
-    ++p;
-
-    // 3) 找出三個逗號，分割 seq、ch、len
-    char* c1 = strchr(p, ',');      if (!c1) return DUMP_FORMAT_ERR;
-    *c1 = '\0';
-    char* c2 = strchr(c1 + 1, ','); if (!c2) return DUMP_FORMAT_ERR;
-    *c2 = '\0';
-    char* c3 = strchr(c2 + 1, ','); if (!c3) return DUMP_FORMAT_ERR;
-    *c3 = '\0';
-
-    // 4) 將字串轉換為數字
-    char* endptr = nullptr;
-    uint32_t seq = strtoul(p, &endptr, 10);
-    if (endptr == p) return DUMP_FORMAT_ERR;
-    unsigned long ch_ul = strtoul(c1 + 1, &endptr, 10);
-    if (endptr == (c1 + 1) || ch_ul > 255UL) return DUMP_FORMAT_ERR;
-    uint8_t ch = (uint8_t)ch_ul;
-    uint32_t len = strtoul(c2 + 1, &endptr, 10);
-    if (endptr == (c2 + 1)) return DUMP_FORMAT_ERR;
-
-    // 5) 找出 '*'，切出 payload 與 CRC
-    char* star = strrchr(c3 + 1, '*');
-    if (!star) return DUMP_FORMAT_ERR;
-    *star = '\0';
-    const char* payload = c3 + 1;
-    size_t payload_len  = strlen(payload);
-
-    // 6) 檢查 payload 長度
-    if (payload_len != len) return DUMP_LEN_MISMATCH;
-
-    // 7) 讀取 CRC16
-    if (strlen(star + 1) < 4) return DUMP_FORMAT_ERR;
-    char crc_hex[5] = {0};
-    crc_hex[0] = star[1];
-    crc_hex[1] = star[2];
-    crc_hex[2] = star[3];
-    crc_hex[3] = star[4];
-    uint16_t rx_crc = (uint16_t)strtoul(crc_hex, nullptr, 16);
-
-    // 8) 計算 CRC16 驗證
-    uint16_t calc = crc16_ccitt_buf((const uint8_t*)payload, payload_len);
-    if (calc != rx_crc) return DUMP_CRC_FAIL;
-
-    // 9) 複製 payload 到呼叫者緩衝區
-    if (payload_len + 1 > payload_cap) return DUMP_OVERFLOW;
-    memcpy(payload_buf, payload, payload_len);
-    payload_buf[payload_len] = '\0';
-
-    if (out_seq) *out_seq = seq;
-    if (out_ch)  *out_ch  = ch;
-    if (out_payload_len) *out_payload_len = payload_len;
-
-    return DUMP_OK;
-}
-
-/**
- * @brief 以 AB BA ... 55 56 框架送指令；val[31:1]=seq, val[0]=NACK flag。
- */
-static inline void send_cmd_seq(uint8_t cmd, uint8_t ch, uint32_t seq, bool nack_flag=false) {
-  uint32_t val = ((seq & 0x7FFFFFFFu) << 1) | (nack_flag ? 1u : 0u);
-  sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, cmd, (int32_t)val, ch);
-}
-
-// =====================  中層（Mid-level）  =====================
-
-static uint32_t g_seq = 0;               // 成功收到並驗證通過後才 ++
-static const uint32_t FOG_TIMEOUT_MS = 1500;
-static const size_t   SCRATCH_MAX    = 1024;
-
-/**
- * @brief 收一包、驗證、依 ch 分流存放。
- *        ch=1/2/3 → fog_store_cb；ch=4 → imu_cali_store_cb；ch=5 → SN（字串）。
- * @param sn_out 可為 nullptr；若 ch=5 且不為 nullptr，會複製序號字串到此。
- */
-static bool recv_and_store(fog_parameter_t* fog,
-                           uint8_t expect_ch,
-                           uint32_t expect_seq,
-                           uint32_t timeout_ms,
-                           char* scratch, size_t scratch_cap)
-{
-  uint32_t seq=0; uint8_t ch=0; size_t plen=0;
-  DumpReadResult r = read_dump_packet(g_cmd_port_fpga, timeout_ms, &seq, &ch,
-                                      scratch, scratch_cap, &plen);
-  if (r != DUMP_OK) return false;
-  // 若要嚴格比對 echo 的 seq/ch，可加入：
-  if (ch != expect_ch /*|| seq != expect_seq*/) {
-    // 你也可以選擇接受 ch 不同的封包並丟棄；這裡採嚴格模式
-    return false;
-  }
-
-  if (expect_ch == 1 || expect_ch == 2 || expect_ch == 3) {
-	// FOG X/Y/Z para → JSON：{"0":...}
-    fog_cb_ctx_t ctx{ fog, expect_ch };
-    parse_simple_json_ints(scratch, fog_store_cb, &ctx);
-
-  } else if (expect_ch == 4) {
-	// Mis-alignment → JSON
-    fog_cb_ctx_t ctx{ fog, 4 };
-    parse_simple_json_ints(scratch, imu_cali_store_cb, &ctx);
-
-  } else if (expect_ch == 5) {
-	// SN → 純字串，走 parse_string + sn_store_cb
-    fog_cb_ctx_t ctx{ fog, 5 };
-    parse_string(scratch, sn_store_cb, &ctx);
-
-  } else if (expect_ch == 7) {
-    // VERSION → 純字串（不一定要存進 fog_inst，先只回傳給 PC 也 OK）
-    // 若你之後想存到 fog_inst，可再做 version_store_cb
-    // 這裡不做 store 也沒問題：send_result_v1 仍會把 scratch 回給 PC
-
-    // scratch 目前是 FPGA payload string，例如 "HINS_TOP_V1,HINS_CPU_V1_0"
-    // 合併成 "HINS_MCU_V2.0,<fpga_str>"
-    char merged[SCRATCH_MAX + 64];  // 夠用即可；最後仍會被截到 scratch_cap
-    const char* fpga_str = scratch;
-
-    // 如果 FPGA 回空字串，也不要多出逗號
-    if (fpga_str && fpga_str[0] != '\0') {
-      snprintf(merged, sizeof(merged), "%s,%s", MCU_VERSION, fpga_str);
-    } else {
-      snprintf(merged, sizeof(merged), "%s", MCU_VERSION);
-    }
-
-    // copy 回 scratch（注意 cap）
-    strncpy(scratch, merged, scratch_cap - 1);
-    scratch[scratch_cap - 1] = '\0';
-
-  }
-
-  const uint8_t cmd_id =
-      (expect_ch == 4) ? CMD_DUMP_MIS :
-      (expect_ch == 5) ? CMD_DUMP_SN  :
-      (expect_ch == 7) ? CMD_DUMP_VERSION :
-                         CMD_DUMP_FOG;
-  const uint16_t out_len = (uint16_t)strlen(scratch);
-  send_result_v1(g_cmd_port_output, cmd_id, AckStatus::OK,
-                 (const uint8_t*)scratch, out_len);
-  
-  return true;
-}
-
-/**
- * @brief Stop-and-Wait 取資料，支援一次 NACK 快速重送。
- * @param sn_out/sn_cap 僅 ch=5 需要；其他 ch 可傳 nullptr/0。
- */
-static bool request_and_update(fog_parameter_t* fog,
-                               uint8_t ch,
-                               uint32_t timeout_ms,
-                               int max_retry)
-{
-  if (!fog) return false;
-
-  static char scratch[SCRATCH_MAX];
-  
-  uint8_t req_cmd =
-    (ch == 4) ? CMD_DUMP_MIS :
-    (ch == 5) ? CMD_DUMP_SN  :
-    (ch == 7) ? CMD_DUMP_VERSION :
-                CMD_DUMP_FOG;
-
-  for (int attempt = 0; attempt < max_retry; ++attempt) {
-    // 普通 REQ
-    send_cmd_seq(req_cmd, ch, g_seq, /*nack*/false);
-
-    if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
-      g_seq = (g_seq + 1) & 0x7FFFFFFF;
-      return true;
-    }
-
-    // NACK（若 Nios II 尚未支援，等效於再送一次）
-    send_cmd_seq(req_cmd, ch, g_seq, /*nack*/true);
-
-    if (recv_and_store(fog, ch, g_seq, timeout_ms, scratch, sizeof(scratch))) {
-      g_seq = (g_seq + 1) & 0x7FFFFFFF;
-      return true;
-    }
-
-    delay(20 + attempt * 10);
-  }
-  // 全部 retry 都失敗：回 TIMEOUT RESULT
-  const uint8_t cmd_id =
-    (ch == 4) ? CMD_DUMP_MIS :
-    (ch == 5) ? CMD_DUMP_SN  :
-    (ch == 7) ? CMD_DUMP_VERSION :
-                CMD_DUMP_FOG;
-
-  send_result_v1(g_cmd_port_output, cmd_id, AckStatus::TIMEOUT, nullptr, 0);
-
-  return false;
-}
-
-// =====================  高層（High-level APIs）  =====================
-
-/**
- * @brief 抓某一軸 FOG 參數（X=1/Y=2/Z=3），payload 是 JSON。
- */
-bool dump_fog_param(fog_parameter_t* fog_inst, uint8_t ch) {
-  if (!fog_inst) return false;
-  if (ch < 1 || ch > 3) return false;
-  return request_and_update(fog_inst, ch, FOG_TIMEOUT_MS, /*retries*/5);
-}
-
-/**
- * @brief 抓 Mis-alignment（ch=4），payload 是 JSON。
- */
-bool dump_misalignment_param(fog_parameter_t* fog_inst) {
-  if (!fog_inst) return false;
-  return request_and_update(fog_inst, /*ch*/4, FOG_TIMEOUT_MS, /*retries*/5);
-}
-
-/**
- * @brief 抓序號 SN（ch=5），payload 是一般字串。
- */
-bool dump_SN(fog_parameter_t* fog_inst) {
-  if (!fog_inst) return false;
-  return request_and_update(fog_inst, /*ch*/5, FOG_TIMEOUT_MS, /*retries*/5);
-}
-
-bool dump_version(fog_parameter_t* fog_inst) {
-  if (!fog_inst) return false;
-  return request_and_update(fog_inst, /*ch*/7, FOG_TIMEOUT_MS, /*retries*/5);
-}
-
-
-/**
- * @brief 上電後一次抓齊：FOG X/Y/Z、Mis-alignment、SN。
- * @return 全部都成功則回 true；只要有一項失敗就回 false。
- */
-bool boot_capture_all(fog_parameter_t* fog_inst) {
-  if (!fog_inst) return false;
-
-  bool ok = true;
-  ok &= dump_fog_param(fog_inst, 1);   // X
-  delay(10);
-  ok &= dump_fog_param(fog_inst, 2);   // Y
-  delay(10);
-  ok &= dump_fog_param(fog_inst, 3);   // Z
-  delay(10);
-  ok &= dump_misalignment_param(fog_inst); // MIS
-  delay(10);
-//   ok &= dump_SN(fog_inst);             // SN -> 寫進 fog_inst->sn
-
-  return ok;
 }
 
 #include "usecase/parameter_service.h"
