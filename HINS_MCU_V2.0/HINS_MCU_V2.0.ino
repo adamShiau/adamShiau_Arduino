@@ -42,23 +42,16 @@ void loop() {
   static uint32_t try_cnt = 0;
 
   uint8_t* buf = readDataDynamic(&try_cnt);
-  if (!buf) return;
 
-  decode_cmd_v1(buf, &g_cmd);
+  if (buf) {
+    decode_cmd_v1(buf, &g_cmd);
+    cmd_dispatch(&g_cmd, &g_fog_params, &g_output_fn, &g_auto_rst);
+  }
+  
+  if (g_output_fn) {
+    g_output_fn(&g_cmd, &g_fog_params);
+  }
 
-  cmd_dispatch(&g_cmd, &g_fog_params, &g_output_fn, &g_auto_rst);
-
-
-  // cmd_mux(&g_cmd);
-
-  // // 1) parameter
-  // fog_parameter(&g_cmd, &g_fog_params);
-
-  // // 2) output mode select
-  // output_mode_setting(&g_cmd, &g_output_fn, &g_auto_rst);
-
-  // // 3) run output
-  // g_output_fn(&g_cmd, &g_fog_params);
 }
 
 

@@ -165,8 +165,8 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
   fog_parameter(cmd, params);
   output_mode_setting(cmd, output_fn, auto_rst);
 
-  if (*output_fn) {
-    (*output_fn)(cmd, params);
-  }
+  // if (*output_fn) {
+  //   (*output_fn)(cmd, params);
+  // }
 }
 
