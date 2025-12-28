@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include "../common.h"   // temporary: provides cmd_ctrl_t, fog_parameter_t, constants, sendCmd, etc.
+#include "../common.h"   // temporary: provides cmd_ctrl_t, fog_parameter_t, constants, etc.
 #include "usecase_types.h"
 
 /**

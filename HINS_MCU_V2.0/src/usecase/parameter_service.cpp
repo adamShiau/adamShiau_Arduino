@@ -1,4 +1,5 @@
 #include "parameter_service.h"
+#include "configuration_service.h"
 
 void parameter_service_handle(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 {
@@ -752,6 +753,12 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						result.status = ok ? Status::OK : Status::TIMEOUT;
 						break;
 					} 
+					case CMD_DUMP_CONFIG: {
+						DEBUG_PRINT("CMD_DUMP_CONFIG:\n");
+						bool ok = dump_config(fog_inst);
+						result.status = ok ? Status::OK : Status::TIMEOUT;
+						break;
+					} 
 					case CMD_DUMP_VERSION: {
 						DEBUG_PRINT("CMD_DUMP_VERSION:\n");
 						bool ok = dump_version(fog_inst);
@@ -777,6 +784,34 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						}			
 						break;
 					}
+					case CMD_CFG_DR: {
+						DEBUG_PRINT("CMD_CFG_DR:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							// PC sends datarate index (0~4). Convert to FPGA sync counter and forward to FPGA (ch fixed to 6).
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_DR, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_DR - CFG_CONTAINER_TO_CMD_OFFSET);
+							// nios_send_cfg_datarate(port, CMD_SYNC_CNT, (uint8_t)rx->value);
+							(void)apply_datarate_index((uint8_t)rx->value);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					} 
+					case CMD_CFG_BR: {
+						DEBUG_PRINT("CMD_CFG_BR:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_BR, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_BR - CFG_CONTAINER_TO_CMD_OFFSET);
+							(void)apply_baudrate_index((uint8_t)rx->value);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					} 
 
           case CMD_HINS_PING: {
 						DEBUG_PRINT("CMD_HINS_PING:\n");	

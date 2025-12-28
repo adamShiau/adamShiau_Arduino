@@ -168,7 +168,7 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
 void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter);
 void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out);
 void reset_FPGA_timer(void);
-void set_data_rate(uint32_t rate);
+// void set_data_rate(uint32_t rate);
 
 
 

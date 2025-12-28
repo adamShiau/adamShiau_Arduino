@@ -5,6 +5,7 @@
 #include "src/domain/protocol/cmd_codec_v1.h"
 #include "src/utils/crc32.h"
 #include "src/usecase/cmd_dispatch.h"
+#include "src/usecase/configuration_service.h"
 
 // #define INT_SYNC 1
 // #define EXT_SYNC 2
@@ -32,8 +33,8 @@ void setup() {
   // Serial.println("IRIS1_MCU_V1.2");
   // DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
   boot_capture_all(&g_fog_params);
-  delay(100);
-  set_data_rate(SYNC_100HZ); 
+  delay(1000);
+  apply_configuration_from_container(&g_fog_params);
   delay(10);
   ahrs_attitude.init(100.0f); // sample rate                
 }
