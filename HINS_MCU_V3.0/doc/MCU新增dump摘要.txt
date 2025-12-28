@@ -1,0 +1,119 @@
+MCU 端新增 Dump 方法結論（共用模板）
+0) Dump 行為規格（先確立）
+
+所有命令（含 dump）cmd_dispatch 立刻回 ACK(A1)：代表「收到並受理」，不是完成。
+
+dump 類命令最後只送一次 RESULT(A2)，且：
+
+成功：A2 + len>0 + payload
+
+timeout/失敗：A2 + status=TIMEOUT(or ERR) + len=0
+
+dump 成功時不要在 cmd_dispatch 送 status-only RESULT（避免跟真正 payload RESULT 重複）。
+
+RESULT/ACK 封包 len 為 uint16_t，checksum coverage = (5 + len)。
+
+1) 定義新的 dump 命令與通道
+
+新增命令碼：CMD_DUMP_XXX = 0x??
+
+選定一個 ch（避免撞到既有 ch；例如你這次用 ch=7 給 VERSION）
+
+2) common.h / common.cpp 新增一個 high-level API
+common.h
+bool dump_xxx(fog_parameter_t* fog_inst);   // 用你自己的命名
+
+common.cpp
+bool dump_xxx(fog_parameter_t* fog_inst) {
+  if (!fog_inst) return false;
+  return request_and_update(fog_inst, /*ch*/X, FOG_TIMEOUT_MS, /*retries*/5);
+}
+
+
+重點：dump 類「真正的 request/等待/回 A2」都在 common 層做，cmd_dispatch 只負責回 A1。
+
+3) request_and_update()：新增 ch → req_cmd / cmd_id 的 mapping（必做）
+
+你要確保這個 mapping 在 兩個地方一致：
+
+送給 FPGA 的 request cmd（req_cmd）
+
+timeout/失敗時回 PC 的 RESULT(A2) cmd_id
+
+建議做成一個共用函式（最不容易漏）：
+
+static inline uint8_t dump_cmd_from_ch(uint8_t ch) {
+  if (ch == 4) return CMD_DUMP_MIS;
+  if (ch == 5) return CMD_DUMP_SN;
+  if (ch == 7) return CMD_DUMP_VERSION; // 新增
+  return CMD_DUMP_FOG;                  // ch=1/2/3
+}
+
+
+在 request_and_update()：
+
+req_cmd = dump_cmd_from_ch(ch)
+
+send_cmd_seq(req_cmd, ch, seq, nack_flag)
+
+timeout 時：send_result_v1(output, dump_cmd_from_ch(ch), TIMEOUT, nullptr, 0)
+
+4) recv_and_store()：新增 ch 的處理與 cmd_id mapping（必做）
+(A) 若要存入 fog_inst：在這裡 parse + store
+
+JSON int 類：走 parse_simple_json_ints(..., store_cb, ctx)
+
+string 類：走 parse_string(..., store_cb, ctx)
+
+不同格式：新增 parser
+
+(B) 若不存（像 VERSION）：也要加一個分支（可為空），讓邏輯清楚
+else if (expect_ch == 7) {
+  // VERSION string: do not store, just forward via RESULT payload
+}
+
+(C) 最重要：cmd_id mapping 要加新 ch，確保成功時 A2 的 cmd 正確
+const uint8_t cmd_id =
+    (expect_ch == 4) ? CMD_DUMP_MIS :
+    (expect_ch == 5) ? CMD_DUMP_SN  :
+    (expect_ch == 7) ? CMD_DUMP_VERSION :   // 新增
+                       CMD_DUMP_FOG;
+
+
+recv_and_store 成功最後會做：
+send_result_v1(output_port, cmd_id, OK, scratch, out_len);
+所以 cmd_id 一定要對。
+
+5) parameter_service.cpp：新增 case（對外入口）
+
+在 parameter_service_handle_ex() 裡新增：
+
+case CMD_DUMP_XXX: {
+  bool ok = dump_xxx(fog_inst);
+  result.status = ok ? Status::OK : Status::TIMEOUT;
+  break;
+}
+
+
+注意：這裡的 result.status 只代表 usecase 執行結果；dump 成功的 A2 payload 仍由 common 層送出。
+cmd_dispatch 對 dump 類 OK 不要再送 status-only A2。
+
+6) 版本字串這種可變長 payload 要不要結尾？
+
+不用要求 FPGA 加 \0 / \n
+
+因為協議本身有 len，而 MCU 端 read_dump_packet() 通常也會在 scratch 後面補 '\0' 方便 debug/parse。
+
+只要確保 payload 不包含你 line-based 協議的分隔符（例如 \n、*）即可。
+
+7) 驗證（PC 端觀察規則）
+
+送 CMD_DUMP_XXX 後：
+
+一定先收到 ACK(A1)
+
+之後收到唯一一包 RESULT(A2)
+
+成功：len > 0 且 payload 有資料
+
+timeout：status=TIMEOUT 且 len=0
