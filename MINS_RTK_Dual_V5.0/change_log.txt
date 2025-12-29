@@ -1,0 +1,14 @@
+
+
+1. nmea_parser.h 裡的 struct GpsData 新增 volatile uint32_t gga_epoch，並在 reset() 初始化為0
+2. nmea_parser.h 與 .cpp 裡新增以下方法:
+    bool parseGGA_epoch(const String& line);
+3. parseLine() 裡 parseGGA() 改成 parseGGA_epoch()
+4. command_handler.h：在 DataOutput 加欄位 uint32_t last_sent_gga_epoch;
+5. command_handler.cpp：在 command_init() 初始化: data_outputs[i].last_sent_gga_epoch = 0;
+6. command_handler.cpp：在 processDataOutputs() 加 gate（核心）：
+    if (output->packet_type == PKT_POSITION) {
+        uint32_t cur_epoch = gps->gga_epoch;.........
+        .........
+        .........
+    }
