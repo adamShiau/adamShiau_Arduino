@@ -236,6 +236,13 @@ void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst,
       }
       break;
 
+    case 6: // configuration
+      if (idx < CFG_LEN) {
+        fog_inst->config[idx].data.int_val = rx->value;
+        // DEBUG_PRINT("misalignment[%d] = %d\n", idx, fog_inst->misalignment[idx].data.int_val);
+      }
+      break;
+
     default:
       // unknown channel -> ignore
       break;
@@ -251,10 +258,10 @@ void reset_FPGA_timer(void)
 	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_HW_TIMER_RST, 0, 1);
 }
 
-void set_data_rate(uint32_t rate)
-{
-	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
-}
+// void set_data_rate(uint32_t rate)
+// {
+// 	sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, CMD_SYNC_CNT, rate, 1);
+// }
 
 #ifndef FOG_JSON_TIMEOUT_MS
 #define FOG_JSON_TIMEOUT_MS 1500  // 等待 JSON 完整到達的逾時（毫秒）

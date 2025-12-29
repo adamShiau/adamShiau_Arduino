@@ -6,9 +6,11 @@
 
 #define PAR_LEN 40 // 定義陣列大小
 #define MIS_LEN 30
+#define CFG_LEN 6
 
 #define CONTAINER_TO_CMD_OFFSET     8   
 #define MIS_CONTAINER_TO_CMD_OFFSET     48  
+#define CFG_CONTAINER_TO_CMD_OFFSET     72  
 
 typedef union{
     float	float_val;
@@ -34,6 +36,7 @@ typedef struct {    // for parameter container, container size defined by PAR_LE
     mem_unit_t paramY[PAR_LEN];    
     mem_unit_t paramZ[PAR_LEN];  
     mem_unit_t misalignment[MIS_LEN];  
+    mem_unit_t config[CFG_LEN];
 } fog_parameter_t;
 
 

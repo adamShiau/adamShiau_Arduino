@@ -61,8 +61,10 @@ enum {
     CMD_MIS_G23,
     CMD_MIS_G31,
     CMD_MIS_G32,
-    CMD_MIS_G33,
+    CMD_MIS_G33,                //0x47
 
+    CMD_CFG_DR = 72,            //0x48
+    CMD_CFG_BR,                 //0x49
 
     CMD_DATA_OUT_START = 99,    //0x63
     CMD_HW_TIMER_RST = 100,     //0x64
@@ -72,6 +74,7 @@ enum {
     CMD_DUMP_MIS = 129,  //0x81
     CMD_DUMP_SN = 130,  //0x82
     CMD_DUMP_VERSION = 131,  //0x83
+    CMD_DUMP_CONFIG = 132, //0x84
 
     /*** HINS CMD */
 

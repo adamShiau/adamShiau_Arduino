@@ -241,6 +241,17 @@ static void imu_cali_store_cb(int key, int32_t val, void* user)
   C->fog->misalignment[key].data.int_val = val;
 }
 
+static void config_store_cb(int key, int32_t val, void* user)
+{
+  fog_cb_ctx_t* C = (fog_cb_ctx_t*)user;
+  if (!C || !C->fog) return;
+  if (key < 0 || key >= CFG_LEN) return;
+
+  C->fog->config[key].type = TYPE_INT;
+  C->fog->config[key].data.int_val = val;
+}
+
+
 static void sn_store_cb(const char* s, void* user)
 {
   fog_cb_ctx_t* C = (fog_cb_ctx_t*)user;
@@ -286,6 +297,10 @@ static bool recv_and_store(fog_parameter_t* fog,
     fog_cb_ctx_t ctx{ fog, 5 };
     parse_string(scratch, sn_store_cb, &ctx);
 
+  } else if (expect_ch == 6) {
+    fog_cb_ctx_t ctx{ fog, 6 };
+    parse_simple_json_ints(scratch, config_store_cb, &ctx);
+
   } else if (expect_ch == 7) {
     // VERSION: merge MCU_VERSION + FPGA version string
     char merged[SCRATCH_MAX + 64];
@@ -304,6 +319,7 @@ static bool recv_and_store(fog_parameter_t* fog,
   const uint8_t cmd_id =
       (expect_ch == 4) ? CMD_DUMP_MIS :
       (expect_ch == 5) ? CMD_DUMP_SN  :
+      (expect_ch == 6) ? CMD_DUMP_CONFIG :
       (expect_ch == 7) ? CMD_DUMP_VERSION :
                          CMD_DUMP_FOG;
 
@@ -326,6 +342,7 @@ static bool request_and_update(fog_parameter_t* fog,
   uint8_t req_cmd =
     (ch == 4) ? CMD_DUMP_MIS :
     (ch == 5) ? CMD_DUMP_SN  :
+    (ch == 6) ? CMD_DUMP_CONFIG :
     (ch == 7) ? CMD_DUMP_VERSION :
                 CMD_DUMP_FOG;
 
@@ -348,6 +365,7 @@ static bool request_and_update(fog_parameter_t* fog,
   const uint8_t cmd_id =
     (ch == 4) ? CMD_DUMP_MIS :
     (ch == 5) ? CMD_DUMP_SN  :
+    (ch == 6) ? CMD_DUMP_CONFIG :
     (ch == 7) ? CMD_DUMP_VERSION :
                 CMD_DUMP_FOG;
 
@@ -373,6 +391,11 @@ bool dump_SN(fog_parameter_t* fog_inst) {
   return request_and_update(fog_inst, 5, FOG_TIMEOUT_MS, 5);
 }
 
+bool dump_config(fog_parameter_t* fog_inst) {
+  if (!fog_inst) return false;
+  return request_and_update(fog_inst, 6, FOG_TIMEOUT_MS, 5);
+}
+
 bool dump_version(fog_parameter_t* fog_inst) {
   if (!fog_inst) return false;
   return request_and_update(fog_inst, 7, FOG_TIMEOUT_MS, 5);
@@ -382,10 +405,11 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
   if (!fog_inst) return false;
 
   bool ok = true;
-  ok &= dump_fog_param(fog_inst, 1); delay(10);
-  ok &= dump_fog_param(fog_inst, 2); delay(10);
-  ok &= dump_fog_param(fog_inst, 3); delay(10);
-  ok &= dump_misalignment_param(fog_inst); delay(10);
-  // ok &= dump_SN(fog_inst); delay(10);
+  ok &= dump_fog_param(fog_inst, 1);        delay(10);
+  ok &= dump_fog_param(fog_inst, 2);        delay(10);
+  ok &= dump_fog_param(fog_inst, 3);        delay(10);
+  ok &= dump_misalignment_param(fog_inst);  delay(10);
+  ok &= dump_config(fog_inst);              delay(10);
+  ok &= dump_SN(fog_inst);                  delay(10);
   return ok;
 }

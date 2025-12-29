@@ -1,4 +1,5 @@
 #include "nios_link.h"
+#include "../../domain/model/command_id.h"
 
 size_t sendCmd(Stream& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
   int32_t value, uint8_t ch)
@@ -66,3 +67,33 @@ bool sendSN(Stream& port, const uint8_t header[2], const uint8_t trailer[2], uin
     return true;
 }
 
+bool nios_send_cfg_datarate(Stream& port, uint8_t cmd_sync_cnt, uint8_t dr_index)
+{
+    // Fixed framing for Nios link
+    static const uint8_t HDR_ABBA_LOCAL[2] = {0xAB, 0xBA};
+    static const uint8_t TRL_5556_LOCAL[2] = {0x55, 0x56};
+
+    // DR_xxHz constants (FPGA expects "sync counter" ticks)
+    const uint32_t DR_10Hz  = 5000000UL;
+    const uint32_t DR_50Hz  = 1000000UL;
+    const uint32_t DR_100Hz = 500000UL;
+    const uint32_t DR_200Hz = 250000UL;
+    const uint32_t DR_400Hz = 125000UL;
+
+    uint32_t dr_cnt = 0;
+
+    switch (dr_index)
+    {
+        case 0: dr_cnt = DR_10Hz;  break;
+        case 1: dr_cnt = DR_50Hz;  break;
+        case 2: dr_cnt = DR_100Hz; break;
+        case 3: dr_cnt = DR_200Hz; break;
+        case 4: dr_cnt = DR_400Hz; break;
+        default:
+            return false;
+    }
+
+    // ch fixed to 6 per spec
+    sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd_sync_cnt, (int32_t)dr_cnt, 6);
+    return true;
+}
