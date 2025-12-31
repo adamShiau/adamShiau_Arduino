@@ -24,6 +24,23 @@
 
 // #include "utils/serial_printf.h"
 
+static const float SF_ACCL_2G	= 0.061e-3F;
+static const float SF_ACCL_4G	=0.122e-3F;
+static const float SF_ACCL_8G	=0.244e-3F;
+static const float SF_ACCL_16G	=0.488e-3F;
+
+static const float SF_GYRO_125DPS	=4.37e-3F;
+static const float SF_GYRO_250DPS	=8.75e-3F;
+static const float SF_GYRO_500DPS	=17.5e-3F;
+static const float SF_GYRO_1000DPS	=35e-3F;
+static const float SF_GYRO_2000DPS	=70e-3F;
+static const float SF_GYRO_4000DPS	=140e-3F;
+static const float SF_TEMP =0.00390625F;
+
+static const float COE_TIMER = 0.0001;
+
+static const float COE_TEMP_AD590 = 0.00007165585;
+
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
 const uint8_t HDR_CDDC[2] = {0xCD, 0xDC};
 const uint8_t HDR_EFFE[2] = {0xEF, 0xFE};
@@ -410,19 +427,21 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   if (!raw || !cali || !fog_parameter) return;
 
   // === Copy raw data to cali structure ===
-  float tx   = raw->temp.tempx.float_val;
-  float ty   = raw->temp.tempy.float_val;
-  float tz   = raw->temp.tempz.float_val;
-  float tacc = raw->adxl357.temp.float_val;
+  float tx   = ((float)raw->temp.tempx.int_val) * COE_TEMP_AD590 - 273.15;
+  float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15;
+  float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15;
+  float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
 
   // === Gyro scale factor（一次線性）===
-  float sf_x_gyro = sf_temp_comp_1st(tx,
-      fog_parameter->paramX[17].data.float_val,
-      fog_parameter->paramX[18].data.float_val);
+  float sf_x_gyro = SF_GYRO_1000DPS;
+  float sf_y_gyro = SF_GYRO_1000DPS;
+  // float sf_x_gyro = sf_temp_comp_1st(tx,
+  //     fog_parameter->paramX[17].data.float_val,
+  //     fog_parameter->paramX[18].data.float_val);
 
-  float sf_y_gyro = sf_temp_comp_1st(ty,
-      fog_parameter->paramY[17].data.float_val,
-      fog_parameter->paramY[18].data.float_val);
+  // float sf_y_gyro = sf_temp_comp_1st(ty,
+  //     fog_parameter->paramY[17].data.float_val,
+  //     fog_parameter->paramY[18].data.float_val);
 
   float sf_z_gyro = sf_temp_comp_1st(tz,
       fog_parameter->paramZ[17].data.float_val,
@@ -436,17 +455,20 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       // Serial.print(fog_parameter->paramZ[18].data.float_val,4); Serial.println();
 
   // === Accel scale factor（一次線性；用 adxl 溫度）===
-  float sf_x_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramX[31].data.float_val,
-      fog_parameter->paramX[32].data.float_val);
+  float sf_x_acc = SF_ACCL_16G;
+  float sf_y_acc = SF_ACCL_16G;
+  float sf_z_acc = SF_ACCL_16G;
+  // float sf_x_acc = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramX[31].data.float_val,
+  //     fog_parameter->paramX[32].data.float_val);
 
-  float sf_y_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramY[31].data.float_val,
-      fog_parameter->paramY[32].data.float_val);
+  // float sf_y_acc = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramY[31].data.float_val,
+  //     fog_parameter->paramY[32].data.float_val);
 
-  float sf_z_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramZ[31].data.float_val,
-      fog_parameter->paramZ[32].data.float_val);
+  // float  = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramZ[31].data.float_val,
+  //     fog_parameter->paramZ[32].data.float_val);
       // Serial.println("\nsf_accl: slope, offset:");
       // Serial.print(fog_parameter->paramX[31].data.float_val); Serial.print(","); 
       // Serial.print(fog_parameter->paramX[32].data.float_val); Serial.println();
@@ -456,24 +478,26 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       // Serial.print(fog_parameter->paramZ[32].data.float_val); Serial.println();
 
   // === Gyro bias（三區段一次線性）===
-  float bx_gyro = bias_temp_comp_1st_3t(
-      tx,
-      fog_parameter->paramX[23].data.float_val,  // T1
-      fog_parameter->paramX[24].data.float_val,  // T2
-      fog_parameter->paramX[25].data.float_val,  // s1
-      fog_parameter->paramX[26].data.float_val,  // o1
-      fog_parameter->paramX[27].data.float_val,  // s2
-      fog_parameter->paramX[28].data.float_val,  // o2
-      fog_parameter->paramX[29].data.float_val,  // s3
-      fog_parameter->paramX[30].data.float_val   // o3
-  );
+  float bx_gyro = 0;
+  float by_gyro = 0;
+  // float bx_gyro = bias_temp_comp_1st_3t(
+  //     tx,
+  //     fog_parameter->paramX[23].data.float_val,  // T1
+  //     fog_parameter->paramX[24].data.float_val,  // T2
+  //     fog_parameter->paramX[25].data.float_val,  // s1
+  //     fog_parameter->paramX[26].data.float_val,  // o1
+  //     fog_parameter->paramX[27].data.float_val,  // s2
+  //     fog_parameter->paramX[28].data.float_val,  // o2
+  //     fog_parameter->paramX[29].data.float_val,  // s3
+  //     fog_parameter->paramX[30].data.float_val   // o3
+  // );
 
-  float by_gyro = bias_temp_comp_1st_3t(
-      ty, fog_parameter->paramY[23].data.float_val, fog_parameter->paramY[24].data.float_val,
-      fog_parameter->paramY[25].data.float_val, fog_parameter->paramY[26].data.float_val,
-      fog_parameter->paramY[27].data.float_val, fog_parameter->paramY[28].data.float_val,
-      fog_parameter->paramY[29].data.float_val, fog_parameter->paramY[30].data.float_val
-  );
+  // float by_gyro = bias_temp_comp_1st_3t(
+  //     ty, fog_parameter->paramY[23].data.float_val, fog_parameter->paramY[24].data.float_val,
+  //     fog_parameter->paramY[25].data.float_val, fog_parameter->paramY[26].data.float_val,
+  //     fog_parameter->paramY[27].data.float_val, fog_parameter->paramY[28].data.float_val,
+  //     fog_parameter->paramY[29].data.float_val, fog_parameter->paramY[30].data.float_val
+  // );
 
   float bz_gyro = bias_temp_comp_1st_3t(
       tz, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
@@ -508,17 +532,20 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // Serial.print(fog_parameter->paramZ[30].data.float_val); Serial.println();
 
   // === Accel bias（一次線性；用 adxl 溫度）===
-  float bx_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramX[33].data.float_val,
-      fog_parameter->paramX[34].data.float_val);
+  float bx_acc = 0;
+  float by_acc = 0;
+  float bz_acc = 0;
+  // float bx_acc = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramX[33].data.float_val,
+  //     fog_parameter->paramX[34].data.float_val);
 
-  float by_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramY[33].data.float_val,
-      fog_parameter->paramY[34].data.float_val);
+  // float by_acc = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramY[33].data.float_val,
+  //     fog_parameter->paramY[34].data.float_val);
 
-  float bz_acc = sf_temp_comp_1st(tacc,
-      fog_parameter->paramZ[33].data.float_val,
-      fog_parameter->paramZ[34].data.float_val);
+  // float  = sf_temp_comp_1st(tacc,
+  //     fog_parameter->paramZ[33].data.float_val,
+  //     fog_parameter->paramZ[34].data.float_val);
       // Serial.println("\nbs_accl: s, o:");
       // Serial.print(fog_parameter->paramX[33].data.float_val); Serial.print(","); 
       // Serial.print(fog_parameter->paramX[34].data.float_val); Serial.println();
@@ -528,17 +555,17 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       // Serial.print(fog_parameter->paramZ[34].data.float_val); Serial.println();
 
   // === Gyro 溫補（scale factor & bias）===
-  float gx_comp = raw->fog.fogx.step.float_val * sf_x_gyro - bx_gyro;
-  float gy_comp = raw->fog.fogy.step.float_val * sf_y_gyro - by_gyro;
-  float gz_comp = raw->fog.fogz.step.float_val * sf_z_gyro - bz_gyro;
+  float gx_comp = ((float)raw->fog.fogx.step.int_val) * sf_x_gyro - bx_gyro;
+  float gy_comp = ((float)raw->fog.fogy.step.int_val) * sf_y_gyro - by_gyro;
+  float gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
   // Serial.print(raw->fog.fogx.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogy.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogz.step.float_val); Serial.println();Serial.println();
 
   // === Accel 溫補（scale factor & bias）===
-  float ax_comp = raw->adxl357.ax.float_val * sf_x_acc - bx_acc;
-  float ay_comp = raw->adxl357.ay.float_val * sf_y_acc - by_acc;
-  float az_comp = raw->adxl357.az.float_val * sf_z_acc - bz_acc;
+  float ax_comp = ((float)raw->adxl357.ax.int_val) * sf_x_acc - bx_acc;
+  float ay_comp = ((float)raw->adxl357.ay.int_val) * sf_y_acc - by_acc;
+  float az_comp = ((float)raw->adxl357.az.int_val) * sf_z_acc - bz_acc;
 
   // === Gyro misalignment（misalignment[12..23]）===
   float cgx = fog_parameter->misalignment[12].data.float_val;
@@ -637,7 +664,10 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->temp.tempy.float_val = ty;
   cali->temp.tempz.float_val = tz;
   cali->adxl357.temp.float_val = tacc;
-  cali->time.time.float_val = raw->time.time.float_val;
+  
+  // time
+  float time = (float)(raw->time.time.int_val) * COE_TIMER;
+  cali->time.time.float_val = time;
 }
 
 #include "usecase/parameter_service.h"
