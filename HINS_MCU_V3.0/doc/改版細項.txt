@@ -1,0 +1,266 @@
+好，我直接幫你把 doc/RT_tick_refactor_plan.md 寫成一份「可直接放進 repo、下次開工就照著做」的正式規格文件。
+這份文件的定位是：大改版的設計契約（Design Contract）＋實作待辦清單。
+
+你之後只要在新對話說一句：
+
+「我要開始做 RT tick 大改版，規格在 RT_tick_refactor_plan.md」
+我就會 100% 照這份文件接續。
+
+# RT Tick Refactor Plan (S1: Real-time First)
+
+## 目的
+本文件定義下一次 MCU 大改版的核心設計原則與實作項目，目標是在維持 **固定輸出頻率** 的前提下，
+將重運算模組（姿態、濾波等）改為 **降頻 / time-slicing** 執行，同時保留既有 AHRS 模式作為 legacy。
+
+---
+
+## 核心策略總覽（S1：Real-time First）
+
+### S1. 固定輸出節拍（Time-driven）
+- MCU 輸出頻率由 **PC datarate cmd** 決定
+- Tick 週期：
+
+
+T_us = 1_000_000 / datarate_hz
+
+- 每一個 tick **一定要輸出一包資料**
+- Tick 不等待 raw data，不因重運算阻塞
+
+---
+
+## Tick 與 Raw 資料對齊策略
+
+### Tick 相位（Phase-lock）
+1. PC 設定 datarate
+2. MCU 對 FPGA 下達 start streaming cmd
+3. MCU 等待 **第一筆完整 raw frame**
+4. 以第一筆 raw 到達時間作為 `t0`
+5. 設定：
+
+
+next_tick_us = t0 + T_us
+
+6. 後續 tick 僅由 MCU timer 推進（不再跟 raw 抖動）
+
+---
+
+## Raw Data 接收策略（Keep-latest）
+
+### Double-buffer + Commit
+- 不使用 FIFO / ring buffer
+- 使用深度 1 的 latest snapshot
+
+結構概念：
+```c
+raw_work      // receiver parse 用
+raw_latest    // 對外穩定可讀
+raw_seq       // 每 commit +1
+raw_t_us      // 該筆 raw 的 timestamp
+
+
+Commit 規則：
+
+receiver 解析完成一包 raw 後
+
+一次性 commit 到 raw_latest
+
+tick 只讀 raw_latest（不可讀到半包）
+
+Keep-latest 行為
+
+若 FPGA raw rate > tick rate，允許中間 raw 被覆蓋
+
+tick 只使用最新可用 raw
+
+tick 封包需能標示：
+
+RAW_UPDATED（本 tick 是否有新 raw）
+
+或 raw_age
+
+Level0（Tick 內必須完成）
+Level0 內容
+
+Level0 為 tick 內 保證 worst-case < T_us 的處理項目：
+
+raw parsing（若尚未完成）
+
+校正：
+
+Scale Factor
+
+Bias
+
+Misalignment
+
+封包打包與 UART 輸出
+
+Level0 限制
+
+不可 blocking
+
+不可 heavy loop
+
+不可複雜濾波或長迴圈
+
+Datarate 上限決定
+
+若 Level0 worst-case > T_us
+
+該 datarate 不允許作為穩定輸出
+
+可選擇：拒收 / 自動降檔 / 回傳錯誤
+
+姿態模組（Attitude）策略
+降頻與 Time-slicing
+
+姿態模組允許：
+
+降頻（例如 100 Hz 計算、200 Hz 輸出）
+
+切片執行（cooperative stepper）
+
+heavy 計算不可阻塞 tick
+
+姿態雙緩衝
+att_work   // 計算中
+att_pub    // 對外輸出
+
+
+僅在完整計算完成時 commit：
+
+att_pub = att_work
+ATT_UPDATED = 1
+
+
+未完成時計算結果不更新，tick 輸出沿用舊姿態：
+
+ATT_UPDATED = 0
+
+Pending Raw（深度 1）
+
+姿態模組忙碌時計算中的 raw
+
+新 raw 到來：
+
+覆蓋 pending（keep-latest）
+
+不累積 FIFO
+
+姿態時間差（dt）計算規則（關鍵）
+dt 定義
+
+dt 不是 tick 週期
+
+dt 為：
+
+dt = t_raw_current - t_raw_previous
+
+
+t_raw_x 為「該次姿態計算實際採用的 raw timestamp」
+
+規則
+
+姿態模組「開始採用一筆 raw」時：
+
+記錄該 raw 的 timestamp
+
+下一次採用新 raw 時計算 dt
+
+中間未被姿態模組採用的 raw 不影響 dt
+
+防呆
+
+dt <= 0 或過大 → 使用預設值或 reset filter
+
+輸出策略（方式 A）
+
+每 tick 固定頻率輸出
+
+姿態欄位每包都有
+
+姿態未更新時：
+
+沿用上一筆姿態
+
+以 ATT_UPDATED / att_age 標記
+
+設定段與 Run 段分離
+設定段（Control）
+
+start / stop streaming
+
+datarate change
+
+reset timer
+
+yaw zero
+
+mode enter / exit
+
+Run 段
+
+receiver_poll（背景）
+
+tick_task（time-driven）
+
+attitude_stepper（背景切片）
+
+Legacy Mode 保留
+
+保留現有 AHRS 行為為：
+
+MODE_AHRS_LEGACY
+
+
+新增：
+
+MODE_AHRS_RT
+
+
+RT 模式使用本文件定義之 tick 架構
+
+Legacy 模式不破壞、不強制修改
+
+Debug / 驗證項目（必做）
+
+Tick interval（min / max / avg）
+
+Level0 execution time（min / max / avg）
+
+raw_seq 跳號次數
+
+姿態實際更新率
+
+deadline miss 次數
+
+（建議）GPIO tick toggle 量測
+
+實作建議順序（風險最低）
+
+新增 RT 模式（不動 legacy）
+
+Phase-lock + tick scheduler
+
+keep-latest raw + Level0 固定輸出
+
+姿態降頻（先不用切片）
+
+姿態切片 stepper
+
+整合 mode switch
+
+備註
+
+本文件為設計契約，未來實作應遵循本規格。
+若規格需調整，應同步更新本文件。
+
+
+---
+
+### 下一步你可以做的事
+- 直接把這份存成 `doc/RT_tick_refactor_plan.md`
+- 或貼進 README / 設計文件
+- 下次開新對話直接說：「**照 RT_tick_refactor_plan.md 繼續**」
+
+如果你願意，我也可以幫你再做一份 **「簡化版一頁速查表」**（開發時貼在旁邊看的那種）。
