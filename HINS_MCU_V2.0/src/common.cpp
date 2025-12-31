@@ -427,8 +427,8 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   if (!raw || !cali || !fog_parameter) return;
 
   // === Copy raw data to cali structure ===
-  float tx   = ((float)raw->temp.tempx.int_val) * COE_TEMP_AD590 - 273.15;
-  float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15;
+  // float tx   = ((float)raw->temp.tempx.int_val) * COE_TEMP_AD590 - 273.15;
+  // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15;
   float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15;
   float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
 
@@ -660,8 +660,8 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->adxl357.az.float_val = az_cal;
 
   // 溫度 / 時間直接沿用 raw
-  cali->temp.tempx.float_val = tx;
-  cali->temp.tempy.float_val = ty;
+  cali->temp.tempx.float_val = tz;
+  cali->temp.tempy.float_val = tz;
   cali->temp.tempz.float_val = tz;
   cali->adxl357.temp.float_val = tacc;
   
