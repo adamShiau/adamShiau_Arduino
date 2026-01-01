@@ -1,0 +1,91 @@
+下面把「FPGA(Nios) 端新增一個 dump 類命令」的流程整理成你可以日後直接複製貼上、照做就能擴充的結論。（我這份結論是依照你目前 dump 的行為模式：CMD_DUMP_FOG / CMD_DUMP_MIS / CMD_DUMP_SN 都是 A1 ACK + A2 RESULT，並且用 framed payload 往 MCU 送；但我這回合沒法再重新讀你先前上傳的原始檔內容，因為系統提示那些檔案已過期，所以我用你已經驗證成功的封包行為來整理成通用模板。）
+
+FPGA(Nios) 新增 dump 命令的標準流程（結論版）
+A. 定義命令 ID 與通道
+
+在共用 header（例如 HINS.h 或 cmd 定義檔）新增：
+
+#define CMD_DUMP_XXX 0x??
+
+決定這個 dump 在 framed payload 的 channel（你目前 VERSION 用 ch=7，而 ch=6 保留）。
+
+B. 在 Nios 的 cmd dispatch 加一個 case
+
+在處理 host → Nios 的命令 switch-case 裡新增：
+
+解析 seq（你目前 pattern：seq = (rx->value >> 1)，nack = rx->value & 1）
+
+呼叫一個專門的 dump handler：dump_xxx_framed(seq);
+
+handler 裡面「組 payload → 送 framed payload → 等 MCU 回 RESULT（或由 MCU 直接回 PC）」
+
+你這次 CMD_DUMP_VERSION (0x83) 的做法就是：
+case 0x83: → dump_version_framed(seq) → send_framed_payload(seq, ch=7, payload, len)
+
+C. 實作 dump_xxx_framed()：只做兩件事
+
+dump handler 建議都長這樣：
+
+把要送的資料組成 payload
+
+固定長度：直接填 array
+
+可變長度字串：用 snprintf() 組字串，len 用回傳值 n
+
+送出 framed payload
+
+send_framed_payload(seq, ch, payload_ptr, payload_len);
+
+VERSION 的 payload："HINS_TOP_V1,HINS_CPU_V1_0"
+payload 長度是可變的（你實測 len=0x19=25 bytes 正常）
+
+D. 回傳規則（你目前驗證到的結果）
+
+你的系統目前回傳看起來固定是：
+
+ACK（A1）：FA A1 <cmd> ... <crc>
+表示命令被接受／開始處理
+
+RESULT（A2）：FA A2 <cmd> <status> <lenL> <lenH> <payload...> <crc>
+真正資料在 payload（len 可變）
+
+以你 dump version 的回傳為例：
+
+ACK：FA A1 83 ...
+
+RESULT：FA A2 83 00 19 00 <25 bytes ASCII> ...
+payload ASCII 轉字串就是：HINS_TOP_V1,HINS_CPU_V1_0
+
+你這次 CMD_DUMP_VERSION 的「可直接當範本」重點
+
+新增 dump 時，照這個模式做就不會亂：
+
+#define CMD_DUMP_VERSION 0x83
+
+case CMD_DUMP_VERSION:
+
+取 seq
+
+呼叫 dump_version_framed(seq)
+
+dump_version_framed(seq)
+
+snprintf(buf, "%s,%s", FPGA_VERSION, CPU_VERSION)
+
+send_framed_payload(seq, ch=7, buf, len)
+
+PC 端照 A2 + len 收字串即可（不需要固定 12 bytes 之類的限制）
+
+未來再新增 dump 命令：快速檢查清單
+
+ cmd id 有沒有跟現有命令衝突
+
+ channel 有沒有跟現有 framed 功能衝突
+
+ payload 長度是否正確（字串 不要包含 \0，len 用實際字串長度）
+
+ RESULT 的 len 是否等於 payload bytes（你這次 25 bytes 完全吻合）
+
+ PC 端解析用 len 取資料，不要寫死長度
+
+ timeout/失敗時是否會回一個 RESULT（status=TIMEOUT 之類）以免 PC 卡住
