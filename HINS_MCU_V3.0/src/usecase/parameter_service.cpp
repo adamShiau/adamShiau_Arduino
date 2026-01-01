@@ -1,6 +1,8 @@
 #include "parameter_service.h"
 #include "configuration_service.h"
 
+extern Uart Serial3;
+
 void parameter_service_handle(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
 {
 	TransactionSpec spec; // default: no response
@@ -819,27 +821,27 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
               0x75, 0x65, 0x01, 0x02, 0x02, 0x01, 0xE0, 0xC6 
             };
 
-            // // 送出指令
-            // Serial3.write(cmd, sizeof(cmd));
+            // 送出指令
+            Serial3.write(cmd, sizeof(cmd));
             // Serial3.flush();   // 確保送完
-            // Serial.println("Command sent");
+            Serial.println("Command sent");
 
-            // // 設定 timeout = 1.5 秒
-            // unsigned long startTime = millis();
-            // const unsigned long timeoutMs = 1500;
+            // 設定 timeout = 1.5 秒
+            unsigned long startTime = millis();
+            const unsigned long timeoutMs = 1500;
 
-            // // 等待回傳並印出
-            // while (millis() - startTime < timeoutMs) {
-            //   // Serial.println(Serial3.available());
-            //   if (Serial3.available() > 0) {
-            //     uint8_t b = Serial3.read();
+            // 等待回傳並印出
+            while (millis() - startTime < timeoutMs) {
+              // Serial.println(Serial3.available());
+              if (Serial3.available() > 0) {
+                uint8_t b = Serial3.read();
                 
-            //     // 以 HEX 格式印出
-            //     if (b < 0x10) Serial.print("0");
-            //     Serial.print(b, HEX);
-            //     Serial.print(" ");
-            //   }
-            // }
+                // 以 HEX 格式印出
+                if (b < 0x10) Serial.print("0");
+                Serial.print(b, HEX);
+                Serial.print(" ");
+              }
+            }
 
             Serial.println("\nTimeout reached\n");
 
