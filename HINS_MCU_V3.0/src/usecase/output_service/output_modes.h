@@ -7,4 +7,5 @@
 void acq_rst (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter);
 void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter);
 void acq_ahrs(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter);
+void acq_hins(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter);
 // void acq_fog(...); // 之後補

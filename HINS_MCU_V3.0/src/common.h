@@ -66,14 +66,16 @@ typedef enum {
     SEL_FOG_2 = 3,
     SEL_FOG_3 = 4,
     SEL_IMU = 5,
-    SEL_AHRS = 6
+    SEL_AHRS = 6,
+    SEL_HINS = 7
 } select_fn_t;
 
 typedef enum {
     MODE_RST = 0,
     MODE_FOG = 1,
     MODE_IMU = 2,
-    MODE_AHRS = 3
+    MODE_AHRS = 3,
+    MODE_HINS = 4
 } output_mode_t;
 
 typedef union

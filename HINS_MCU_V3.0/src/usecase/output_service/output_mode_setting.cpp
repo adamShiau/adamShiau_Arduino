@@ -31,6 +31,13 @@ int output_mode_setting(cmd_ctrl_t* rx, fn_ptr* output_fn, auto_rst_t* auto_rst)
 				auto_rst->fn_mode = MODE_AHRS;
 				break;
 			}
+			case MODE_HINS: {
+				*output_fn = acq_hins;
+				DEBUG_PRINT("output_fn select to acq_hins\n");
+				rx->select_fn = SEL_HINS;
+				auto_rst->fn_mode = MODE_HINS;
+				break;
+			}
 
       		default: DEBUG_PRINT("function mode out of range\n");break;
       }
