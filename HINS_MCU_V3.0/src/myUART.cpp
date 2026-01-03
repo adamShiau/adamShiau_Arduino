@@ -43,10 +43,12 @@ Uart Serial4(&sercom3, 10, 9,  SERCOM_RX_PAD_3, UART_TX_PAD_2);
 #define TRAILER1_SIZE  2
 #define TRAILER2_SIZE  2
 #define TRAILER3_SIZE  2
+#define HEADER4_SIZE   2
+#define TRAILER4_SIZE  2
 #define DATA1_SIZE     6
 #define DATA2_SIZE     13
 #define DATA3_SIZE     6
-#define MAX_DATA_SIZE  13
+#define MAX_DATA_SIZE  128
 #define BUFFER_SIZE    (MAX_DATA_SIZE + 1)  // +1 for condition byte at buffer[0]
 
 static const uint8_t HEADER1[]  = {0xAB, 0xBA};
@@ -55,6 +57,9 @@ static const uint8_t HEADER2[]  = {0xCD, 0xDC};
 static const uint8_t TRAILER2[] = {0x57, 0x58};
 static const uint8_t HEADER3[]  = {0xEF, 0xFE};
 static const uint8_t TRAILER3[] = {0x53, 0x54};
+static const uint8_t HEADER4[]  = {0xBC, 0xCB};
+static const uint8_t TRAILER4[] = {0x51, 0x52};
+
 
 /* C-style state machine */
 typedef enum {
@@ -73,7 +78,7 @@ typedef struct {
   const uint8_t* expected_trailer;  // points to TRAILERx
   uint8_t  trailer_size;            // 2
   // header match progress (independent counters for each possible header)
-  uint8_t  hdr_idx1, hdr_idx2, hdr_idx3;
+  uint8_t  hdr_idx1, hdr_idx2, hdr_idx3, hdr_idx4;
 } ParserCtx1;
 
 static ParserCtx1 ctx_ser1;
@@ -201,7 +206,7 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
           C->trailer_size       = TRAILER1_SIZE;
           C->state              = EXPECTING_PAYLOAD;
           C->bytes_received     = 0;
-          C->hdr_idx2 = C->hdr_idx3 = 0;
+          C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         }
       } else if (C->hdr_idx2 < HEADER2_SIZE && data == HEADER2[C->hdr_idx2]) {
         C->hdr_idx2++;
@@ -212,7 +217,7 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
           C->trailer_size       = TRAILER2_SIZE;
           C->state              = EXPECTING_PAYLOAD;
           C->bytes_received     = 0;
-          C->hdr_idx1 = C->hdr_idx3 = 0;
+          C->hdr_idx1 = C->hdr_idx3 = C->hdr_idx4 = 0;
         }
       } else if (C->hdr_idx3 < HEADER3_SIZE && data == HEADER3[C->hdr_idx3]) {
         C->hdr_idx3++;
@@ -223,9 +228,26 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
           C->trailer_size       = TRAILER3_SIZE;
           C->state              = EXPECTING_PAYLOAD;
           C->bytes_received     = 0;
-          C->hdr_idx1 = C->hdr_idx2 = 0;
+          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx4 = 0;
         }
-      } else {
+      } else if (C->hdr_idx4 < HEADER4_SIZE && data == HEADER4[C->hdr_idx4]) {
+        C->hdr_idx4++;
+        if (C->hdr_idx4 == HEADER4_SIZE) {
+          C->condition          = 4;
+
+          // 方案 4B：先讀 [cmd][len] 兩個 byte，讀到 len 後再決定還要讀多少 params
+          C->data_size_expected = 2;                 // cmd + len
+          C->expected_trailer   = TRAILER4;
+          C->trailer_size       = TRAILER4_SIZE;
+
+          C->state              = EXPECTING_PAYLOAD;
+          C->bytes_received     = 0;
+
+          // reset other header match progress
+          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+        }
+      }
+      else {
         // mismatch; reset header progress
         C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
         if (try_cnt) (*try_cnt)++;
@@ -265,12 +287,33 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
       if (C->bytes_received < MAX_DATA_SIZE) {
         C->buffer[C->bytes_received + 1] = data;  // payload begins at buffer[1]
         C->bytes_received++;
+
+        // condition 4 (HINS var payload):
+        // payload layout in buffer[1..] = [cmd][len][params...]
+        // when we have received cmd+len (2 bytes), we know how many params to read.
+        if (C->condition == 4 && C->bytes_received == 2) {
+          uint8_t len = C->buffer[2];              // buffer[1]=cmd, buffer[2]=len
+          uint16_t total = (uint16_t)2 + len;      // cmd + len + params(len bytes)
+
+          if (total > MAX_DATA_SIZE) {
+            // overflow → drop packet and resync
+            C->state          = EXPECTING_HEADER;
+            C->bytes_received = 0;
+            C->condition      = 0;
+            C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
+            if (try_cnt) (*try_cnt)++;
+            break;
+          }
+
+          C->data_size_expected = (uint8_t)total;
+        }
+
       } else {
         // overflow: drop packet
         C->state          = EXPECTING_HEADER;
         C->bytes_received = 0;
         C->condition      = 0;
-        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         if (try_cnt) (*try_cnt)++;
         break;
       }
