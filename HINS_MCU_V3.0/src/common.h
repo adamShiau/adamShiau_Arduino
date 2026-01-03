@@ -48,7 +48,8 @@ typedef enum {
   RX_CONDITION_INIT         = 0,
   RX_CONDITION_ABBA_5556    = 1,
   RX_CONDITION_CDDC_5758    = 2,
-  RX_CONDITION_EFFE_5354    = 3
+  RX_CONDITION_EFFE_5354    = 3,
+  RX_CONDITION_BCCB_5152    = 4
 } rx_condition_t;
 
 /* ---------- MUX / State selections (adjust if needed) ---------- */
@@ -149,6 +150,9 @@ typedef struct
   uint8_t  cmd;              /* command code */
   uint8_t  run;              /* optional run flag */
   int32_t  value;            /* 32-bit value, big-endian assembled */
+  // ===== condition 4 (HINS/MIP) 專用 =====
+  uint8_t*  hins_payload;       // points to raw bytes in rx buffer (&data[3])
+  uint16_t  hins_payload_len;   // data[2]
 } cmd_ctrl_t;
 
 /*** auto reset structure delaration */

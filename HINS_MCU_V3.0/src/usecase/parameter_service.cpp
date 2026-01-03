@@ -1686,45 +1686,30 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					} 
 					/*** Hins communication */
 					case CMD_HINS_PING: {
-						DEBUG_PRINT("CMD_HINS_PING:\n");	
-						uint8_t cmd[] = { 
-						0x75, 0x65, 0x01, 0x02, 0x02, 0x01, 0xE0, 0xC6 
-						};
-
-						// 送出指令
-						port_hins.write(cmd, sizeof(cmd));
-						// Serial3.flush();   // 確保送完
-						Serial.println("Command sent");
-
-						// 設定 timeout = 1.5 秒
-						unsigned long startTime = millis();
-						const unsigned long timeoutMs = 1500;
-
-						// 等待回傳並印出
-						while (millis() - startTime < timeoutMs) {
-						// Serial.println(Serial3.available());
-						if (Serial3.available() > 0) {
-							uint8_t b = Serial3.read();
-							
-							// 以 HEX 格式印出
-							if (b < 0x10) Serial.print("0");
-							Serial.print(b, HEX);
-							Serial.print(" ");
+						// CMD_HINS_PING: condition-4 only (raw MIP bytes from PC)
+						if (rx->condition != RX_CONDITION_BCCB_5152) {
+							result.status = Status::BAD_PARAM;   // 或 Status::FAIL，看你專案慣用
+							break;
 						}
+						if (rx->hins_payload == nullptr || rx->hins_payload_len == 0) {
+							result.status = Status::BAD_PARAM;
+							break;
 						}
 
-						Serial.println("\nTimeout reached\n");
+						// send raw bytes to HINS
+						port_hins.write(rx->hins_payload, rx->hins_payload_len);
 
+						// 目前先不做「等 ACK/response」；這一步之後會抽到 hins_link.*
+						result.status = Status::OK;
+						break;
+					}
 
-									break;
-								}
-
-								default:{
-									DEBUG_PRINT("condition 1 default case\n");
-								} 
-							}
-					
-						}
+					default:{
+						DEBUG_PRINT("condition 1 default case\n");
+					} 
+				}
+		
+			}
 			else if(rx->condition == RX_CONDITION_CDDC_5758) {
 				switch(rx->cmd ){
 					case CMD_WRITE_SN: {
