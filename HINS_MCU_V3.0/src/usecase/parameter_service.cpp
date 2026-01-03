@@ -1686,13 +1686,13 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					} 
 					/*** Hins communication */
 					case CMD_HINS_PING: {
-									DEBUG_PRINT("CMD_HINS_PING:\n");	
-									uint8_t cmd[] = { 
+						DEBUG_PRINT("CMD_HINS_PING:\n");	
+						uint8_t cmd[] = { 
 						0x75, 0x65, 0x01, 0x02, 0x02, 0x01, 0xE0, 0xC6 
 						};
 
 						// 送出指令
-						Serial3.write(cmd, sizeof(cmd));
+						port_hins.write(cmd, sizeof(cmd));
 						// Serial3.flush();   // 確保送完
 						Serial.println("Command sent");
 
