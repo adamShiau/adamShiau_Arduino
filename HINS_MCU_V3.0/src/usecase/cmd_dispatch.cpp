@@ -4,11 +4,7 @@
 #include "parameter_service.h"      // parameter_service_handle_ex
 #include "../usecase/output_service/output_mode_setting.h"         // output_mode_setting
 #include "../common.h"                      // cmd_mux(), fog_parameter() etc.
-
-static constexpr uint8_t CMD_TEST_ACK_ONLY   = 0xF0;
-static constexpr uint8_t CMD_TEST_ACK_RESULT = 0xF1;
-static constexpr uint8_t CMD_TEST_TIMEOUT    = 0xF2; // 回 ACK + RESULT(TIMEOUT)
-
+#include "../myUART.h" 
 
 
 // -----------------------------
@@ -25,21 +21,6 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
       spec.expect_response = true;
       spec.route = IoRoute::FPGA;
       spec.timeout_ms = 500;
-      spec.max_retry = 0;
-      break;
-
-    case CMD_TEST_ACK_RESULT:
-      // 測試 gating：需要 RESULT，但不做任何 I/O
-      spec.expect_response = true;
-      spec.route = IoRoute::NONE;
-      spec.timeout_ms = 0;
-      spec.max_retry = 0;
-      break;
-
-    case CMD_TEST_TIMEOUT:
-      spec.expect_response = true;
-      spec.route = IoRoute::NONE;
-      spec.timeout_ms = 0;
       spec.max_retry = 0;
       break;
 
@@ -63,10 +44,14 @@ static inline bool is_dump_cmd(uint8_t cmd_id)
 // PC 回覆 port：建議用 Serial（若你已用 app_state 封裝 g_cmd_port，可以換成 g_cmd_port）
 static inline Stream& pc_port()
 {
-  return Serial; // <-- 若你要走 g_cmd_port，改成：return g_cmd_port;
+  return Serial; 
 }
 
-// FPGA link port：你目前與 FPGA 溝通看起來是 Serial1（sendCmd(Serial1, ...)）
+static inline Stream& hins_port()
+{
+  return Serial3; 
+}
+
 static inline Stream& fpga_port()
 {
   return Serial1; // <-- 若你 FPGA port 不同，改這裡即可
@@ -112,32 +97,13 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
 
   (void)send_ack_v1(output_port(), cmd->cmd, AckStatus::OK); // ACK 一律回（使用 output_port，避免跟 debug 文本混在一起）
 
-  // ---- Route C test commands: no side effects ----
-  if (cmd->cmd == CMD_TEST_ACK_ONLY) {
-    return;
-  }
-
-  if (cmd->cmd == CMD_TEST_ACK_RESULT) {
-    if (spec.expect_response) {
-      (void)send_result_v1(output_port(), cmd->cmd, AckStatus::OK);
-    }
-    return;
-  }
-
-  if (cmd->cmd == CMD_TEST_TIMEOUT) {
-    if (spec.expect_response) {
-      (void)send_result_v1(output_port(), cmd->cmd, AckStatus::TIMEOUT);
-    }
-    return;
-  }
-
   // -------------------------
   // Parameter path (FPGA/INS related)
   // -------------------------
   if (cmd->mux == MUX_PARAMETER) {
 
     // 新版 parameter_service：回 UsecaseResult（payload A：先不用 payload）
-    UsecaseResult r = parameter_service_handle_ex(fpga_port(), cmd, params, spec);
+    UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
 
     // dump/query 才回 RESULT（payload A：只回 status）
     if (spec.expect_response) {
@@ -152,18 +118,14 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
         (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
       }
     }
-
-    
     return;
   }
 
   // -------------------------
   // Output path (streaming / mode / output_fn)
   // -------------------------
-  // 先保守：沿用你原本流程（也就是你前面同意的 cmd_dispatch 集中 orchestration）
-  // 目前 output 不回 RESULT（你若想對 output 命令也回 RESULT，可在 spec 表加）
-  fog_parameter(cmd, params);
-  output_mode_setting(cmd, output_fn, auto_rst);
+    UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
+    output_mode_setting(cmd, output_fn, auto_rst);
 
   // if (*output_fn) {
   //   (*output_fn)(cmd, params);

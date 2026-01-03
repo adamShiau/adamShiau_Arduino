@@ -160,7 +160,6 @@ typedef struct {
 /* ---------- API ---------- */
 void get_uart_cmd(uint8_t* data, cmd_ctrl_t* rx);
 void cmd_mux(cmd_ctrl_t* rx);
-void fog_parameter(cmd_ctrl_t*, fog_parameter_t*);
 
 void update_parameter_container(const cmd_ctrl_t* rx, fog_parameter_t* fog_inst, uint8_t idx);
 
@@ -170,7 +169,6 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
 void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter);
 void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out);
 void reset_FPGA_timer(void);
-// void set_data_rate(uint32_t rate);
 
 
 

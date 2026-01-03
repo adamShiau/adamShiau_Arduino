@@ -16,3 +16,11 @@ UsecaseResult parameter_service_handle_ex(Stream& port,
                                          cmd_ctrl_t* rx,
                                          fog_parameter_t* fog_inst,
                                          const TransactionSpec& spec);
+
+UsecaseResult parameter_service_handle_ex2(Stream& port_fpga,
+                                        Stream& port_hins,
+                                         cmd_ctrl_t* rx,
+                                         fog_parameter_t* fog_inst,
+                                         const TransactionSpec& spec);
+
+                                         

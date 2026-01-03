@@ -673,9 +673,5 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
 #include "usecase/parameter_service.h"
 #include "app/app_state.h"
 
-// Backward-compatible wrapper (keeps existing call sites unchanged)
-void fog_parameter(cmd_ctrl_t* rx, fog_parameter_t* fog_inst)
-{
-    parameter_service_handle(g_cmd_port_fpga, rx, fog_inst);
-}
+
 
