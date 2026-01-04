@@ -23,6 +23,12 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
       spec.timeout_ms = 500;
       spec.max_retry = 0;
       break;
+    case CMD_HINS_PING:
+      spec.expect_response = true;
+      spec.route = IoRoute::HINS;
+      spec.timeout_ms = 500;
+      spec.max_retry = 0;
+      break;
 
     default:
       break;

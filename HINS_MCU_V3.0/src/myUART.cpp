@@ -244,12 +244,12 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
           C->bytes_received     = 0;
 
           // reset other header match progress
-          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         }
       }
       else {
         // mismatch; reset header progress
-        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         if (try_cnt) (*try_cnt)++;
       }
       break;
@@ -329,7 +329,7 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
         // abnormal; reset
         C->state     = EXPECTING_HEADER;
         C->condition = 0;
-        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         if (try_cnt) (*try_cnt)++;
         break;
       }
@@ -339,7 +339,7 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
         C->state          = EXPECTING_HEADER;
         C->bytes_received = 0;
         C->condition      = 0;
-        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+        C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
         if (try_cnt) (*try_cnt)++;
       } else {
         C->bytes_received++;
@@ -348,7 +348,7 @@ uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
           C->buffer[0] = C->condition;
           C->state          = EXPECTING_HEADER;
           C->bytes_received = 0;
-          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = 0;
+          C->hdr_idx1 = C->hdr_idx2 = C->hdr_idx3 = C->hdr_idx4 = 0;
           if (try_cnt) *try_cnt = 0;
           return C->buffer;
         }

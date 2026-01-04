@@ -1,5 +1,7 @@
 #include "parameter_service.h"
 #include "configuration_service.h"
+#include "../drivers/link/hins_link.h"
+
 
 extern Uart Serial3;
 
@@ -1684,26 +1686,6 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						}			
 						break;
 					} 
-					/*** Hins communication */
-					case CMD_HINS_PING: {
-						// CMD_HINS_PING: condition-4 only (raw MIP bytes from PC)
-						if (rx->condition != RX_CONDITION_BCCB_5152) {
-							result.status = Status::BAD_PARAM;   // 或 Status::FAIL，看你專案慣用
-							break;
-						}
-						if (rx->hins_payload == nullptr || rx->hins_payload_len == 0) {
-							result.status = Status::BAD_PARAM;
-							break;
-						}
-
-						// send raw bytes to HINS
-						port_hins.write(rx->hins_payload, rx->hins_payload_len);
-
-						// 目前先不做「等 ACK/response」；這一步之後會抽到 hins_link.*
-						result.status = Status::OK;
-						break;
-					}
-
 					default:{
 						DEBUG_PRINT("condition 1 default case\n");
 					} 
@@ -1726,6 +1708,33 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					}
 					default:{
 						DEBUG_PRINT("condition 2 default case\n");
+					} 
+				}
+			}
+			else if(rx->condition == RX_CONDITION_BCCB_5152) {
+				switch(rx->cmd ){
+				/*** Hins communication */
+					case CMD_HINS_PING: {
+						if (!rx->hins_payload || rx->hins_payload_len == 0) {
+							result.status = Status::BAD_PARAM;
+							break;
+						}
+
+						uint8_t ack_code = 0xFF;
+						UsecaseResult r = hins_send_and_wait_ack_base(
+							port_hins,
+							rx->hins_payload, rx->hins_payload_len,
+							1500,
+							&ack_code
+						);
+
+						result = r;  // 或 result.status = r.status; 視你 UsecaseResult 結構
+						// 可選：log
+						DEBUG_PRINT("[HINS_ACK] code=0x%02X status=%d\r\n", ack_code, (int)result.status);
+						break;
+					}
+					default:{
+						DEBUG_PRINT("condition 4 default case\n");
 					} 
 				}
 			}

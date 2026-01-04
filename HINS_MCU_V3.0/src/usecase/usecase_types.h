@@ -13,7 +13,7 @@ enum class Status : uint8_t {
 enum class IoRoute : uint8_t {
   NONE = 0,
   FPGA = 1,
-  INS  = 2,
+  HINS  = 2,
 };
 
 struct TransactionSpec {
