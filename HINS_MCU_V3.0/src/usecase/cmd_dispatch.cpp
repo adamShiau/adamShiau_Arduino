@@ -24,9 +24,10 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
       spec.max_retry = 0;
       break;
     case CMD_HINS_PING:
+    case CMD_HINS_MIP:
       spec.expect_response = true;
       spec.route = IoRoute::HINS;
-      spec.timeout_ms = 500;
+      spec.timeout_ms = 1500;
       spec.max_retry = 0;
       break;
 
@@ -110,6 +111,9 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
 
     // 新版 parameter_service：回 UsecaseResult（payload A：先不用 payload）
     UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
+    // DEBUG_PRINT("[DISPATCH] cmd=0x%02X st=%d payload_len=%u payload_ptr=%p\r\n",
+    //         cmd->cmd, (int)r.status, (unsigned)r.payload_len, r.payload);
+
 
     // dump/query 才回 RESULT（payload A：只回 status）
     if (spec.expect_response) {
@@ -121,7 +125,13 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
         }
       } else {
         // 非 dump 類：維持原本行為（status-only RESULT）
-        (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+        // (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+        if (r.payload && r.payload_len > 0) {
+          (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status),
+                              r.payload, r.payload_len);
+        } else {
+          (void)send_result_v1(output_port(), cmd->cmd, to_ack_status(r.status));
+        }
       }
     }
     return;

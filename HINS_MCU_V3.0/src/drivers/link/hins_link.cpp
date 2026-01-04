@@ -184,7 +184,7 @@ UsecaseResult hins_send_and_wait_ack_base(Stream& port_hins,
     }
     DEBUG_PRINT("[HINS_RX] len=%u: ", (unsigned)pkt_len);
     for (uint16_t i = 0; i < pkt_len; ++i) {
-      serial_printf("%02X ", pkt[i]);
+      DEBUG_PRINT("%02X ", pkt[i]);
     }
     DEBUG_PRINT("\r\n");
 
@@ -206,3 +206,190 @@ UsecaseResult hins_send_and_wait_ack_base(Stream& port_hins,
   r.status = Status::TIMEOUT;
   return r;
 }
+
+// Parse first field: returns pointers to field data and length.
+static bool mip_get_first_field_info(const uint8_t* tx, uint16_t tx_len,
+                                     uint8_t* out_desc_set,
+                                     uint8_t* out_cmd_desc,
+                                     const uint8_t** out_field_data,
+                                     uint8_t* out_field_data_len)
+{
+  if (!tx || tx_len < 6) return false;
+  if (tx[0] != MIP_SYNC1 || tx[1] != MIP_SYNC2) return false;
+
+  uint8_t desc_set = tx[2];
+  uint8_t payload_len = tx[3];
+  uint16_t total = (uint16_t)(4 + payload_len + 2);
+  if (tx_len < total) return false;
+
+  uint8_t flen = tx[4];                 // includes [len][desc]...
+  if (flen < 2) return false;
+  if (4 + flen > 4 + payload_len) return false;
+
+  uint8_t cmd_desc = tx[5];
+  uint8_t data_len = (uint8_t)(flen - 2);
+  const uint8_t* data = (data_len > 0) ? &tx[6] : nullptr;
+
+  if (out_desc_set) *out_desc_set = desc_set;
+  if (out_cmd_desc) *out_cmd_desc = cmd_desc;
+  if (out_field_data) *out_field_data = data;
+  if (out_field_data_len) *out_field_data_len = data_len;
+  return true;
+}
+
+static bool mip_verify_packet_checksum(const uint8_t* pkt, uint16_t pkt_len)
+{
+  if (!pkt || pkt_len < 8) return false;
+  if (pkt[0] != MIP_SYNC1 || pkt[1] != MIP_SYNC2) return false;
+  uint8_t payload_len = pkt[3];
+  uint16_t total = (uint16_t)(4 + payload_len + 2);
+  if (pkt_len < total) return false;
+
+  uint16_t calc = mip_fletcher16(pkt, 4 + payload_len);
+  uint16_t got  = (uint16_t(pkt[4 + payload_len]) << 8) | pkt[4 + payload_len + 1];
+  return calc == got;
+}
+
+// Walk fields; call cb for each field.
+// field layout: [flen][fdesc][data...(flen-2)]
+template <typename CB>
+static bool mip_for_each_field(const uint8_t* pkt, uint16_t pkt_len, CB cb)
+{
+  if (!pkt || pkt_len < 8) return false;
+  uint8_t payload_len = pkt[3];
+  uint16_t total = (uint16_t)(4 + payload_len + 2);
+  if (pkt_len < total) return false;
+
+  const uint8_t* p = &pkt[4];
+  uint16_t remain = payload_len;
+  while (remain >= 2) {
+    uint8_t flen = p[0];
+    if (flen < 2 || flen > remain) return false;
+    uint8_t fdesc = p[1];
+    const uint8_t* fdata = (flen > 2) ? &p[2] : nullptr;
+    uint8_t fdata_len = (uint8_t)(flen - 2);
+
+    cb(fdesc, fdata, fdata_len);
+
+    p += flen;
+    remain = (uint16_t)(remain - flen);
+  }
+  return true;
+}
+
+Status hins_mip_transact(Stream& port_hins,
+                         const uint8_t* tx, uint16_t tx_len,
+                         uint32_t timeout_ms,
+                         uint8_t* out_desc_set,
+                         uint8_t* out_cmd_desc,
+                         uint8_t* out_ack_code,
+                         uint8_t* out_ack_echo,
+                         uint8_t* out_resp_desc,
+                         uint8_t* out_resp_data, uint16_t resp_cap,
+                         uint16_t* out_resp_len)
+{
+  if (out_resp_len) *out_resp_len = 0;
+  if (out_resp_desc) *out_resp_desc = 0;
+  if (out_ack_code) *out_ack_code = 0xFF;
+  if (out_ack_echo) *out_ack_echo = 0x00;
+
+  uint8_t desc_set = 0, cmd_desc = 0;
+  const uint8_t* field_data = nullptr;
+  uint8_t field_data_len = 0;
+
+  if (!mip_get_first_field_info(tx, tx_len, &desc_set, &cmd_desc, &field_data, &field_data_len)) {
+    return Status::BAD_PARAM;
+  }
+
+  if (out_desc_set) *out_desc_set = desc_set;
+  if (out_cmd_desc) *out_cmd_desc = cmd_desc;
+
+  // Decide want response based on Function Selector (first byte of field data) == READ(0x01)
+  bool want_resp = false;
+  if (field_data && field_data_len >= 1) {
+    const uint8_t function_selector = field_data[0];
+    want_resp = (function_selector == 0x02); // READ
+  }
+
+  const uint8_t expected_resp_desc = (uint8_t)(cmd_desc | 0x80);
+
+  // Send TX
+  port_hins.write(tx, tx_len);
+
+  bool got_ack = false;
+  uint8_t ack_code = 0xFF, ack_echo = 0x00;
+
+  bool got_resp = false;
+  uint8_t resp_desc = 0;
+  uint16_t resp_len = 0;
+
+  uint32_t deadline = millis() + timeout_ms;
+  uint8_t pkt[512];
+  uint16_t pkt_len = 0;
+
+  while (millis() < deadline) {
+    if (!mip_read_packet(port_hins, pkt, sizeof(pkt), &pkt_len, deadline)) {
+      continue;
+    }
+
+    DEBUG_PRINT("[HINS_RX] len=%u: ", (unsigned)pkt_len);
+    for (uint16_t i = 0; i < pkt_len; ++i) DEBUG_PRINT("%02X ", pkt[i]);
+    DEBUG_PRINT("\r\n");
+
+    // Filter by same descriptor set
+    if (pkt[2] != desc_set) continue;
+    if (!mip_verify_packet_checksum(pkt, pkt_len)) continue;
+
+    // Scan fields
+    mip_for_each_field(pkt, pkt_len, [&](uint8_t fdesc, const uint8_t* fdata, uint8_t fdata_len) {
+      if (fdesc == MIP_ACK_DESC) {
+        if (fdata_len >= 2) {
+          uint8_t echo = fdata[0];
+          uint8_t code = fdata[1];
+          if (echo == cmd_desc) {
+            got_ack = true;
+            ack_echo = echo;
+            ack_code = code;
+          }
+        }
+        return;
+      }
+
+      // Response field: only useful if want_resp and ACK is OK
+      if (!want_resp) return;
+
+      // Prefer exact response desc match (cmd_desc|0x80). If not found, accept first non-ACK field.
+      if (!got_resp) {
+        if (fdesc == expected_resp_desc || resp_desc == 0) {
+          resp_desc = fdesc;
+          resp_len = (uint16_t)min<uint16_t>(fdata_len, resp_cap);
+          if (out_resp_data && resp_len > 0) memcpy(out_resp_data, fdata, resp_len);
+          got_resp = true;
+        }
+      }
+    });
+
+    if (got_ack) {
+      if (out_ack_code) *out_ack_code = ack_code;
+      if (out_ack_echo) *out_ack_echo = ack_echo;
+
+      // NACK: finish immediately (no need to wait for resp)
+      if (ack_code != 0x00) {
+        return Status::BAD_PARAM; // 你也可以 map 成 Status::ERR 或自訂 NACK
+      }
+
+      if (!want_resp) {
+        return Status::OK;
+      }
+      if (want_resp && got_resp) {
+        if (out_resp_desc) *out_resp_desc = resp_desc;
+        if (out_resp_len) *out_resp_len = resp_len;
+        return Status::OK;
+      }
+    }
+  }
+
+  // Timeout: if no ACK -> TIMEOUT, if want_resp but no resp -> TIMEOUT
+  return Status::TIMEOUT;
+}
+

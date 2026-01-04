@@ -1685,13 +1685,13 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							
 						}			
 						break;
-					} 
+					} //  CMD_CFG_BR
 					default:{
 						DEBUG_PRINT("condition 1 default case\n");
 					} 
 				}
 		
-			}
+			} 
 			else if(rx->condition == RX_CONDITION_CDDC_5758) {
 				switch(rx->cmd ){
 					case CMD_WRITE_SN: {
@@ -1732,7 +1732,66 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						// 可選：log
 						DEBUG_PRINT("[HINS_ACK] code=0x%02X status=%d\r\n", ack_code, (int)result.status);
 						break;
-					}
+					} // CMD_HINS_PING
+
+					case CMD_HINS_MIP: {
+						if (!rx->hins_payload || rx->hins_payload_len == 0) {
+							result.status = Status::BAD_PARAM;
+							break;
+						}
+
+						// RESULT payload buffer（static 確保回傳時還活著）
+						// 格式：version(1) flags(1) ack_code(1) ack_echo(1) resp_desc(1) resp_len_L(1) resp_len_H(1) resp_data...
+						static uint8_t out_buf[1 + 1 + 1 + 1 + 1 + 2 + 512];
+
+						uint8_t desc_set = 0, cmd_desc = 0;
+						uint8_t ack_code = 0xFF, ack_echo = 0x00;
+						uint8_t resp_desc = 0;
+						uint16_t resp_len = 0;
+						uint8_t resp_data[512];
+
+						Status st = hins_mip_transact(
+							port_hins,
+							rx->hins_payload, rx->hins_payload_len,
+							1500,
+							&desc_set, &cmd_desc,
+							&ack_code, &ack_echo,
+							&resp_desc,
+							resp_data, sizeof(resp_data),
+							&resp_len
+						);
+
+						// 組回傳 payload（永遠回 header，方便 debug）
+						uint8_t flags = 0;
+						// bit0=ack_present（只有成功讀到 ack_echo==cmd_desc 才算 present；這裡簡化：ack_code!=0xFF 就當 present）
+						if (ack_code != 0xFF) flags |= 0x01;
+						if (resp_len > 0)     flags |= 0x02;
+
+						uint16_t idx = 0;
+						out_buf[idx++] = 0x01;        // version
+						out_buf[idx++] = flags;
+						out_buf[idx++] = ack_code;
+						out_buf[idx++] = ack_echo;
+						out_buf[idx++] = resp_desc;
+						out_buf[idx++] = (uint8_t)(resp_len & 0xFF);
+						out_buf[idx++] = (uint8_t)((resp_len >> 8) & 0xFF);
+
+						// copy resp
+						if (resp_len > 0) {
+							uint16_t copy_len = min<uint16_t>(resp_len, (uint16_t)(sizeof(out_buf) - idx));
+							memcpy(&out_buf[idx], resp_data, copy_len);
+							idx += copy_len;
+						}
+
+						result.status = st;
+						result.payload = out_buf;
+						result.payload_len = idx;
+
+						DEBUG_PRINT("[HINS_MIP] ds=0x%02X cmd=0x%02X ack=0x%02X echo=0x%02X resp=0x%02X len=%u st=%d\r\n",
+									desc_set, cmd_desc, ack_code, ack_echo, resp_desc, (unsigned)resp_len, (int)st);
+						break;
+					
+					} // CMD_HINS_MIP
 					default:{
 						DEBUG_PRINT("condition 4 default case\n");
 					} 
@@ -1740,5 +1799,5 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 			}
 			
 		}
-
+		return result;
 }

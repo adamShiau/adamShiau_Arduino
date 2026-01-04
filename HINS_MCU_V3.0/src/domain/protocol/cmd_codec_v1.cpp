@@ -54,7 +54,7 @@ void decode_cmd_v1(uint8_t* data, cmd_ctrl_t* rx)
 
     // DEBUG_PRINT("condition: %d, ", RX_CONDITION_BCCB_5152);
     // DEBUG_PRINT("cmd: %x, hins_len: %d\n", rx->cmd, rx->hins_payload_len);
-    DEBUG_PRINT("[HINS_PING] cond=%d cmd=0x%02X len=%u\r\n",
+    DEBUG_PRINT("[HINS_PING] condition=%d cmd=0x%02X len=%u\r\n",
               rx->condition, rx->cmd, (unsigned)rx->hins_payload_len);
 
   }

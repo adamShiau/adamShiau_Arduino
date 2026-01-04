@@ -26,6 +26,13 @@ namespace {
   static bool send_frame(Stream& port, uint8_t type, uint8_t cmd_id,
                          uint8_t status, const uint8_t* payload, uint16_t len)
   {
+    // 若 len>0 但 payload 是 nullptr，視為錯誤（避免踩到野指標）
+    if (len > 0 && payload == nullptr) return false;
+
+    // 只有「有 payload」時才在 payload 後面補 '\n'
+    // const bool add_newline = (payload != nullptr && len > 0);
+    // const uint16_t out_len = add_newline ? (uint16_t)(len + 1) : len;
+
     if (len > MAX_PAYLOAD) return false;
 
     uint8_t buf[1 + 1 + 1 + 1 + 2 + MAX_PAYLOAD + 2]; // SOF + (type..len2) + payload + checksum16
@@ -38,7 +45,13 @@ namespace {
     buf[idx++] = (uint8_t)(len & 0xFF);        // len_L
     buf[idx++] = (uint8_t)((len >> 8) & 0xFF); // len_H
 
+    // copy payload
     for (uint16_t  i = 0; i < len; ++i) buf[idx++] = payload[i];
+
+    // append newline (0x0A) if needed
+    // if (add_newline) {
+    //   buf[idx++] = (uint8_t)'\n';
+    // }
 
     // checksum over [type..payload] => buf[1], length = 5 + len: type,cmd,status,len_L,len_H
     const uint16_t cs = fletcher16(&buf[1], (size_t)(5 + len));
