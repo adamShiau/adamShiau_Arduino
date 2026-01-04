@@ -131,7 +131,7 @@ void myUART_init(void)
   // UARTs
   Serial1.begin(115200); // to HINS FPGA
   Serial2.begin(230400); // Output UART connector J1
-  Serial3.begin(115200); // to CV7
+  Serial3.begin(230400); // to CV7
   Serial4.begin(115200); // to GNSS recv
 
   // Pin multiplexing (board-specific; matches your existing setup)
