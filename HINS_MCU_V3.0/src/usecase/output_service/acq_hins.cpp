@@ -79,7 +79,7 @@ static void ahrs_start_stream(cmd_ctrl_t* rx)
     rx->run = 1;
 
     // Start streaming from FPGA
-    sendCmd(Serial1, HDR_ABBA, TRL_5556, 2, 2, 2);
+    sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, 2, 2, 2);
     delay(10);
 
     // one-shot init for this run (moved into attitude lib)
@@ -96,7 +96,7 @@ static void ahrs_stop_stream(cmd_ctrl_t* rx)
     ahrs_attitude.resetAttitude(true); // reset attitude and yaw0
     rx->run = 0;
 
-    sendCmd(Serial1, HDR_ABBA, TRL_5556, 2, 4, 2);
+    sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, 2, 4, 2);
 
     // stop should fully clear internal states
     ahrs_reset_runtime_state();

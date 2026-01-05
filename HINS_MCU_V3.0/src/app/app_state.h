@@ -15,6 +15,7 @@ extern fn_ptr          g_output_fn;
 
 extern Stream& g_cmd_port_fpga;      // fpga
 extern Stream& g_cmd_port_output;    // output port
+extern Stream& g_cmd_port_hins;       // ins
 
 // Reconfigure MCU output UART baudrate (g_cmd_port_output is Stream&).
 void output_port_begin(uint32_t baud);
