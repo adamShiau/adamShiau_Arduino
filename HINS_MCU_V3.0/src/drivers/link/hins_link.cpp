@@ -393,3 +393,96 @@ Status hins_mip_transact(Stream& port_hins,
   return Status::TIMEOUT;
 }
 
+bool hins_send_mip_raw(Stream& port_hins, const uint8_t* mip)
+{
+  if (!mip) return false;
+  if (mip[0] != 0x75 || mip[1] != 0x65) return false;
+
+  const uint8_t payload_len = mip[3];
+  const uint16_t total_len = 4u + payload_len + 2u;
+
+  port_hins.write(mip, total_len);  // ← 整包送出
+  port_hins.flush();
+  return true;
+}
+
+// Read a fixed-length HINS streaming payload after aligning to a fixed header.
+// - Align to 'header' bytes (e.g. 75 65 85 13 13 49)
+// - Read 'payload_len' bytes payload
+// - Read 2 bytes checksum (sum1, sum2), MSB first
+// - Verify Fletcher-16 over (header + payload), excluding checksum
+// - On success, copy payload into out_payload and return true
+//
+// This function is best-effort and non-blocking-friendly (short timeout).
+bool hins_read_stream_payload(
+    Stream& port_hins,
+    const uint8_t* header,
+    uint16_t header_len,
+    uint16_t payload_len,
+    uint8_t* out_payload,
+    uint16_t out_cap,
+    uint32_t timeout_ms
+) {
+    if (!header || header_len == 0) return false;
+    if (!out_payload || out_cap == 0) return false;
+    if (payload_len > out_cap) return false;
+
+    const uint32_t t0 = millis();
+
+    // Helper: read one byte with timeout
+    auto read_byte = [&](uint8_t &b) -> bool {
+        while ((millis() - t0) < timeout_ms) {
+            if (port_hins.available() > 0) {
+                int v = port_hins.read();
+                if (v >= 0) { b = (uint8_t)v; return true; }
+            }
+            yield(); // ok on Arduino; remove if unavailable
+        }
+        return false;
+    };
+
+    // 1) Align to header
+    uint16_t matched = 0;
+    while ((millis() - t0) < timeout_ms) {
+        uint8_t b = 0;
+        if (!read_byte(b)) return false;
+
+        if (b == header[matched]) {
+            matched++;
+            if (matched == header_len) break; // header matched
+        } else {
+            matched = (b == header[0]) ? 1 : 0;
+        }
+    }
+    if (matched != header_len) return false;
+
+    // 2) Read payload
+    for (uint16_t i = 0; i < payload_len; i++) {
+        uint8_t b = 0;
+        if (!read_byte(b)) return false;
+        out_payload[i] = b;
+    }
+
+    // 3) Read checksum (2 bytes, MSB first: sum1, sum2)
+    uint8_t rx_sum1 = 0, rx_sum2 = 0;
+    if (!read_byte(rx_sum1)) return false;
+    if (!read_byte(rx_sum2)) return false;
+    const uint16_t rx_ck = (uint16_t(rx_sum1) << 8) | rx_sum2;
+
+    // 4) Verify Fletcher-16 over (header + payload) ㄇ
+    const uint16_t total = (uint16_t)(header_len + payload_len);
+    uint8_t tmp[64];
+    if (total > sizeof(tmp)) return false;
+
+    for (uint16_t i = 0; i < header_len; i++) tmp[i] = header[i];
+    for (uint16_t i = 0; i < payload_len; i++) tmp[header_len + i] = out_payload[i];
+
+    const uint16_t calc_ck = mip_fletcher16(tmp, total);
+
+    if (calc_ck != rx_ck) {
+        return false;
+    }
+
+    return true;
+}
+

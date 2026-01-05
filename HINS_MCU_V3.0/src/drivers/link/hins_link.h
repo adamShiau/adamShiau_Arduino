@@ -23,4 +23,32 @@ Status hins_mip_transact(Stream& port_hins,
                          uint8_t* out_resp_data, uint16_t resp_cap,
                          uint16_t* out_resp_len);
 
+// mip frame: [75 65][desc_set][payload_len][payload...][ck1 ck2]
+bool hins_send_mip_raw(Stream& port_hins, const uint8_t* mip);
+
+
+/*** usage: 
+static const uint8_t HINS_HDR[] = {0x75,0x65,0x82,0x13,0x13,0x49};
+uint8_t hins_payload[32];
+bool ok = hins_read_stream_payload(
+    g_cmd_port_hins,
+    HINS_HDR,
+    sizeof(HINS_HDR),
+    17,                  // 協議定義的 payload_len
+    hins_payload,
+    sizeof(hins_payload),
+    2                    // 2ms best-effort timeout
+);
+*/
+bool hins_read_stream_payload(
+    Stream& port_hins,
+    const uint8_t* header,
+    uint16_t header_len,
+    uint16_t payload_len,
+    uint8_t* out_payload,
+    uint16_t out_cap,
+    uint32_t timeout_ms
+);
+
+
 

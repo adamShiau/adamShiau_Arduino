@@ -124,12 +124,22 @@ typedef struct {
   my_float_t temp;
 } accl_t;
 
+typedef struct {
+  my_float_t  tow;  
+  my_float_t  heading; 
+  my_float_t  heading_unc; 
+  uint8_t     fix_type;
+  uint16_t    status_flag;
+  uint16_t    valid_flag;
+} hins_t;
+
 typedef struct 
 {
   my_time_t time;
   fog_t fog;
   temp_t temp;
   accl_t adxl357;
+  hins_t hins;
 }my_sensor_t;
 
 typedef struct {
