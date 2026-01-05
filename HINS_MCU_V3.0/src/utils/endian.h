@@ -35,3 +35,35 @@ static inline uint16_t be_u16(const uint8_t* p)
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
 }
 
+static inline void write_be_u16(uint8_t* p, uint16_t v){
+  p[0] = (uint8_t)(v >> 8);
+  p[1] = (uint8_t)(v & 0xFF);
+}
+
+static inline void write_be_u32(uint8_t* p, uint32_t v){
+  p[0] = (uint8_t)(v >> 24);
+  p[1] = (uint8_t)(v >> 16);
+  p[2] = (uint8_t)(v >> 8);
+  p[3] = (uint8_t)(v & 0xFF);
+}
+
+static inline void write_be_u64(uint8_t* p, uint64_t v){
+  p[0] = (uint8_t)(v >> 56);
+  p[1] = (uint8_t)(v >> 48);
+  p[2] = (uint8_t)(v >> 40);
+  p[3] = (uint8_t)(v >> 32);
+  p[4] = (uint8_t)(v >> 24);
+  p[5] = (uint8_t)(v >> 16);
+  p[6] = (uint8_t)(v >> 8);
+  p[7] = (uint8_t)(v & 0xFF);
+}
+
+static inline void write_be_f32(uint8_t* p, float f){
+  my_float_t u;
+  u.float_val = f;
+  p[0] = u.bin_val[3];
+  p[1] = u.bin_val[2];
+  p[2] = u.bin_val[1];
+  p[3] = u.bin_val[0];
+}
+

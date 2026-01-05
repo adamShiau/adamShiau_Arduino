@@ -1,7 +1,8 @@
 // src/drivers/link/hins_link.cpp
 #include "hins_link.h"
 #include <Arduino.h>
-#include "../../common.h"
+// #include "../../common.h"
+#include "../../utils/endian.h"
 
 // ---- MIP constants (from HBK/MicroStrain DCP examples) ----
 static constexpr uint8_t MIP_SYNC1    = 0x75;
@@ -484,5 +485,144 @@ bool hins_read_stream_payload(
     }
 
     return true;
+}
+
+// True Heading Aiding (0x13,0x31) via hins_mip_transact()
+// Variant: u32 ns to fit Field Length = 0x13 (field data = 17 bytes)
+Status hins_true_heading_transact_u32ns(
+    Stream& port_hins,
+    uint32_t timeout_ms,
+    const true_heading_t* th,
+    uint8_t* out_ack_code,
+    uint8_t* out_ack_echo
+) {
+  if (!th) return Status::ERR; // 你的 Status enum 若不同，改成你專案的 error
+
+  // Packet: SYNC(2) + DS(0x13) + PL(0x13) + Field(0x13 bytes) + CK(2)
+  uint8_t pkt[4 + 0x13 + 2];
+
+  // Header
+  pkt[0] = 0x75;
+  pkt[1] = 0x65;
+  pkt[2] = 0x13;
+  pkt[3] = 0x13;
+
+  // Field
+  uint8_t* f = &pkt[4];
+  f[0] = 0x13;   // field len
+  f[1] = 0x31;   // field desc
+
+  // time: timebase + reserved + ns(u32)
+  f[2] = th->ts.timebase;
+  f[3] = th->ts.reserved;
+
+  // use low 32-bit of nanosecs (mod 2^32)
+  const uint32_t ns32 = (uint32_t)(th->ts.nanosecs & 0xFFFFFFFFu);
+  write_be_u32(&f[4], ns32);
+
+  // frame id
+  f[8] = th->Frame_id;
+
+  // heading + uncertainty (radians)
+  write_be_f32(&f[9],  th->Heading.float_val);
+  write_be_f32(&f[13], th->Uncertainty.float_val);
+
+  // valid flags
+  write_be_u16(&f[17], th->valid_flag);
+
+  // checksum over [SYNC..end of payload]
+  const uint16_t ck = mip_fletcher16(pkt, 4 + 0x13);
+  pkt[4 + 0x13 + 0] = (uint8_t)(ck >> 8);   // sum1
+  pkt[4 + 0x13 + 1] = (uint8_t)(ck & 0xFF); // sum2
+
+  uint8_t out_desc_set = 0, out_cmd_desc = 0;
+  uint8_t ack_code = 0xFF, ack_echo = 0xFF;
+  uint8_t resp_desc = 0;
+  uint8_t resp_buf[8];
+  uint16_t resp_len = 0;
+
+  Status st = hins_mip_transact(
+      port_hins,
+      pkt, (uint16_t)sizeof(pkt),
+      timeout_ms,
+      &out_desc_set,
+      &out_cmd_desc,
+      &ack_code,
+      &ack_echo,
+      &resp_desc,
+      resp_buf, (uint16_t)sizeof(resp_buf),
+      &resp_len
+  );
+
+  if (out_ack_code) *out_ack_code = ack_code;
+  if (out_ack_echo) *out_ack_echo = ack_echo;
+
+  return st;
+}
+
+Status hins_true_heading_transact_u64ns(
+    Stream& port_hins,
+    uint32_t timeout_ms,
+    const true_heading_t* th,
+    uint8_t* out_ack_code,
+    uint8_t* out_ack_echo
+) {
+  // Packet: SYNC(2) + DS(0x13) + PL(0x16) + Field(0x16 bytes) + CK(2)
+  const uint8_t PL = 0x16;
+  const uint8_t FL = 0x16;
+
+  uint8_t pkt[4 + PL + 2];
+
+  pkt[0] = 0x75;
+  pkt[1] = 0x65;
+  pkt[2] = 0x13;
+  pkt[3] = PL;
+
+  uint8_t* f = &pkt[4];
+  f[0] = FL;
+  f[1] = 0x31;
+
+  // time: timebase + reserved + ns(u64)
+  f[2] = th->ts.timebase;
+  f[3] = th->ts.reserved;
+  write_be_u64(&f[4], th->ts.nanosecs);
+
+  // frame id
+  f[12] = th->Frame_id;
+
+  // heading + uncertainty
+  write_be_f32(&f[13], th->Heading.float_val);
+  write_be_f32(&f[17], th->Uncertainty.float_val);
+
+  // valid flags
+  write_be_u16(&f[21], th->valid_flag);
+
+  const uint16_t ck = mip_fletcher16(pkt, 4 + PL);
+  pkt[4 + PL + 0] = (uint8_t)(ck >> 8);
+  pkt[4 + PL + 1] = (uint8_t)(ck & 0xFF);
+
+  uint8_t out_desc_set = 0, out_cmd_desc = 0;
+  uint8_t ack_code = 0xFF, ack_echo = 0xFF;
+  uint8_t resp_desc = 0;
+  uint8_t resp_buf[8];
+  uint16_t resp_len = 0;
+
+  Status st = hins_mip_transact(
+      port_hins,
+      pkt, (uint16_t)sizeof(pkt),
+      timeout_ms,
+      &out_desc_set,
+      &out_cmd_desc,
+      &ack_code,
+      &ack_echo,
+      &resp_desc,
+      resp_buf, (uint16_t)sizeof(resp_buf),
+      &resp_len
+  );
+
+  if (out_ack_code) *out_ack_code = ack_code;
+  if (out_ack_echo) *out_ack_echo = ack_echo;
+
+  return st;
 }
 

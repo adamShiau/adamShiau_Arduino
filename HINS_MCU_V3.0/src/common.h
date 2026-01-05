@@ -133,6 +133,20 @@ typedef struct {
   uint16_t    valid_flag;
 } hins_t;
 
+typedef struct {
+  uint8_t     timebase;
+  uint8_t     reserved;
+  uint64_t    nanosecs;
+} timestamp_t;
+
+typedef struct {
+  timestamp_t   ts;
+  uint8_t       Frame_id;
+  my_float_t    Heading;
+  my_float_t    Uncertainty;
+  uint16_t      valid_flag;
+} true_heading_t;
+
 typedef struct 
 {
   my_time_t time;
@@ -140,6 +154,7 @@ typedef struct
   temp_t temp;
   accl_t adxl357;
   hins_t hins;
+  true_heading_t true_heading;
 }my_sensor_t;
 
 typedef struct {

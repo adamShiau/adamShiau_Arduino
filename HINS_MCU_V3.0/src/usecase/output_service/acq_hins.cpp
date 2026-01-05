@@ -243,9 +243,9 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 const float rad = sensor_raw.hins.heading.float_val;
                 const float deg = rad * 57.2957795f;
                 const float unc = sensor_raw.hins.heading_unc.float_val * 57.2957795f;
-                Serial.print(deg);
-                Serial.print(",");
-                Serial.println(unc);
+                // Serial.print(deg);
+                // Serial.print(",");
+                // Serial.println(unc);
             }
         }
     }
@@ -254,6 +254,61 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     ahrs_stage_calibrate(fog_parameter);
     ahrs_stage_attitude_update();
     ahrs_stage_frame_transform_to_case();
+    // ---- [TEST] True Heading feedback to HINS via transact (10Hz) ----
+    {
+        static uint32_t t0_ms = 0;
+        static uint32_t last_tx_ms = 0;
+        const uint32_t now = millis();
+        if (t0_ms == 0) t0_ms = now;
+
+        if (now - last_tx_ms >= 100) { // 10Hz
+            last_tx_ms = now;
+
+            const uint8_t  timebase   = 0x01;        // INTERNAL_REFERENCE
+            const uint32_t ns32       = (uint32_t)((now - t0_ms) * 1000000UL); // ms->ns (mod 2^32)
+            const uint8_t  frame_id   = 0x01;        // external estimate
+            const float    heading    = 0.0f;        // fixed test
+            const float    unc        = 0.0349066f;  // ~2 deg
+            const uint16_t valid      = 0x0001;
+
+            uint8_t ack_code = 0xFF, ack_echo = 0xFF;
+            Status st = hins_true_heading_transact_u64ns(
+                g_cmd_port_hins,
+                20,
+                &sensor_raw.true_heading,
+                &ack_code,
+                &ack_echo
+            );
+
+            static uint32_t last_print = 0;
+            if (now - last_print >= 500) {
+                last_print = now;
+                Serial.print("[HINS_TX] st=");
+                Serial.print((int)st);
+
+                Serial.print(" ack=0x");
+                if (ack_code < 0x10) Serial.print('0');
+                Serial.print(ack_code, HEX);
+
+                Serial.print(" echo=0x");
+                if (ack_echo < 0x10) Serial.print('0');
+                Serial.print(ack_echo, HEX);
+
+                Serial.print(" ns=");
+                Serial.print((unsigned long)ns32);
+
+                Serial.print(" heading=");
+                Serial.print(heading, 6);   // 6 digits after decimal
+
+                Serial.print(" unc=");
+                Serial.print(unc, 6);
+
+                Serial.println();
+
+            }
+        }
+    }
+
     ahrs_stage_output_send_if_ready();
 }
 
@@ -265,3 +320,5 @@ void acq_hins (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     // 2) run pipeline tick (only when rx->run == 1)
     ahrs_run_tick(rx, fog_parameter);
 }
+
+

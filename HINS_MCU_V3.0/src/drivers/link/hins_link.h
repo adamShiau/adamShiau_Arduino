@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include "../../usecase/usecase_types.h"
+#include "../../common.h"
 
 // 讀到 ACK(0x00) -> OK
 // 讀到 NACK(!=0) -> FAIL（你可視需求改成 BAD_PARAM / FAIL）
@@ -49,6 +50,24 @@ bool hins_read_stream_payload(
     uint16_t out_cap,
     uint32_t timeout_ms
 );
+
+
+Status hins_true_heading_transact_u32ns(
+    Stream& port_hins,
+    uint32_t timeout_ms,
+    const true_heading_t* th,
+    uint8_t* out_ack_code,
+    uint8_t* out_ack_echo
+);
+
+Status hins_true_heading_transact_u64ns(
+    Stream& port_hins,
+    uint32_t timeout_ms,
+    const true_heading_t* th,
+    uint8_t* out_ack_code,
+    uint8_t* out_ack_echo
+);
+
 
 
 
