@@ -152,12 +152,18 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
 
     // cache to my_att_t for downstream blocks (keep current behavior)
-    my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
-    my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
-    my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
-    my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
-    my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
+    // my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
+    // my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
+    // my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
+    // my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
+    // my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
+    // my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
+    my_GYRO_cali.float_val[0] = -sensor_cali.fog.fogy.step.float_val;
+    my_GYRO_cali.float_val[1] = -sensor_cali.fog.fogx.step.float_val;
+    my_GYRO_cali.float_val[2] = -sensor_cali.fog.fogz.step.float_val;
+    my_ACCL_cali.float_val[0] = -sensor_cali.adxl357.ay.float_val;
+    my_ACCL_cali.float_val[1] = -sensor_cali.adxl357.ax.float_val;
+    my_ACCL_cali.float_val[2] = -sensor_cali.adxl357.az.float_val;
 }
 
 static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
@@ -253,7 +259,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
     ahrs_stage_calibrate(fog_parameter);
     ahrs_stage_attitude_update();
-    // ahrs_stage_frame_transform_to_case();
+    ahrs_stage_frame_transform_to_case();
     // ---- [TEST] True Heading feedback to HINS via transact (10Hz) ----
     // {
     //     static uint32_t t0_ms = 0;

@@ -184,6 +184,8 @@ void ahrs_att_stage_update(ahrs_att_stage_ctx_t* ctx,
         gyro_att.float_val[i] = apply_deadband_and_sat(gyro_cali_dps->float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
         acc_att.float_val[i]  = apply_deadband_and_sat(accl_cali_mps2->float_val[i], ACC_MIN, ACC_MAX);
     }
+    
+    
 
     // 2) accel low-pass for correction
     if (ctx->ax_lp==0 && ctx->ay_lp==0 && ctx->az_lp==0) {
