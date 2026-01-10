@@ -90,6 +90,9 @@ static void ahrs_start_stream(cmd_ctrl_t* rx)
         ahrs_att_stage_init(&g_att_ctx, 100.0f);
         g_att_ctx_inited = 1;
     }
+    // ahrs_attitude.resetAttitude(true);     // 清 quaternion + 角度連續化狀態
+    // ahrs_att_stage_init(&g_att_ctx, 100.0f); // 或至少 reset g_att_ctx 的 MA/LP
+
     ahrs_attitude.captureYawZeroLocal(); // reset yaw0 (relative zero)
     rx->run = 1;
 
@@ -199,9 +202,10 @@ static void ahrs_stage_attitude_update(void)
     // my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
     // my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
     // my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    // my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
-    // my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
-    // my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
+    // my_ACCL_case.float_val[0] = -my_ACCL_case.float_val[0];
+    // my_ACCL_case.float_val[1] = -my_ACCL_case.float_val[1];
+    // my_ACCL_case.float_val[2] = -my_ACCL_case.float_val[2];
+
     // Extracted into lib: keep callsite stable.
     ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
     // Serial.print(my_ACCL_case.float_val[0]);
@@ -221,6 +225,12 @@ static void ahrs_stage_frame_transform_to_case(void)
 static void ahrs_stage_output_send_if_ready(void)
 {
     uint8_t out[TOTAL_PAYLOAD_LEN];
+    sensor_cali.fog.fogx.step.float_val = my_GYRO_case.float_val[0];
+    sensor_cali.fog.fogy.step.float_val = my_GYRO_case.float_val[1];
+    sensor_cali.fog.fogz.step.float_val = my_GYRO_case.float_val[2];
+    sensor_cali.adxl357.ax.float_val   = my_ACCL_case.float_val[0];
+    sensor_cali.adxl357.ay.float_val   = my_ACCL_case.float_val[1];
+    sensor_cali.adxl357.az.float_val   = my_ACCL_case.float_val[2];
     pack_sensor_payload_from_cali(&sensor_cali, out);
     memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
 
