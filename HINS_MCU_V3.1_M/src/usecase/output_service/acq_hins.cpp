@@ -9,6 +9,7 @@
 #include "ahrs_transform_lib.h"
 #include "../../drivers/link/hins_link.h"
 #include "../../utils/endian.h"
+// #include "../../MadgwickAHRS_IMU.h"
 
 
 
@@ -52,6 +53,9 @@ static uint8_t g_att_ctx_inited = 0;
 static uint8_t  data_cnt = 0;
 static uint32_t try_cnt = 0;
 static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
+static my_att_t my_GYRO_case, my_ACCL_case;
+
+
 // ============================================================================
 // AHRS mode refactor helpers
 //   Goal: split "setup" (start/stop/one-shot init) and "run" (stream->raw->cali
@@ -86,7 +90,7 @@ static void ahrs_start_stream(cmd_ctrl_t* rx)
         ahrs_att_stage_init(&g_att_ctx, 100.0f);
         g_att_ctx_inited = 1;
     }
-    ahrs_attitude.captureYawZeroLocalCase(); // reset yaw0 (relative zero)
+    ahrs_attitude.captureYawZeroLocal(); // reset yaw0 (relative zero)
     rx->run = 1;
 
     // Start streaming from FPGA
@@ -158,12 +162,11 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
     my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
     my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
-    // my_GYRO_cali.float_val[0] = -sensor_cali.fog.fogy.step.float_val;
-    // my_GYRO_cali.float_val[1] = -sensor_cali.fog.fogx.step.float_val;
-    // my_GYRO_cali.float_val[2] = -sensor_cali.fog.fogz.step.float_val;
-    // my_ACCL_cali.float_val[0] = -sensor_cali.adxl357.ay.float_val;
-    // my_ACCL_cali.float_val[1] = -sensor_cali.adxl357.ax.float_val;
-    // my_ACCL_cali.float_val[2] = -sensor_cali.adxl357.az.float_val;
+    // Serial.print(my_GYRO_cali.float_val[0]);
+    // Serial.print(",");
+    // Serial.print(my_GYRO_cali.float_val[1]);
+    // Serial.print(",");
+    // Serial.println(my_GYRO_cali.float_val[2]);
 }
 
 static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
@@ -190,8 +193,22 @@ static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
 // Attitude block (candidate to move into dedicated lib later)
 static void ahrs_stage_attitude_update(void)
 {
+    // my_att_t my_GYRO_case;
+    // my_att_t my_ACCL_case;
+
+    // my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
+    // my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
+    // my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
+    // my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
+    // my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
+    // my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
     // Extracted into lib: keep callsite stable.
-    ahrs_att_stage_update(&g_att_ctx, &my_GYRO_cali, &my_ACCL_cali, &my_att);
+    ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
+    // Serial.print(my_ACCL_case.float_val[0]);
+    // Serial.print(",");
+    // Serial.print(my_ACCL_case.float_val[1]);
+    // Serial.print(",");
+    // Serial.println(my_ACCL_case.float_val[2]);
 }
 
 // Frame-transform block (candidate to move into dedicated lib later)
@@ -211,9 +228,9 @@ static void ahrs_stage_output_send_if_ready(void)
     gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
 
     if (data_cnt >= DATA_DELAY_CNT) {
-        Serial2.write(KVH_HEADER, sizeof(KVH_HEADER));
-        Serial2.write(out, TOTAL_PAYLOAD_LEN);
-        Serial2.write(crc, 4);
+        Serial.write(KVH_HEADER, sizeof(KVH_HEADER));
+        Serial.write(out, TOTAL_PAYLOAD_LEN);
+        Serial.write(crc, 4);
     }
 }
 
@@ -258,8 +275,13 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     // ----------------------------------------------------------------------
 
     ahrs_stage_calibrate(fog_parameter);
+    // ahrs_stage_frame_transform_to_case();
+    /*** 先轉到 case frame 再計算姿態 */
+    ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val, my_GYRO_case.float_val);
+    ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val, my_ACCL_case.float_val);
+    /***----------------------------- */
     ahrs_stage_attitude_update();
-    ahrs_stage_frame_transform_to_case();
+    
     // ---- [TEST] True Heading feedback to HINS via transact (10Hz) ----
     // {
     //     static uint32_t t0_ms = 0;
