@@ -16,6 +16,8 @@ typedef struct {
     uint8_t have_prev;
     uint32_t last_ts_us;
 
+    uint8_t  needs_alignment; // 新增：啟動時對齊旗標
+
     // gimbal-lock yaw hold
     uint8_t yaw_gl_locked;
     float   yaw_hold_deg;

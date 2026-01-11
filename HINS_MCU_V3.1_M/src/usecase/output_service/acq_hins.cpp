@@ -194,6 +194,7 @@ static void ahrs_stage_attitude_update(void)
 
     // Extracted into lib: keep callsite stable.
     ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
+}
 
 // Frame-transform block (candidate to move into dedicated lib later)
 static void ahrs_stage_frame_transform_to_case(void)

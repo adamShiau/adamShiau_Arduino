@@ -255,6 +255,9 @@ public:
 
     // 將 sensor 向量旋到 case：v_case = R_CS * v_sensor
     void sensorVecToCase(const float v_sensor[3], float v_case[3]) const;
+
+    // ... 在其餘 function 宣告處新增
+    void initQuaternionFromAccel(float ax, float ay, float az);
 };
 
 #endif // MadgwickAHRS_IMU_h

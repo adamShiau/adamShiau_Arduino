@@ -156,6 +156,7 @@ void ahrs_att_stage_reset(ahrs_att_stage_ctx_t* ctx)
     if (!ctx) return;
     float fs = (ctx->nominal_fs_hz > 1.0f ? ctx->nominal_fs_hz : 100.0f);
     ahrs_att_stage_init(ctx, fs);
+    ctx->needs_alignment = 1; // 確保 reset 後下次運算會重新對齊
 }
 
 void ahrs_att_stage_prepare_run(ahrs_att_stage_ctx_t* ctx)
@@ -167,6 +168,7 @@ void ahrs_att_stage_prepare_run(ahrs_att_stage_ctx_t* ctx)
         ctx->bias_alpha_base = BIAS_ALPHA_BASE;
         ctx->just_still = 0;
         ctx->still_ts_ms = 0;
+        ctx->needs_alignment = 1; // 標記下一筆數據進來時進行對齊
     }
 }
 
@@ -184,7 +186,21 @@ void ahrs_att_stage_update(ahrs_att_stage_ctx_t* ctx,
         gyro_att.float_val[i] = apply_deadband_and_sat(gyro_cali_dps->float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
         acc_att.float_val[i]  = apply_deadband_and_sat(accl_cali_mps2->float_val[i], ACC_MIN, ACC_MAX);
     }
-    
+
+    // 新增：初始對齊邏輯
+    if (ctx->needs_alignment) {
+        // 使用第一筆 Case Frame 加速度計數據進行對齊
+        ahrs_attitude.initQuaternionFromAccel(acc_att.float_val[0], 
+                                              acc_att.float_val[1], 
+                                              acc_att.float_val[2]);
+        
+        // 同步更新低通濾波器初始值，避免濾波器從 0 開始拉扯
+        ctx->ax_lp = acc_att.float_val[0];
+        ctx->ay_lp = acc_att.float_val[1];
+        ctx->az_lp = acc_att.float_val[2];
+        
+        ctx->needs_alignment = 0;
+    }
     
 
     // 2) accel low-pass for correction

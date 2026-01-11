@@ -69,9 +69,9 @@ Madgwick::Madgwick() {
 
 void Madgwick::init(float data_rate) {
     begin(data_rate); // 設定採樣率
-    // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 }; 
-    // const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };   
+ 
     const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor 
+    // const float Rcs[9] = { 0,1,0,  -1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor 
     setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
     setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
     setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
@@ -762,7 +762,25 @@ void Madgwick::getQuatWS(float& w, float& x, float& y, float& z) const {
     w = q0; x = q1; y = q2; z = q3;
 }
 
+void Madgwick::initQuaternionFromAccel(float ax, float ay, float az) {
+    // 計算初始 Roll 和 Pitch (假設偏航角 Yaw 為 0)
+    // 使用 atan2 確保能處理 Z 軸朝下 (Az ~ -9.8) 的情況
+    float initialRoll  = atan2f(ay, az);
+    float initialPitch = atan2f(-ax, sqrtf(ay * ay + az * az));
 
+    // 將 Euler 角轉為四元數 (Z-Y-X 順序)
+    float cosRoll  = cosf(initialRoll  * 0.5f);
+    float sinRoll  = sinf(initialRoll  * 0.5f);
+    float cosPitch = cosf(initialPitch * 0.5f);
+    float sinPitch = sinf(initialPitch * 0.5f);
+    float cosYaw   = 1.0f; // cos(0)
+    float sinYaw   = 0.0f; // sin(0)
+
+    q0 = cosRoll * cosPitch * cosYaw + sinRoll * sinPitch * sinYaw;
+    q1 = sinRoll * cosPitch * cosYaw - cosRoll * sinPitch * sinYaw;
+    q2 = cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw;
+    q3 = cosRoll * cosPitch * sinYaw - sinRoll * sinPitch * cosYaw;
+}
 
 
 
