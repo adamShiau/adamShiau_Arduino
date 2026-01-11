@@ -53,16 +53,7 @@ static uint8_t g_att_ctx_inited = 0;
 static uint8_t  data_cnt = 0;
 static uint32_t try_cnt = 0;
 static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
-static my_att_t my_GYRO_case, my_ACCL_case;
 
-
-// ============================================================================
-// AHRS mode refactor helpers
-//   Goal: split "setup" (start/stop/one-shot init) and "run" (stream->raw->cali
-//         ->attitude->frame-transform->output) into separate functions.
-//   Note: The "attitude" and "frame-transform" blocks are additionally factored
-//         into standalone static helpers so they can be moved into a dedicated
-//         library later without changing the call sites.
 
 static void ahrs_reset_runtime_state(void)
 {
@@ -165,11 +156,6 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
     my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
     my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
-    // Serial.print(my_GYRO_cali.float_val[0]);
-    // Serial.print(",");
-    // Serial.print(my_GYRO_cali.float_val[1]);
-    // Serial.print(",");
-    // Serial.println(my_GYRO_cali.float_val[2]);
 }
 
 static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
@@ -196,41 +182,31 @@ static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
 // Attitude block (candidate to move into dedicated lib later)
 static void ahrs_stage_attitude_update(void)
 {
-    // my_att_t my_GYRO_case;
-    // my_att_t my_ACCL_case;
+    my_att_t my_GYRO_case;
+    my_att_t my_ACCL_case;
 
-    // my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
-    // my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
-    // my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    // my_ACCL_case.float_val[0] = -my_ACCL_case.float_val[0];
-    // my_ACCL_case.float_val[1] = -my_ACCL_case.float_val[1];
-    // my_ACCL_case.float_val[2] = -my_ACCL_case.float_val[2];
+    my_GYRO_case.float_val[0] = sensor_cali.fog.fogx.step.float_val;
+    my_GYRO_case.float_val[1] = sensor_cali.fog.fogy.step.float_val;
+    my_GYRO_case.float_val[2] = sensor_cali.fog.fogz.step.float_val;
+    my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
+    my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
+    my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
 
     // Extracted into lib: keep callsite stable.
     ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
-    // Serial.print(my_ACCL_case.float_val[0]);
-    // Serial.print(",");
-    // Serial.print(my_ACCL_case.float_val[1]);
-    // Serial.print(",");
-    // Serial.println(my_ACCL_case.float_val[2]);
-}
 
 // Frame-transform block (candidate to move into dedicated lib later)
 static void ahrs_stage_frame_transform_to_case(void)
 {
-    // Extracted into lib: keep callsite stable.
+    // Extracted into lib: keep callsite stable.W
     ahrs_transform_sensorVecToCase(&my_GYRO_cali, &my_ACCL_cali, &sensor_cali);
+
 }
 
 static void ahrs_stage_output_send_if_ready(void)
 {
     uint8_t out[TOTAL_PAYLOAD_LEN];
-    sensor_cali.fog.fogx.step.float_val = my_GYRO_case.float_val[0];
-    sensor_cali.fog.fogy.step.float_val = my_GYRO_case.float_val[1];
-    sensor_cali.fog.fogz.step.float_val = my_GYRO_case.float_val[2];
-    sensor_cali.adxl357.ax.float_val   = my_ACCL_case.float_val[0];
-    sensor_cali.adxl357.ay.float_val   = my_ACCL_case.float_val[1];
-    sensor_cali.adxl357.az.float_val   = my_ACCL_case.float_val[2];
+
     pack_sensor_payload_from_cali(&sensor_cali, out);
     memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
 
@@ -285,10 +261,8 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     // ----------------------------------------------------------------------
 
     ahrs_stage_calibrate(fog_parameter);
-    // ahrs_stage_frame_transform_to_case();
-    /*** 先轉到 case frame 再計算姿態 */
-    ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val, my_GYRO_case.float_val);
-    ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val, my_ACCL_case.float_val);
+    ahrs_stage_frame_transform_to_case();
+
     /***----------------------------- */
     ahrs_stage_attitude_update();
     

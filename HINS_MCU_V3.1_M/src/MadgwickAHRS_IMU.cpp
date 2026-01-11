@@ -71,7 +71,7 @@ void Madgwick::init(float data_rate) {
     begin(data_rate); // 設定採樣率
     // const float Rcs[9] = { 1,0,0,  0,1,0,  0,0,1 }; 
     // const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };   
-    const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 }; 
+    const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor 
     setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
     setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
     setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
