@@ -15,6 +15,8 @@ enum {
     CMD_ERR_OFFSET,     //0x12
     CMD_DAC_GAIN,       //0x13
     CMD_CUT_OFF,        //0x14
+    CMD_OUT_TH,         //0x15
+    CMD_OUT_TH_EN,      //0x16
 
     CMD_SF_COMP_T1 = 23,    //0x17
     CMD_SF_COMP_T2,         //0x18
