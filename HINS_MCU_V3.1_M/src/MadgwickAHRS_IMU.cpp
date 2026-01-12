@@ -70,10 +70,11 @@ Madgwick::Madgwick() {
 void Madgwick::init(float data_rate) {
     begin(data_rate); // 設定採樣率
  
-    const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor 
-    // const float Rcs[9] = { 0,1,0,  -1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor 
+    const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor, NED
+    // const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };  // v_case = Rcs * v_sensor, ENU
     setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
     setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
+    // setLocalFrameNED(false);    // 設定 Local 世界座標為 ENU
     setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
     setDynamicAccelWeight(true); // 啟用動態加權
     setGimbalLockGuard(true, 89.0f); // 啟用奇異點保護

@@ -215,9 +215,9 @@ static void ahrs_stage_output_send_if_ready(void)
     gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
 
     if (data_cnt >= DATA_DELAY_CNT) {
-        Serial.write(KVH_HEADER, sizeof(KVH_HEADER));
-        Serial.write(out, TOTAL_PAYLOAD_LEN);
-        Serial.write(crc, 4);
+        g_cmd_port_output.write(KVH_HEADER, sizeof(KVH_HEADER));
+        g_cmd_port_output.write(out, TOTAL_PAYLOAD_LEN);
+        g_cmd_port_output.write(crc, 4);
     }
 }
 
