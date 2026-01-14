@@ -41,8 +41,23 @@ void setup() {
 
 void loop() { 
   static uint32_t try_cnt = 0;
+  uint8_t* buf = NULL;
 
-  uint8_t* buf = readDataDynamic(&try_cnt);
+  if (Serial.available() > 0) {
+    buf = readDataDynamic(&Serial, &try_cnt); // 傳入 Stream 物件 
+    if (buf) {
+      g_p_output_stream = &Serial; // 成功解析，切換輸出路徑至 USB
+    }
+  }
+
+  if (!buf && Serial2.available() > 0) {
+    buf = readDataDynamic(&Serial2, &try_cnt); // 傳入 Serial2 [cite: 4, 5]
+    if (buf) {
+      g_p_output_stream = &Serial2; // 成功解析，切換輸出路徑至 Serial2
+    }
+  }
+
+  // uint8_t* buf = readDataDynamic(&try_cnt);
 
   if (buf) {
     decode_cmd_v1(buf, &g_cmd);

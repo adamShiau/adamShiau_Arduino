@@ -182,14 +182,14 @@ uint8_t* readDataDynamic(uint32_t* try_cnt)
 {
   // Legacy behavior: use Serial2 as the command input port.
   // Prefer calling readDataDynamic(Stream& port, ...) in new code.
-  return readDataDynamic(g_cmd_port_output, try_cnt);
+  return readDataDynamic(g_p_output_stream, try_cnt);
 }
 
-uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)
+uint8_t* readDataDynamic(Stream* port, uint32_t* try_cnt)
 {
-  if (port.available() == 0) return NULL;
+  if (port->available() == 0) return NULL;
 
-  int di = port.read();
+  int di = port->read();
   if (di == -1) return NULL;           // no data; defensive guard
   uint8_t data = (uint8_t)di;
 
