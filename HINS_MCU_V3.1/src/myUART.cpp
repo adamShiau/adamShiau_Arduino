@@ -12,6 +12,7 @@
  */
 
 #include "myUART.h"
+#include "app/app_state.h"
 
 /* ----------------------------------------------------------------------------
  * UART object availability
@@ -181,7 +182,7 @@ uint8_t* readDataDynamic(uint32_t* try_cnt)
 {
   // Legacy behavior: use Serial2 as the command input port.
   // Prefer calling readDataDynamic(Stream& port, ...) in new code.
-  return readDataDynamic(Serial2, try_cnt);
+  return readDataDynamic(g_cmd_port_output, try_cnt);
 }
 
 uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt)

@@ -25,9 +25,9 @@ Madgwick ahrs_attitude;           // ★集中定義點（取代分散在 .ino �
 Stream& g_cmd_port_fpga    = Serial1;      //使用在common.cpp 的 switch case
 Stream& g_cmd_port_hins    = Serial3; 
 Stream& g_cmd_port_output  = Serial2; 
+// Stream& g_cmd_port_output  = Serial; 
 
-void output_port_begin(uint32_t baud)
+void output_port_begin(uint32_t baud) // used in configiration_service to change baudrate
 {
-  // Keep the concrete port centralized here.
   Serial2.begin(baud);
 }
