@@ -50,7 +50,8 @@ void loop() {
     }
   }
 
-  if (!buf && Serial2.available() > 0) {
+  // if (!buf && Serial2.available() > 0) {
+  if (Serial2.available() > 0) {
     buf = readDataDynamic(&Serial2, &try_cnt); // 傳入 Serial2 [cite: 4, 5]
     if (buf) {
       g_p_output_stream = &Serial2; // 成功解析，切換輸出路徑至 Serial2

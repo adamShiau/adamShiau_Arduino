@@ -37,12 +37,12 @@ static const uint16_t HINS_FIELD_DATA_LEN = 17;
 
 #define DATA_DELAY_CNT 5
 
-// 讀取來自 FPGA payload 長度（11 個 float × 4 bytes），不含 header 與 CRC
-#define SENSOR_PAYLOAD_LEN 44
+// 讀取來自 FPGA payload 長度（13 個 float × 4 bytes），不含 header 與 CRC
+#define SENSOR_PAYLOAD_LEN 52
 // 姿態 3 floats = 12 bytes
 #define ATT_PAYLOAD_LEN    12
 // 合併後總長度
-#define TOTAL_PAYLOAD_LEN  (SENSOR_PAYLOAD_LEN + ATT_PAYLOAD_LEN)
+#define TOTAL_PAYLOAD_LEN  (44 + ATT_PAYLOAD_LEN)
 
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};

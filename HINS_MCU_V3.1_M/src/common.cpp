@@ -119,6 +119,7 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
 
     // fog.*.step
     memcpy(out->fog.fogz.step.bin_val,  &pkt[idx], 4); idx += 4;
+    memcpy(out->m_gyro.gz.bin_val,      &pkt[idx], 4); idx += 4;
     memcpy(out->fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
     memcpy(out->fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
 
@@ -129,8 +130,13 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
 
     // temp {x, y, z}
     memcpy(out->temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+    // memcpy(out->temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
+    // memcpy(out->temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+
+    // house keeping
+    memcpy(out->hk.Vin_mon.bin_val,         &pkt[idx], 4); idx += 4;
+    memcpy(out->hk.Tact_mon.bin_val,        &pkt[idx], 4); idx += 4;
+    memcpy(out->hk.pump_pd_mon.bin_val,     &pkt[idx], 4); idx += 4;
 
     // adxl357.temp
     memcpy(out->adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
@@ -559,7 +565,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // === Gyro 溫補（scale factor & bias）===
   float gx_comp = ((float)raw->fog.fogx.step.int_val) * sf_x_gyro - bx_gyro;
   float gy_comp = ((float)raw->fog.fogy.step.int_val) * sf_y_gyro - by_gyro;
-  float gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
+  float gz_comp = ((float)raw->m_gyro.gz.int_val) * sf_z_gyro - bz_gyro;
   // Serial.print(raw->fog.fogx.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogy.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogz.step.float_val); Serial.println();Serial.println();
