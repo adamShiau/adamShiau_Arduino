@@ -40,6 +40,8 @@ static const float SF_TEMP =0.00390625F;
 static const float COE_TIMER = 0.0001;
 
 static const float COE_TEMP_AD590 = 0.00007165585;
+static const float VIN_MON_COFF = 0.0000023505;
+static const float ADC3p3_COEE = 0.000000039339; 
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
 const uint8_t HDR_CDDC[2] = {0xCD, 0xDC};
@@ -434,9 +436,11 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
 
   // === Copy raw data to cali structure ===
   // float tx   = ((float)raw->temp.tempx.int_val) * COE_TEMP_AD590 - 273.15;
-  // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15;
-  float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15;
+  // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15; 
+  float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15; 
+  float vin_mon = ((float)raw->hk.Vin_mon.int_val) * VIN_MON_COFF;
   float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
+  Serial.println(vin_mon);
 
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro = SF_GYRO_1000DPS;

@@ -15,7 +15,7 @@
 // ===== Keep constants identical to acq_ahrs.cpp =====
 #define ACC_MIN        (0.05f * 9.80665f)
 #define ACC_MAX        (16.0f * 9.80665f)
-#define GYRO_MIN_DPS   (0.01f)
+#define GYRO_MIN_DPS   (0.00f)
 #define GYRO_MAX_DPS   (1000.0f)
 #define ACC_LP_ALPHA   (0.2f)
 
@@ -182,10 +182,26 @@ void ahrs_att_stage_update(ahrs_att_stage_ctx_t* ctx,
     // 1) threshold + saturation
     my_att_t gyro_att = {};
     my_att_t acc_att  = {};
-    for (int i=0;i<3;++i) {
-        gyro_att.float_val[i] = apply_deadband_and_sat(gyro_cali_dps->float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
-        acc_att.float_val[i]  = apply_deadband_and_sat(accl_cali_mps2->float_val[i], ACC_MIN, ACC_MAX);
-    }
+
+    float current_min_threshold = (ctx->out_th_en == 1) ? ctx->out_th : 0.0f;
+    // Serial.print("th: ");
+    // Serial.print(ctx->out_th_en);
+    // Serial.print(", ");
+    // Serial.println(current_min_threshold, 3);
+
+    // for (int i=0;i<3;++i) {
+    //     gyro_att.float_val[i] = apply_deadband_and_sat(gyro_cali_dps->float_val[i], GYRO_MIN_DPS, GYRO_MAX_DPS);
+    //     acc_att.float_val[i]  = apply_deadband_and_sat(accl_cali_mps2->float_val[i], ACC_MIN, ACC_MAX);
+    // }
+    gyro_att.float_val[0] = apply_deadband_and_sat(gyro_cali_dps->float_val[0], GYRO_MIN_DPS, GYRO_MAX_DPS);
+    acc_att.float_val[0]  = apply_deadband_and_sat(accl_cali_mps2->float_val[0], ACC_MIN, ACC_MAX);
+
+    gyro_att.float_val[1] = apply_deadband_and_sat(gyro_cali_dps->float_val[1], GYRO_MIN_DPS, GYRO_MAX_DPS);
+    acc_att.float_val[1]  = apply_deadband_and_sat(accl_cali_mps2->float_val[1], ACC_MIN, ACC_MAX);
+
+    // 目前只有Z軸卡輸入閥值
+    gyro_att.float_val[2] = apply_deadband_and_sat(gyro_cali_dps->float_val[2], current_min_threshold, GYRO_MAX_DPS);
+    acc_att.float_val[2]  = apply_deadband_and_sat(accl_cali_mps2->float_val[2], ACC_MIN, ACC_MAX);
 
     // 新增：初始對齊邏輯
     if (ctx->needs_alignment) {

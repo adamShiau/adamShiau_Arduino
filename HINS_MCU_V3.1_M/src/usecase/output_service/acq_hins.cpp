@@ -180,7 +180,7 @@ static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
 }
 
 // Attitude block (candidate to move into dedicated lib later)
-static void ahrs_stage_attitude_update(void)
+static void ahrs_stage_attitude_update(fog_parameter_t* fog_parameter)
 {
     my_att_t my_GYRO_case;
     my_att_t my_ACCL_case;
@@ -191,6 +191,9 @@ static void ahrs_stage_attitude_update(void)
     my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
     my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
     my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
+
+    g_att_ctx.out_th = fog_parameter->paramZ[13].data.float_val;
+    g_att_ctx.out_th_en = fog_parameter->paramZ[14].data.int_val;
 
     // Extracted into lib: keep callsite stable.
     ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
@@ -209,7 +212,13 @@ static void ahrs_stage_output_send_if_ready(void)
     uint8_t out[TOTAL_PAYLOAD_LEN];
 
     pack_sensor_payload_from_cali(&sensor_cali, out);
-    memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
+    memcpy(out + 44, my_att.bin_val, ATT_PAYLOAD_LEN);
+    // Serial.print(my_att.float_val[0]);
+    // Serial.print(" ");
+    // Serial.print(my_att.float_val[1]);
+    // Serial.print(" ");
+    // Serial.println(my_att.float_val[2]);
+
 
     uint8_t crc[4];
     gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
@@ -265,7 +274,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     ahrs_stage_frame_transform_to_case();
 
     /***----------------------------- */
-    ahrs_stage_attitude_update();
+    ahrs_stage_attitude_update(fog_parameter);
     
     // ---- [TEST] True Heading feedback to HINS via transact (10Hz) ----
     // {
