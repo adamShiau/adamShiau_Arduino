@@ -39,7 +39,9 @@ static const float SF_TEMP =0.00390625F;
 
 static const float COE_TIMER = 0.0001;
 
-static const float COE_TEMP_AD590 = 0.00007165585;
+static const float COE_TEMP_AD590 = 0.00007165585; // Tk uA*5.49k* = Tk 5.49e-3 V, Tk = ADC3p3_COEE/5.49e-3 = 0.00007165585
+static const float VIN_MON_COFF = 0.0000023505; // (1+200/40.2)*ADC3p3_COEE
+static const float ADC3p3_COEE = 0.000000393390656; // 2*Vref/2^24 = 2*3.3/2^24 = 3.93390656e-7 
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
 const uint8_t HDR_CDDC[2] = {0xCD, 0xDC};
@@ -119,6 +121,7 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
 
     // fog.*.step
     memcpy(out->fog.fogz.step.bin_val,  &pkt[idx], 4); idx += 4;
+    memcpy(out->m_gyro.gz.bin_val,      &pkt[idx], 4); idx += 4;
     memcpy(out->fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
     memcpy(out->fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
 
@@ -129,8 +132,13 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
 
     // temp {x, y, z}
     memcpy(out->temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+    // memcpy(out->temp.tempy.bin_val,     &pkt[idx], 4); idx += 4;
+    // memcpy(out->temp.tempx.bin_val,     &pkt[idx], 4); idx += 4;
+
+    // house keeping
+    memcpy(out->hk.Vin_mon.bin_val,         &pkt[idx], 4); idx += 4;
+    memcpy(out->hk.Tact_mon.bin_val,        &pkt[idx], 4); idx += 4;
+    memcpy(out->hk.pump_pd_mon.bin_val,     &pkt[idx], 4); idx += 4;
 
     // adxl357.temp
     memcpy(out->adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
@@ -428,13 +436,20 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
 
   // === Copy raw data to cali structure ===
   // float tx   = ((float)raw->temp.tempx.int_val) * COE_TEMP_AD590 - 273.15;
-  // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15;
-  float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15;
+  // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15; 
+  float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15; 
+  float vin_mon = ((float)raw->hk.Vin_mon.int_val) * VIN_MON_COFF;
+  float Tact_mon = ((float)raw->hk.Tact_mon.int_val) * ADC3p3_COEE;
+  float pump_pd_mon = ((float)raw->hk.pump_pd_mon.int_val) * ADC3p3_COEE;
   float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
+  // Serial.print(vin_mon); Serial.print(", ");
+  // Serial.print(Tact_mon); Serial.print(", ");
+  // Serial.println(pump_pd_mon);
 
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro = SF_GYRO_1000DPS;
   float sf_y_gyro = SF_GYRO_1000DPS;
+  // float sf_z_gyro = SF_GYRO_1000DPS;
   // float sf_x_gyro = sf_temp_comp_1st(tx,
   //     fog_parameter->paramX[17].data.float_val,
   //     fog_parameter->paramX[18].data.float_val);
@@ -480,6 +495,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // === Gyro bias（三區段一次線性）===
   float bx_gyro = 0;
   float by_gyro = 0;
+  // float bz_gyro = 0;
   // float bx_gyro = bias_temp_comp_1st_3t(
   //     tx,
   //     fog_parameter->paramX[23].data.float_val,  // T1

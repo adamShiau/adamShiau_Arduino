@@ -125,6 +125,13 @@ typedef struct {
 } accl_t;
 
 typedef struct {
+  my_float_t gx;  
+  my_float_t gy; 
+  my_float_t gz; 
+  my_float_t temp;
+} m_gyro_t;
+
+typedef struct {
   my_float_t  tow;  
   my_float_t  heading; 
   my_float_t  heading_unc; 
@@ -132,6 +139,12 @@ typedef struct {
   uint16_t    status_flag;
   uint16_t    valid_flag;
 } hins_t;
+
+typedef struct {
+  my_float_t  Vin_mon;  
+  my_float_t  Tact_mon; 
+  my_float_t  pump_pd_mon; 
+} hk_t;
 
 typedef struct {
   uint8_t     timebase;
@@ -153,6 +166,8 @@ typedef struct
   fog_t fog;
   temp_t temp;
   accl_t adxl357;
+  m_gyro_t m_gyro;
+  hk_t hk;
   hins_t hins;
   true_heading_t true_heading;
 }my_sensor_t;

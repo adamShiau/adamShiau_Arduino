@@ -7,6 +7,7 @@
 #include "../drivers/link/nios_link.h"
 #include "../domain/protocol/ack_codec_v1.h"
 #include "../utils/version_info.h"
+#include "../app/app_state.h"
 
 // 你 common.h 裡的 header/trailer 全域常數（目前是 extern）
 // #include "../common.h"
@@ -18,8 +19,8 @@ extern const uint8_t HDR_ABBA[2];
 extern const uint8_t TRL_5556[2];
 
 // Ports are defined in app_state.cpp; declare here to avoid including app_state.h
-extern Stream& g_cmd_port_fpga;
-extern Stream& g_cmd_port_output;
+// extern Stream& g_cmd_port_fpga;
+// extern Stream& g_cmd_port_output;
 
 /* ---------- Dump interface ---------- */
 

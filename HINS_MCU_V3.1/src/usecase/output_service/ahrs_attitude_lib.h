@@ -35,6 +35,9 @@ typedef struct {
     float pitch_sin_sum, pitch_cos_sum;
     float roll_sin_sum,  roll_cos_sum;
     float yaw_sin_sum,   yaw_cos_sum;
+    
+    float out_th;    // 對應 GUI 的 OUT_TH
+    uint8_t out_th_en;  // 對應 GUI 的 OUT_EN (0: 關閉, 1: 開啟)
 
     float nominal_fs_hz;
 } ahrs_att_stage_ctx_t;

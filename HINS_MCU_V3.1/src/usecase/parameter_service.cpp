@@ -165,7 +165,7 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						DEBUG_PRINT("CMD_DAC_GAIN:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_DAC_GAIN, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_DAC_GAIN - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_DAC_GAIN - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -177,7 +177,31 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						DEBUG_PRINT("CMD_CUT_OFF:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CUT_OFF, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_CUT_OFF - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_CUT_OFF - CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_OUT_TH: {
+						DEBUG_PRINT("CMD_OUT_TH:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_OUT_TH, rx->value, rx->ch);
+              				update_parameter_container(rx, fog_inst, CMD_OUT_TH - CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_OUT_TH_EN: {
+						DEBUG_PRINT("CMD_OUT_TH_EN:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_OUT_TH_EN, rx->value, rx->ch);
+              				update_parameter_container(rx, fog_inst, CMD_OUT_TH_EN - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -189,7 +213,7 @@ UsecaseResult parameter_service_handle_ex(Stream& port, cmd_ctrl_t* rx, fog_para
 						DEBUG_PRINT("CMD_SF_COMP_T1:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_SF_COMP_T1, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_SF_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -1047,7 +1071,31 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						DEBUG_PRINT("CMD_CUT_OFF:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CUT_OFF, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_CUT_OFF - CONTAINER_TO_CMD_OFFSET);
+             				 update_parameter_container(rx, fog_inst, CMD_CUT_OFF - CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_OUT_TH: {
+						DEBUG_PRINT("CMD_OUT_TH:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_OUT_TH, rx->value, rx->ch);
+              				update_parameter_container(rx, fog_inst, CMD_OUT_TH - CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_OUT_TH_EN: {
+						DEBUG_PRINT("CMD_OUT_TH_EN:\n");	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_OUT_TH_EN, rx->value, rx->ch);
+              				update_parameter_container(rx, fog_inst, CMD_OUT_TH_EN - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -1059,7 +1107,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						DEBUG_PRINT("CMD_SF_COMP_T1:\n");	
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_SF_COMP_T1, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_SF_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
+              				update_parameter_container(rx, fog_inst, CMD_SF_COMP_T1 - CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {

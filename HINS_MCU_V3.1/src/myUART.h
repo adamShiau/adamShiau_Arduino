@@ -24,7 +24,7 @@ void SERCOM5_Handler(void);
 
 uint8_t* readDataDynamic(uint32_t* try_cnt);
 
-uint8_t* readDataDynamic(Stream& port, uint32_t* try_cnt);
+uint8_t* readDataDynamic(Stream* port, uint32_t* try_cnt);
 
  
 #define MAX_DATA_SIZE4  256

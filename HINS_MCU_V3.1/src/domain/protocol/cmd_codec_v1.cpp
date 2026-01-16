@@ -20,8 +20,8 @@ void decode_cmd_v1(uint8_t* data, cmd_ctrl_t* rx)
     rx->value    = be_bytes_to_i32(data[2], data[3], data[4], data[5]);
     rx->ch       = data[6];
 
-    DEBUG_PRINT("condition: %d, ", RX_CONDITION_ABBA_5556);
-    DEBUG_PRINT("cmd: %x, value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
+    DEBUG_PRINT("\ncondition: %d, ", RX_CONDITION_ABBA_5556);
+    DEBUG_PRINT("cmd:0x%x, value: %d, ch: %d\n", rx->cmd, rx->value, rx->ch);
 
   }
   else if (rx->condition == RX_CONDITION_CDDC_5758) {

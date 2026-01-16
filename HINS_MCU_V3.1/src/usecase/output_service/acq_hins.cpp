@@ -37,12 +37,12 @@ static const uint16_t HINS_FIELD_DATA_LEN = 17;
 
 #define DATA_DELAY_CNT 5
 
-// 讀取來自 FPGA payload 長度（11 個 float × 4 bytes），不含 header 與 CRC
-#define SENSOR_PAYLOAD_LEN 44
+// 讀取來自 FPGA payload 長度（13 個 float × 4 bytes），不含 header 與 CRC
+#define SENSOR_PAYLOAD_LEN 52
 // 姿態 3 floats = 12 bytes
 #define ATT_PAYLOAD_LEN    12
 // 合併後總長度
-#define TOTAL_PAYLOAD_LEN  (SENSOR_PAYLOAD_LEN + ATT_PAYLOAD_LEN)
+#define TOTAL_PAYLOAD_LEN  (44 + ATT_PAYLOAD_LEN)
 
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
@@ -180,7 +180,7 @@ static bool hins_stage_update_raw(const uint8_t* d, uint16_t len)
 }
 
 // Attitude block (candidate to move into dedicated lib later)
-static void ahrs_stage_attitude_update(void)
+static void ahrs_stage_attitude_update(fog_parameter_t* fog_parameter)
 {
     my_att_t my_GYRO_case;
     my_att_t my_ACCL_case;
@@ -191,6 +191,9 @@ static void ahrs_stage_attitude_update(void)
     my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
     my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
     my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
+
+    g_att_ctx.out_th = fog_parameter->paramZ[13].data.float_val;
+    g_att_ctx.out_th_en = fog_parameter->paramZ[14].data.int_val;
 
     // Extracted into lib: keep callsite stable.
     ahrs_att_stage_update(&g_att_ctx, &my_GYRO_case, &my_ACCL_case, &my_att);
@@ -209,7 +212,13 @@ static void ahrs_stage_output_send_if_ready(void)
     uint8_t out[TOTAL_PAYLOAD_LEN];
 
     pack_sensor_payload_from_cali(&sensor_cali, out);
-    memcpy(out + SENSOR_PAYLOAD_LEN, my_att.bin_val, ATT_PAYLOAD_LEN);
+    memcpy(out + 44, my_att.bin_val, ATT_PAYLOAD_LEN);
+    // Serial.print(my_att.float_val[0]);
+    // Serial.print(" ");
+    // Serial.print(my_att.float_val[1]);
+    // Serial.print(" ");
+    // Serial.println(my_att.float_val[2]);
+
 
     uint8_t crc[4];
     gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
@@ -265,7 +274,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     ahrs_stage_frame_transform_to_case();
 
     /***----------------------------- */
-    ahrs_stage_attitude_update();
+    ahrs_stage_attitude_update(fog_parameter);
     
     // ---- [TEST] True Heading feedback to HINS via transact (10Hz) ----
     // {
