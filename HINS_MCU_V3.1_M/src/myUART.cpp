@@ -13,6 +13,7 @@
 
 #include "myUART.h"
 #include "app/app_state.h"
+#include "common.h"
 
 /* ----------------------------------------------------------------------------
  * UART object availability
@@ -126,6 +127,7 @@ static inline void rd4_reset(void) {
  */
 void myUART_init(void)
 {
+  DEBUG_PRINT("myUART_init\n");
   // USB CDC debug
   Serial.begin(230400);
 
@@ -154,6 +156,7 @@ void myUART_init(void)
   // Reset parser states
   init_ctx(&ctx_ser1);
   rd4_reset();
+  DEBUG_PRINT("myUART_init done\n");
 
   // Drain any stale bytes
   // while (Serial1.available()) (void)Serial1.read();
@@ -190,6 +193,7 @@ uint8_t* readDataDynamic(Stream* port, uint32_t* try_cnt)
   if (port->available() == 0) return NULL;
 
   int di = port->read();
+  // Serial.println(di,HEX);
   if (di == -1) return NULL;           // no data; defensive guard
   uint8_t data = (uint8_t)di;
 

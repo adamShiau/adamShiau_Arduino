@@ -2,6 +2,7 @@
 #include "../output_mode_config.h"   // 確保 fn_ptr/輸出函式宣告一致
 #include <Arduino.h>
 #include "../myUART.h"
+#include "../common.h"
 
 cmd_ctrl_t g_cmd = {
   .condition = RX_CONDITION_INIT,
@@ -34,9 +35,16 @@ Stream* g_p_output_stream  = &Serial2;
 
 void output_port_begin(uint32_t baud) 
 {
+  DEBUG_PRINT("output_port_begin\n", baud);
   // 透過指標存取並開啟 baudrate
   if (g_p_output_stream) {
-      if (g_p_output_stream == &Serial2) Serial2.begin(baud);
-      else if (g_p_output_stream == &Serial) Serial.begin(baud);
+      if (g_p_output_stream == &Serial2) {
+        Serial2.begin(baud);
+        DEBUG_PRINT("ser2, baud: %d\n", baud);
+      }
+      else if (g_p_output_stream == &Serial) {
+        Serial.begin(baud);
+        DEBUG_PRINT("ser, baud: %d\n", baud);
+      }
   }
 }

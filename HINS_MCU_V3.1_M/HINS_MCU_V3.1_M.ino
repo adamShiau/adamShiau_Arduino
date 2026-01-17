@@ -24,19 +24,19 @@ extern Uart Serial4;
 
 
 void setup() {
+  delay(2000);
   myUART_init();
   crc32_init_table();
   delay(100);
   DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
-
-  // delay(2000);
-  // Serial.println("IRIS1_MCU_V1.2");
-  // DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
-  boot_capture_all(&g_fog_params);
+  // boot_capture_all(&g_fog_params);
   delay(1000);
+  DEBUG_PRINT("apply_configuration_from_container..\n");
   apply_configuration_from_container(&g_fog_params);
   delay(10);
-  ahrs_attitude.init(100.0f); // sample rate                
+  DEBUG_PRINT("ahrs_attitude init..\n");
+  ahrs_attitude.init(100.0f); // sample rate  
+  DEBUG_PRINT("Setup done\n");  
 }
 
 void loop() { 
@@ -57,8 +57,6 @@ void loop() {
       g_p_output_stream = &Serial2; // 成功解析，切換輸出路徑至 Serial2
     }
   }
-
-  // uint8_t* buf = readDataDynamic(&try_cnt);
 
   if (buf) {
     decode_cmd_v1(buf, &g_cmd);

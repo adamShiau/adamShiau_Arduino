@@ -82,7 +82,7 @@ bool apply_datarate_index(uint8_t dr_index)
 
 bool apply_baudrate_index(uint8_t br_index)
 {
-  uint32_t baud = 0;
+  uint32_t baud = 1;
   
   if (!map_baudrate_index(br_index, &baud)) {
     return false;
