@@ -69,5 +69,13 @@ Status hins_true_heading_transact_u64ns(
 );
 
 
+/**
+ * @brief 從串列埠抓取一個完整的 MIP 原始封包 (含 Header 與 Checksum)
+ * @return Status::OK 成功, Status::TIMEOUT 超時, Status::BAD_PARAM 格式錯誤
+ */
+Status hins_capture_raw_mip(Stream& port_hins, 
+                            uint8_t* out_buf, uint16_t buf_cap, 
+                            uint16_t* out_len, uint32_t timeout_ms);
+
 
 

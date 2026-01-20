@@ -39,7 +39,7 @@ void output_port_begin(uint32_t baud)
   // 透過指標存取並開啟 baudrate
   if (g_p_output_stream) {
       if (g_p_output_stream == &Serial2) {
-        Serial2.begin(baud);
+        // Serial2.begin(baud);
         DEBUG_PRINT("ser2, baud: %d\n", baud);
       }
       else if (g_p_output_stream == &Serial) {

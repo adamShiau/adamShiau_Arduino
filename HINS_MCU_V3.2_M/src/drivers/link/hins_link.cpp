@@ -626,3 +626,18 @@ Status hins_true_heading_transact_u64ns(
   return st;
 }
 
+Status hins_capture_raw_mip(Stream& port_hins, 
+                            uint8_t* out_buf, uint16_t buf_cap, 
+                            uint16_t* out_len, uint32_t timeout_ms) 
+{
+    uint32_t deadline = millis() + timeout_ms;
+    uint16_t captured_len = 0;
+
+    // 直接調用現有的封包讀取邏輯
+    if (mip_read_packet(port_hins, out_buf, buf_cap, &captured_len, deadline)) {
+        if (out_len) *out_len = captured_len;
+        return Status::OK;
+    }
+    
+    return Status::TIMEOUT;
+}
