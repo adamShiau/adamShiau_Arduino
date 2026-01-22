@@ -676,6 +676,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->temp.tempy.float_val = tz;
   cali->temp.tempz.float_val = tz;
   cali->adxl357.temp.float_val = tacc;
+  // Serial.println(cali->temp.tempx.float_val);
   
   // time
   float time = (float)(raw->time.time.int_val) * COE_TIMER;
