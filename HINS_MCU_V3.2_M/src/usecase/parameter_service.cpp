@@ -1787,9 +1787,19 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							result.status = Status::BAD_PARAM;
 							break;
 						}
-
+						
 						// 1. 發送指令到 HINS
+						// Debug
+						// for (int i = 0; i < rx->hins_payload_len; i++) {
+						// 	DEBUG_PRINT("%02X ", rx->hins_payload[i]);
+						// }
+						// DEBUG_PRINT("\n");
+						
+
+						// 在發送指令前清空舊數據
+						while(port_hins.available() > 0) port_hins.read();
 						port_hins.write(rx->hins_payload, rx->hins_payload_len);
+						
 
 						// 2. 準備靜態 Buffer 存放回傳，供 RESULT 封裝使用
 						static uint8_t mip_raw_packet[512]; 

@@ -105,6 +105,15 @@ static bool mip_read_packet(Stream& s,
     if (got < need) return false;
 
     *out_len = total;
+    // --- 新增：底層監控印出 ---
+    // Serial.print("RAW_RX: ");
+    // for(uint16_t i=0; i<total; i++) {
+    //     if (buf[i] < 0x10) Serial.print("0");
+    //     Serial.print(buf[i], HEX);
+    //     Serial.print(" ");
+    // }
+    // Serial.println();
+// -----------------------
     return true;
   }
   return false;

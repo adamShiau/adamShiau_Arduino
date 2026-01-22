@@ -29,7 +29,7 @@ void setup() {
   crc32_init_table();
   delay(100);
   DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
-  // boot_capture_all(&g_fog_params);
+  boot_capture_all(&g_fog_params);
   delay(1000);
   DEBUG_PRINT("apply_configuration_from_container..\n");
   apply_configuration_from_container(&g_fog_params);

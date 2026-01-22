@@ -143,8 +143,5 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
     UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
     output_mode_setting(cmd, output_fn, auto_rst);
 
-  // if (*output_fn) {
-  //   (*output_fn)(cmd, params);
-  // }
 }
 

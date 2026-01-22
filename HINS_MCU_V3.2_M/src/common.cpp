@@ -440,7 +440,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15; 
   float vin_mon = ((float)raw->hk.Vin_mon.int_val) * VIN_MON_COFF;
   float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
-  Serial.println(vin_mon);
+  // Serial.println(vin_mon);
 
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro = SF_GYRO_1000DPS;
