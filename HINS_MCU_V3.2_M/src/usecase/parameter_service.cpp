@@ -1789,12 +1789,13 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						}
 						
 						// 1. 發送指令到 HINS
-						// Debug
+						// --- Debug: 印出要送給 HINS 的 cmd -----------
+						// DEBUG_PRINT("MIP cmd input: ");
 						// for (int i = 0; i < rx->hins_payload_len; i++) {
 						// 	DEBUG_PRINT("%02X ", rx->hins_payload[i]);
 						// }
 						// DEBUG_PRINT("\n");
-						
+						// --------------------------------------------
 
 						// 在發送指令前清空舊數據
 						while(port_hins.available() > 0) port_hins.read();
@@ -1808,7 +1809,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						// 3. 調用 driver 層的 capture 函數
 						Status st = hins_capture_raw_mip(port_hins, 
 														mip_raw_packet, sizeof(mip_raw_packet), 
-														&actual_len, 1500);
+														&actual_len, 3000); // 配合 save flash 將等待時間延長到3秒
 
 						// 4. 設定回傳結果
 						result.status = st;
