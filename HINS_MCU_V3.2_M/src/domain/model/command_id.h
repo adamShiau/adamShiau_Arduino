@@ -80,8 +80,9 @@ enum {
 
     /*** HINS CMD */
 
-    CMD_HINS_PING = 150, //0x96
-    CMD_HINS_MIP = 151 //0x97
+    CMD_HINS_PING     = 150, //0x96
+    CMD_HINS_MIP      = 151, //0x97
+    CMD_HINS_MIP_DATA = 152 //0x98
 
 
 };

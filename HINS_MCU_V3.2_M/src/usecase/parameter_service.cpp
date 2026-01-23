@@ -1801,7 +1801,6 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						while(port_hins.available() > 0) port_hins.read();
 						port_hins.write(rx->hins_payload, rx->hins_payload_len);
 						
-
 						// 2. 準備靜態 Buffer 存放回傳，供 RESULT 封裝使用
 						static uint8_t mip_raw_packet[512]; 
 						uint16_t actual_len = 0;
@@ -1814,6 +1813,15 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						// 4. 設定回傳結果
 						result.status = st;
 						if (st == Status::OK) {
+							// --- debug: 印出給 payload 的內容---
+							// Serial.print("[CMD_HINS_MIP]: ");
+							// for (uint16_t i = 0; i < actual_len; i++) {
+							// 	if (mip_raw_packet[i] < 0x10) Serial.print("0");
+							// 	Serial.print(mip_raw_packet[i], HEX);
+							// 	Serial.print(" ");
+							// }
+							// Serial.println();
+							// ----------------------------------
 							result.payload = mip_raw_packet;
 							result.payload_len = actual_len;
 						} else {
@@ -1823,65 +1831,81 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						DEBUG_PRINT("[HINS_MIP_RAW] len=%u status=%d\r\n", (unsigned)actual_len, (int)st);
 						break;
 					}
+					case CMD_HINS_MIP_DATA: {
+						if (!rx->hins_payload || rx->hins_payload_len == 0) {
+							result.status = Status::BAD_PARAM;
+							break;
+						}
+						// --- Debug: 印出要送給 HINS 的 cmd -----------
+						// DEBUG_PRINT("MIP cmd input: ");
+						// for (int i = 0; i < rx->hins_payload_len; i++) {
+						// 	DEBUG_PRINT("%02X ", rx->hins_payload[i]);
+						// }
+						// DEBUG_PRINT("\n");
+						// --------------------------------------------
+						// 1. 下指令前清理緩衝區
+						while(port_hins.available() > 0) port_hins.read();
+						port_hins.write(rx->hins_payload, rx->hins_payload_len);
 
-					// case CMD_HINS_MIP: {
-					// 	if (!rx->hins_payload || rx->hins_payload_len == 0) {
-					// 		result.status = Status::BAD_PARAM;
-					// 		break;
-					// 	}
+						static uint8_t mip_buf[512];
+						uint16_t actual_len = 0;
+						uint32_t deadline = millis() + 1500; // 給予足夠的等待時間
+						
+						bool got_target_data = false;
+						Status final_status = Status::TIMEOUT;
 
-					// 	// RESULT payload buffer（static 確保回傳時還活著）
-					// 	// 格式：version(1) flags(1) ack_code(1) ack_echo(1) resp_desc(1) resp_len_L(1) resp_len_H(1) resp_data...
-					// 	static uint8_t out_buf[1 + 1 + 1 + 1 + 1 + 2 + 512];
+						// 2. 進入抓取迴圈，直到抓到數據包或超時
+						while (millis() < deadline) {
+							// 使用現有的 capture 函數抓取一包
+							Status st = hins_capture_raw_mip(port_hins, mip_buf, sizeof(mip_buf), &actual_len, 1500);
 
-					// 	uint8_t desc_set = 0, cmd_desc = 0;
-					// 	uint8_t ack_code = 0xFF, ack_echo = 0x00;
-					// 	uint8_t resp_desc = 0;
-					// 	uint16_t resp_len = 0;
-					// 	uint8_t resp_data[512];
+							if (st == Status::OK) {
 
-					// 	Status st = hins_mip_transact(
-					// 		port_hins,
-					// 		rx->hins_payload, rx->hins_payload_len,
-					// 		1500,
-					// 		&desc_set, &cmd_desc,
-					// 		&ack_code, &ack_echo,
-					// 		&resp_desc,
-					// 		resp_data, sizeof(resp_data),
-					// 		&resp_len
-					// 	);
+								// --- Debug:  印出抓到的每一包內容 ------------
+								// Serial.print("[HINS_PART]: ");
+								// for(int i=0; i<actual_len; i++) {
+								// 	if(mip_buf[i] < 0x10) Serial.print("0");
+								// 	Serial.print(mip_buf[i], HEX); Serial.print(" ");
+								// }
+								// Serial.println();
+								// --------------------------------------------
 
-					// 	// 組回傳 payload（永遠回 header，方便 debug）
-					// 	uint8_t flags = 0;
-					// 	// bit0=ack_present（只有成功讀到 ack_echo==cmd_desc 才算 present；這裡簡化：ack_code!=0xFF 就當 present）
-					// 	if (ack_code != 0xFF) flags |= 0x01;
-					// 	if (resp_len > 0)     flags |= 0x02;
+								// 判斷是否為數據包 (例如您提到的 0xA0)
+								// 通常數據包的 Descriptor Set (pkt[2]) 會跟 ACK 包 (0x0C) 不同
+								if (mip_buf[2] != 0x0C && mip_buf[2] != 0x01) { 
+									got_target_data = true;
+									final_status = Status::OK;
+									break; // 抓到真正的數據，跳出迴圈
+								}
+								// 如果抓到的是 ACK 包 (0x0C)，則繼續 loop 抓下一包數據
+							} else if (st == Status::TIMEOUT && !got_target_data) {
+								// 這裡可以繼續嘗試直到總 deadline 到期
+								continue; 
+							} else {
+								break; 
+							}
+						}
+						// 3. 封裝結果回傳給 PC
+						result.status = final_status;
+						if (final_status == Status::OK) {
+							// --- debug: 印出給 payload 的內容---
+							// Serial.print("[CMD_HINS_MIP_DATA]: ");
+							// for (uint16_t i = 0; i < actual_len; i++) {
+							// 	if (mip_buf[i] < 0x10) Serial.print("0");
+							// 	Serial.print(mip_buf[i], HEX);
+							// 	Serial.print(" ");
+							// }
+							// Serial.println();
+							// ----------------------------------
+							result.payload = mip_buf;
+							result.payload_len = actual_len;
+						} else {
+							result.payload_len = 0;
+						}
+						break;
+					}
 
-					// 	uint16_t idx = 0;
-					// 	out_buf[idx++] = 0x01;        // version
-					// 	out_buf[idx++] = flags;
-					// 	out_buf[idx++] = ack_code;
-					// 	out_buf[idx++] = ack_echo;
-					// 	out_buf[idx++] = resp_desc;
-					// 	out_buf[idx++] = (uint8_t)(resp_len & 0xFF);
-					// 	out_buf[idx++] = (uint8_t)((resp_len >> 8) & 0xFF);
-
-					// 	// copy resp
-					// 	if (resp_len > 0) {
-					// 		uint16_t copy_len = min<uint16_t>(resp_len, (uint16_t)(sizeof(out_buf) - idx));
-					// 		memcpy(&out_buf[idx], resp_data, copy_len);
-					// 		idx += copy_len;
-					// 	}
-
-					// 	result.status = st;
-					// 	result.payload = out_buf;
-					// 	result.payload_len = idx;
-
-					// 	DEBUG_PRINT("[HINS_MIP] ds=0x%02X cmd=0x%02X ack=0x%02X echo=0x%02X resp=0x%02X len=%u st=%d\r\n",
-					// 				desc_set, cmd_desc, ack_code, ack_echo, resp_desc, (unsigned)resp_len, (int)st);
-					// 	break;
 					
-					// } // CMD_HINS_MIP
 					
 					default:{
 						DEBUG_PRINT("condition 4 default case\n");
