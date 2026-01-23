@@ -77,5 +77,16 @@ Status hins_capture_raw_mip(Stream& port_hins,
                             uint8_t* out_buf, uint16_t buf_cap, 
                             uint16_t* out_len, uint32_t timeout_ms);
 
+/**
+ * @brief 抓取 MIP 數據包（自動跳過 ACK 包）
+ * @param ignore_set 指定要跳過的 Descriptor Set (例如 0x0C 或 0x01)
+ * @param timeout_ms 總等待超時時間
+ */
+Status hins_capture_mip_data(Stream& port_hins, 
+                             uint8_t* out_buf, uint16_t buf_cap, 
+                             uint16_t* out_len, 
+                             uint8_t ignore_set,
+                             uint32_t timeout_ms);
+
 
 

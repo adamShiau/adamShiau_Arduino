@@ -650,3 +650,33 @@ Status hins_capture_raw_mip(Stream& port_hins,
     
     return Status::TIMEOUT;
 }
+
+Status hins_capture_mip_data(Stream& port_hins, 
+                             uint8_t* out_buf, uint16_t buf_cap, 
+                             uint16_t* out_len, 
+                             uint8_t ignore_set,
+                             uint32_t timeout_ms) 
+{
+    uint32_t deadline = millis() + timeout_ms;
+    uint16_t temp_len = 0;
+
+    while (millis() < deadline) {
+        // 調用現有的基礎 capture 函式抓取一包
+        Status st = hins_capture_raw_mip(port_hins, out_buf, buf_cap, &temp_len, 500);
+
+        if (st == Status::OK) {
+            // 檢查 Descriptor Set 是否為我們要跳過的（ACK包）
+            // 如果不是 ignore_set，代表這就是我們要的數據包
+            if (out_buf[2] != ignore_set) {
+                if (out_len) *out_len = temp_len;
+                return Status::OK;
+            }
+            // 如果是 ignore_set，繼續迴圈抓下一包
+        } else if (st == Status::TIMEOUT) {
+            continue; // 沒抓到東西，繼續嘗試直到總時間到
+        } else {
+            return st; // 其他錯誤 (如 BAD_PARAM) 直接回傳
+        }
+    }
+    return Status::TIMEOUT;
+}

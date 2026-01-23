@@ -1846,48 +1846,19 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						// 1. 下指令前清理緩衝區
 						while(port_hins.available() > 0) port_hins.read();
 						port_hins.write(rx->hins_payload, rx->hins_payload_len);
-
+						
+						// 2. 準備 Buffer
 						static uint8_t mip_buf[512];
 						uint16_t actual_len = 0;
-						uint32_t deadline = millis() + 1500; // 給予足夠的等待時間
 						
-						bool got_target_data = false;
-						Status final_status = Status::TIMEOUT;
+						// 3. 調用新封裝的函式 (指定跳過 0x0C 這個 Descriptor Set)
+    					Status st = hins_capture_mip_data(port_hins, 
+                                     mip_buf, sizeof(mip_buf), 
+                                     &actual_len, 0x0C, 1500);
 
-						// 2. 進入抓取迴圈，直到抓到數據包或超時
-						while (millis() < deadline) {
-							// 使用現有的 capture 函數抓取一包
-							Status st = hins_capture_raw_mip(port_hins, mip_buf, sizeof(mip_buf), &actual_len, 1500);
-
-							if (st == Status::OK) {
-
-								// --- Debug:  印出抓到的每一包內容 ------------
-								// Serial.print("[HINS_PART]: ");
-								// for(int i=0; i<actual_len; i++) {
-								// 	if(mip_buf[i] < 0x10) Serial.print("0");
-								// 	Serial.print(mip_buf[i], HEX); Serial.print(" ");
-								// }
-								// Serial.println();
-								// --------------------------------------------
-
-								// 判斷是否為數據包 (例如您提到的 0xA0)
-								// 通常數據包的 Descriptor Set (pkt[2]) 會跟 ACK 包 (0x0C) 不同
-								if (mip_buf[2] != 0x0C && mip_buf[2] != 0x01) { 
-									got_target_data = true;
-									final_status = Status::OK;
-									break; // 抓到真正的數據，跳出迴圈
-								}
-								// 如果抓到的是 ACK 包 (0x0C)，則繼續 loop 抓下一包數據
-							} else if (st == Status::TIMEOUT && !got_target_data) {
-								// 這裡可以繼續嘗試直到總 deadline 到期
-								continue; 
-							} else {
-								break; 
-							}
-						}
-						// 3. 封裝結果回傳給 PC
-						result.status = final_status;
-						if (final_status == Status::OK) {
+						// 4. 設定回傳結果
+						result.status = st;
+						if (st == Status::OK) {
 							// --- debug: 印出給 payload 的內容---
 							// Serial.print("[CMD_HINS_MIP_DATA]: ");
 							// for (uint16_t i = 0; i < actual_len; i++) {
@@ -1902,10 +1873,10 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						} else {
 							result.payload_len = 0;
 						}
-						break;
-					}
 
-					
+						DEBUG_PRINT("[HINS_MIP_DATA] len=%u status=%d\r\n", (unsigned)actual_len, (int)st);
+    					break;
+					}		
 					
 					default:{
 						DEBUG_PRINT("condition 4 default case\n");
