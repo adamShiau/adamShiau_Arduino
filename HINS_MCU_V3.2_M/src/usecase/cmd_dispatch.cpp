@@ -28,7 +28,7 @@ static inline TransactionSpec get_command_spec(uint8_t cmd_id)
     case CMD_HINS_MIP_DATA:
       spec.expect_response = true;
       spec.route = IoRoute::HINS;
-      spec.timeout_ms = 1500;
+      spec.timeout_ms = 5000;
       spec.max_retry = 0;
       break;
 

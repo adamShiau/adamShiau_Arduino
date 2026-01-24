@@ -416,224 +416,118 @@ bool hins_send_mip_raw(Stream& port_hins, const uint8_t* mip)
   return true;
 }
 
-// Read a fixed-length HINS streaming payload after aligning to a fixed header.
-// - Align to 'header' bytes (e.g. 75 65 85 13 13 49)
-// - Read 'payload_len' bytes payload
-// - Read 2 bytes checksum (sum1, sum2), MSB first
-// - Verify Fletcher-16 over (header + payload), excluding checksum
-// - On success, copy payload into out_payload and return true
-//
-// This function is best-effort and non-blocking-friendly (short timeout).
-bool hins_read_stream_payload(
-    Stream& port_hins,
-    const uint8_t* header,
-    uint16_t header_len,
-    uint16_t payload_len,
-    uint8_t* out_payload,
-    uint16_t out_cap,
-    uint32_t timeout_ms
-) {
-    if (!header || header_len == 0) return false;
-    if (!out_payload || out_cap == 0) return false;
-    if (payload_len > out_cap) return false;
 
-    const uint32_t t0 = millis();
+static HINS_RD_Ctx hrd;
 
-    // Helper: read one byte with timeout
-    auto read_byte = [&](uint8_t &b) -> bool {
-        while ((millis() - t0) < timeout_ms) {
-            if (port_hins.available() > 0) {
-                int v = port_hins.read();
-                if (v >= 0) { b = (uint8_t)v; return true; }
-            }
-            yield(); // ok on Arduino; remove if unavailable
+static inline void hrd_reset(void) {
+    hrd.state   = HINS_RD_FIND_HEADER;
+    hrd.hdr_idx = 0;
+    hrd.pay_idx = 0;
+    hrd.chk_idx = 0;
+}
+
+uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len, uint16_t payload_len) {
+    if (port.available() == 0) return NULL;
+
+    while (port.available() > 0) {
+        uint8_t b = (uint8_t)port.read();
+
+        switch (hrd.state) {
+            case HINS_RD_FIND_HEADER:
+                if (b == header[hrd.hdr_idx]) {
+                    hrd.hdr_idx++;
+                    if (hrd.hdr_idx >= header_len) {
+                        hrd.state   = HINS_RD_READ_PAYLOAD;
+                        hrd.pay_idx = 0;
+                        hrd.datalen = (payload_len > HINS_MAX_PAYLOAD_SIZE) ? HINS_MAX_PAYLOAD_SIZE : payload_len;
+                    }
+                } else {
+                    hrd.hdr_idx = (b == header[0]) ? 1 : 0;
+                }
+                break;
+
+            case HINS_RD_READ_PAYLOAD:
+                hrd.payload[hrd.pay_idx++] = b;
+                if (hrd.pay_idx >= hrd.datalen) {
+                    hrd.state   = HINS_RD_CHECK_CHECKSUM;
+                    hrd.chk_idx = 0;
+                }
+                break;
+
+            case HINS_RD_CHECK_CHECKSUM:
+                hrd.checksum[hrd.chk_idx++] = b;
+                if (hrd.chk_idx >= 2) {
+                    // 計算 Fletcher-16
+                    uint8_t tmp[HINS_MAX_PAYLOAD_SIZE + 8]; // 預留空間給 Header
+                    memcpy(tmp, header, header_len);
+                    memcpy(tmp + header_len, hrd.payload, hrd.datalen);
+                    
+                    uint16_t calc = mip_fletcher16(tmp, header_len + hrd.datalen);
+                    uint16_t received = (uint16_t(hrd.checksum[0]) << 8) | hrd.checksum[1];
+
+                    if (calc == received) {
+                        uint8_t* ret = hrd.payload;
+                        hrd_reset();
+                        return ret;
+                    } else {
+                        // 使用 Serial 原生輸出避免依賴 serial_printf
+                        Serial.print("[HINS_CS_ERR] Calc:"); Serial.print(calc, HEX);
+                        Serial.print(" Recv:"); Serial.println(received, HEX);
+                        hrd_reset();
+                    }
+                }
+                break;
         }
-        return false;
-    };
-
-    // 1) Align to header
-    uint16_t matched = 0;
-    while ((millis() - t0) < timeout_ms) {
-        uint8_t b = 0;
-        if (!read_byte(b)) return false;
-
-        if (b == header[matched]) {
-            matched++;
-            if (matched == header_len) break; // header matched
-        } else {
-            matched = (b == header[0]) ? 1 : 0;
-        }
     }
-    if (matched != header_len) return false;
-
-    // 2) Read payload
-    for (uint16_t i = 0; i < payload_len; i++) {
-        uint8_t b = 0;
-        if (!read_byte(b)) return false;
-        out_payload[i] = b;
-    }
-
-    // 3) Read checksum (2 bytes, MSB first: sum1, sum2)
-    uint8_t rx_sum1 = 0, rx_sum2 = 0;
-    if (!read_byte(rx_sum1)) return false;
-    if (!read_byte(rx_sum2)) return false;
-    const uint16_t rx_ck = (uint16_t(rx_sum1) << 8) | rx_sum2;
-
-    // 4) Verify Fletcher-16 over (header + payload) ㄇ
-    const uint16_t total = (uint16_t)(header_len + payload_len);
-    uint8_t tmp[64];
-    if (total > sizeof(tmp)) return false;
-
-    for (uint16_t i = 0; i < header_len; i++) tmp[i] = header[i];
-    for (uint16_t i = 0; i < payload_len; i++) tmp[header_len + i] = out_payload[i];
-
-    const uint16_t calc_ck = mip_fletcher16(tmp, total);
-
-    if (calc_ck != rx_ck) {
-        return false;
-    }
-
-    return true;
+    return NULL;
 }
 
-// True Heading Aiding (0x13,0x31) via hins_mip_transact()
-// Variant: u32 ns to fit Field Length = 0x13 (field data = 17 bytes)
-Status hins_true_heading_transact_u32ns(
-    Stream& port_hins,
-    uint32_t timeout_ms,
-    const true_heading_t* th,
-    uint8_t* out_ack_code,
-    uint8_t* out_ack_echo
-) {
-  if (!th) return Status::ERR; // 你的 Status enum 若不同，改成你專案的 error
 
-  // Packet: SYNC(2) + DS(0x13) + PL(0x13) + Field(0x13 bytes) + CK(2)
-  uint8_t pkt[4 + 0x13 + 2];
 
-  // Header
-  pkt[0] = 0x75;
-  pkt[1] = 0x65;
-  pkt[2] = 0x13;
-  pkt[3] = 0x13;
+/**
+ * @brief 依照 True Heading (0x13, 0x31) 與 Time 規格書發送 Aiding 指令
+ * 總長度：Header(4) + Field(23) + Checksum(2) = 29 bytes
+ */
+void hins_true_heading_standard(Stream& port_hins, const true_heading_t* th) 
+{
+  const uint8_t FIELD_DATA_LEN = 21; // Time(10) + Data(11)
+  const uint8_t FIELD_LEN = 2 + FIELD_DATA_LEN; // 23 bytes
+  const uint8_t PACKET_PL = FIELD_LEN;         // 23 bytes
 
-  // Field
+  uint8_t pkt[4 + PACKET_PL + 2]; 
+
+  // 1. MIP Header
+  pkt[0] = 0x75; // SYNC1
+  pkt[1] = 0x65; // SYNC2
+  pkt[2] = 0x13; // Descriptor Set: Aiding
+  pkt[3] = PACKET_PL; // 23
+
+  // 2. Field Header
   uint8_t* f = &pkt[4];
-  f[0] = 0x13;   // field len
-  f[1] = 0x31;   // field desc
+  f[0] = FIELD_LEN; // 23 [基於手冊 Field 13 + Time 10 的邏輯總和] [cite: 12]
+  f[1] = 0x31;      // Descriptor: True Heading [cite: 12]
 
-  // time: timebase + reserved + ns(u32)
-  f[2] = th->ts.timebase;
-  f[3] = th->ts.reserved;
+  // 3. Time 結構 (10 bytes) - 依照 Time.pdf
+  f[2] = th->ts.timebase;  // 決定時間基準 (1=Internal, 2=External...)
+  f[3] = th->ts.reserved;  // 決定保留位 (依規格書目前應為 0x01)
+  write_be_u64(&f[4], th->ts.nanosecs); // 8-byte Nanoseconds 
 
-  // use low 32-bit of nanosecs (mod 2^32)
-  const uint32_t ns32 = (uint32_t)(th->ts.nanosecs & 0xFFFFFFFFu);
-  write_be_u32(&f[4], ns32);
+  // 4. Heading 數據段 (11 bytes) - 依照 0x13, 0x31.pdf
+  f[12] = th->Frame_id;   // 使用傳入的 Frame Id [cite: 12]
+  write_be_f32(&f[13], th->Heading.float_val);     // 4-byte Heading [cite: 12]
+  write_be_f32(&f[17], th->Uncertainty.float_val); // 4-byte Uncertainty [cite: 12]
+  write_be_u16(&f[21], th->valid_flag);            // 2-byte Valid Flags [cite: 12]
 
-  // frame id
-  f[8] = th->Frame_id;
+  // 5. Checksum (Fletcher-16)
+  const uint16_t ck = mip_fletcher16(pkt, 4 + PACKET_PL);
+  pkt[4 + PACKET_PL + 0] = (uint8_t)(ck >> 8);
+  pkt[4 + PACKET_PL + 1] = (uint8_t)(ck & 0xFF);
 
-  // heading + uncertainty (radians)
-  write_be_f32(&f[9],  th->Heading.float_val);
-  write_be_f32(&f[13], th->Uncertainty.float_val);
-
-  // valid flags
-  write_be_u16(&f[17], th->valid_flag);
-
-  // checksum over [SYNC..end of payload]
-  const uint16_t ck = mip_fletcher16(pkt, 4 + 0x13);
-  pkt[4 + 0x13 + 0] = (uint8_t)(ck >> 8);   // sum1
-  pkt[4 + 0x13 + 1] = (uint8_t)(ck & 0xFF); // sum2
-
-  uint8_t out_desc_set = 0, out_cmd_desc = 0;
-  uint8_t ack_code = 0xFF, ack_echo = 0xFF;
-  uint8_t resp_desc = 0;
-  uint8_t resp_buf[8];
-  uint16_t resp_len = 0;
-
-  Status st = hins_mip_transact(
-      port_hins,
-      pkt, (uint16_t)sizeof(pkt),
-      timeout_ms,
-      &out_desc_set,
-      &out_cmd_desc,
-      &ack_code,
-      &ack_echo,
-      &resp_desc,
-      resp_buf, (uint16_t)sizeof(resp_buf),
-      &resp_len
-  );
-
-  if (out_ack_code) *out_ack_code = ack_code;
-  if (out_ack_echo) *out_ack_echo = ack_echo;
-
-  return st;
+  // 直接送出
+  port_hins.write(pkt, sizeof(pkt));
+  port_hins.flush();
 }
 
-Status hins_true_heading_transact_u64ns(
-    Stream& port_hins,
-    uint32_t timeout_ms,
-    const true_heading_t* th,
-    uint8_t* out_ack_code,
-    uint8_t* out_ack_echo
-) {
-  // Packet: SYNC(2) + DS(0x13) + PL(0x16) + Field(0x16 bytes) + CK(2)
-  const uint8_t PL = 0x16;
-  const uint8_t FL = 0x16;
-
-  uint8_t pkt[4 + PL + 2];
-
-  pkt[0] = 0x75;
-  pkt[1] = 0x65;
-  pkt[2] = 0x13;
-  pkt[3] = PL;
-
-  uint8_t* f = &pkt[4];
-  f[0] = FL;
-  f[1] = 0x31;
-
-  // time: timebase + reserved + ns(u64)
-  f[2] = th->ts.timebase;
-  f[3] = th->ts.reserved;
-  write_be_u64(&f[4], th->ts.nanosecs);
-
-  // frame id
-  f[12] = th->Frame_id;
-
-  // heading + uncertainty
-  write_be_f32(&f[13], th->Heading.float_val);
-  write_be_f32(&f[17], th->Uncertainty.float_val);
-
-  // valid flags
-  write_be_u16(&f[21], th->valid_flag);
-
-  const uint16_t ck = mip_fletcher16(pkt, 4 + PL);
-  pkt[4 + PL + 0] = (uint8_t)(ck >> 8);
-  pkt[4 + PL + 1] = (uint8_t)(ck & 0xFF);
-
-  uint8_t out_desc_set = 0, out_cmd_desc = 0;
-  uint8_t ack_code = 0xFF, ack_echo = 0xFF;
-  uint8_t resp_desc = 0;
-  uint8_t resp_buf[8];
-  uint16_t resp_len = 0;
-
-  Status st = hins_mip_transact(
-      port_hins,
-      pkt, (uint16_t)sizeof(pkt),
-      timeout_ms,
-      &out_desc_set,
-      &out_cmd_desc,
-      &ack_code,
-      &ack_echo,
-      &resp_desc,
-      resp_buf, (uint16_t)sizeof(resp_buf),
-      &resp_len
-  );
-
-  if (out_ack_code) *out_ack_code = ack_code;
-  if (out_ack_echo) *out_ack_echo = ack_echo;
-
-  return st;
-}
 
 Status hins_capture_raw_mip(Stream& port_hins, 
                             uint8_t* out_buf, uint16_t buf_cap, 

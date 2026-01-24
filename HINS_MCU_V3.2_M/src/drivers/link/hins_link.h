@@ -3,6 +3,24 @@
 #include "../../usecase/usecase_types.h"
 #include "../../common.h"
 
+#define HINS_MAX_PAYLOAD_SIZE 256
+
+typedef enum {
+    HINS_RD_FIND_HEADER = 0,
+    HINS_RD_READ_PAYLOAD,
+    HINS_RD_CHECK_CHECKSUM
+} HINS_RD_State;
+
+typedef struct {
+    HINS_RD_State state;
+    uint16_t hdr_idx;
+    uint16_t pay_idx;
+    uint16_t chk_idx;
+    uint16_t datalen;
+    uint8_t  payload[HINS_MAX_PAYLOAD_SIZE]; // 這裡改用 local 定義
+    uint8_t  checksum[2];
+} HINS_RD_Ctx;
+
 // 讀到 ACK(0x00) -> OK
 // 讀到 NACK(!=0) -> FAIL（你可視需求改成 BAD_PARAM / FAIL）
 // timeout -> TIMEOUT
@@ -28,44 +46,14 @@ Status hins_mip_transact(Stream& port_hins,
 bool hins_send_mip_raw(Stream& port_hins, const uint8_t* mip);
 
 
-/*** usage: 
-static const uint8_t HINS_HDR[] = {0x75,0x65,0x82,0x13,0x13,0x49};
-uint8_t hins_payload[32];
-bool ok = hins_read_stream_payload(
-    g_cmd_port_hins,
-    HINS_HDR,
-    sizeof(HINS_HDR),
-    17,                  // 協議定義的 payload_len
-    hins_payload,
-    sizeof(hins_payload),
-    2                    // 2ms best-effort timeout
-);
-*/
-bool hins_read_stream_payload(
-    Stream& port_hins,
-    const uint8_t* header,
-    uint16_t header_len,
-    uint16_t payload_len,
-    uint8_t* out_payload,
-    uint16_t out_cap,
-    uint32_t timeout_ms
-);
 
 
-Status hins_true_heading_transact_u32ns(
-    Stream& port_hins,
-    uint32_t timeout_ms,
-    const true_heading_t* th,
-    uint8_t* out_ack_code,
-    uint8_t* out_ack_echo
-);
+uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len, uint16_t payload_len);
 
-Status hins_true_heading_transact_u64ns(
+
+void hins_true_heading_standard(
     Stream& port_hins,
-    uint32_t timeout_ms,
-    const true_heading_t* th,
-    uint8_t* out_ack_code,
-    uint8_t* out_ack_echo
+    const true_heading_t* th
 );
 
 

@@ -1790,11 +1790,11 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						
 						// 1. 發送指令到 HINS
 						// --- Debug: 印出要送給 HINS 的 cmd -----------
-						// DEBUG_PRINT("MIP cmd input: ");
-						// for (int i = 0; i < rx->hins_payload_len; i++) {
-						// 	DEBUG_PRINT("%02X ", rx->hins_payload[i]);
-						// }
-						// DEBUG_PRINT("\n");
+						DEBUG_PRINT("MIP cmd input: ");
+						for (int i = 0; i < rx->hins_payload_len; i++) {
+							DEBUG_PRINT("%02X ", rx->hins_payload[i]);
+						}
+						DEBUG_PRINT("\n");
 						// --------------------------------------------
 
 						// 在發送指令前清空舊數據
@@ -1808,19 +1808,19 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						// 3. 調用 driver 層的 capture 函數
 						Status st = hins_capture_raw_mip(port_hins, 
 														mip_raw_packet, sizeof(mip_raw_packet), 
-														&actual_len, 3000); // 配合 save flash 將等待時間延長到3秒
+														&actual_len, 5000); // 配合 save flash 將等待時間延長到3秒
 
 						// 4. 設定回傳結果
 						result.status = st;
 						if (st == Status::OK) {
 							// --- debug: 印出給 payload 的內容---
-							// Serial.print("[CMD_HINS_MIP]: ");
-							// for (uint16_t i = 0; i < actual_len; i++) {
-							// 	if (mip_raw_packet[i] < 0x10) Serial.print("0");
-							// 	Serial.print(mip_raw_packet[i], HEX);
-							// 	Serial.print(" ");
-							// }
-							// Serial.println();
+							Serial.print("[CMD_HINS_MIP]: ");
+							for (uint16_t i = 0; i < actual_len; i++) {
+								if (mip_raw_packet[i] < 0x10) Serial.print("0");
+								Serial.print(mip_raw_packet[i], HEX);
+								Serial.print(" ");
+							}
+							Serial.println();
 							// ----------------------------------
 							result.payload = mip_raw_packet;
 							result.payload_len = actual_len;
@@ -1837,11 +1837,11 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							break;
 						}
 						// --- Debug: 印出要送給 HINS 的 cmd -----------
-						// DEBUG_PRINT("MIP cmd input: ");
-						// for (int i = 0; i < rx->hins_payload_len; i++) {
-						// 	DEBUG_PRINT("%02X ", rx->hins_payload[i]);
-						// }
-						// DEBUG_PRINT("\n");
+						DEBUG_PRINT("MIP cmd input: ");
+						for (int i = 0; i < rx->hins_payload_len; i++) {
+							DEBUG_PRINT("%02X ", rx->hins_payload[i]);
+						}
+						DEBUG_PRINT("\n");
 						// --------------------------------------------
 						// 1. 下指令前清理緩衝區
 						while(port_hins.available() > 0) port_hins.read();

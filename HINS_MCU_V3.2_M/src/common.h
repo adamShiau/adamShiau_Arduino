@@ -160,6 +160,15 @@ typedef struct {
   uint16_t      valid_flag;
 } true_heading_t;
 
+typedef struct {
+  double      gps_tow;  // 來自 0xD3 的時間戳 (雙精度浮點數)
+  float       heading_da;    // 來自 0x49: Dual Antenna Heading (rad)
+  float       heading_unc;   // 來自 0x49: Heading Uncertainty (rad)
+  uint8_t     fix_type;      // 0:None, 1:Float, 2:Fixed
+  uint16_t    status_flag;   // bit 0: rcv_1, bit 1: rcv_2, bit 2: ant_offset
+  uint16_t    valid_flag_da; // 0:Invalid, 1:Valid
+} hins_dual_data_t;
+
 typedef struct 
 {
   my_time_t time;
@@ -168,7 +177,8 @@ typedef struct
   accl_t adxl357;
   m_gyro_t m_gyro;
   hk_t hk;
-  hins_t hins;
+  // hins_t hins;
+  hins_dual_data_t hins;
   true_heading_t true_heading;
 }my_sensor_t;
 

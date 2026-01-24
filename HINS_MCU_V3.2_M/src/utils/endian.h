@@ -30,6 +30,19 @@ static inline float be_f32(const uint8_t* p)
     return u.float_val;
 }
 
+static inline double be_f64(const uint8_t* p)
+{
+    union {
+        double d;
+        uint8_t b[8];
+    } u;
+    // 將大端字節序轉為小端（Arduino/Teensy 常用）
+    for(int i = 0; i < 8; i++) {
+        u.b[i] = p[7 - i];
+    }
+    return u.d;
+}
+
 static inline uint16_t be_u16(const uint8_t* p)
 {
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
