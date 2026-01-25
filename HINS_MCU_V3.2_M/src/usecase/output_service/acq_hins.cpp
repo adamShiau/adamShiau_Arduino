@@ -11,7 +11,8 @@
 #include "../../utils/endian.h"
 // #include "../../MadgwickAHRS_IMU.h"
 
-
+#define DEG_TO_RAD  0.017453292519943295769236907684886
+#define RAD_TO_DEG  57.295779513082320876798154814105
 
 #ifndef INT_SYNC
   #define INT_SYNC 1
@@ -187,7 +188,7 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
         if (millis() - last_print > 50) { 
             last_print = millis();
             Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-            Serial.print(" | HDG: "); Serial.print(hins->heading_da * 57.29578f, 2); // 1 弧度約等於 57.29578 度
+            Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
             Serial.print(" | FIX: "); Serial.print(hins->fix_type);
             Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
             Serial.print(" | VALID: 0x"); Serial.println(hins->valid_flag_da, HEX);
@@ -197,71 +198,24 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
     return false;
 }
 
-// static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
-
-//     // if (port.available()) {
-//     //     serial_printf("%02X ", port.read());
-//     // }
-
-//     static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x21};
-//     uint8_t payload[33];
-
-//     // 讀取複合包 (0xD3 + 0x49)
-//     if (hins_read_stream_payload(port, HINS_COMPOSITE_HDR, 4, 33, payload, 33, 5)) {
-//         // --- 解析 0xFF, 0xD3 (GPS Timestamp) ---
-//         // Header(2 bytes: 0E D3) + Data(12 bytes)
-//         // TOW 在 Data 段的前 8 bytes (payload[2]~[9])
-//         hins->gps_tow = be_f64(&payload[2]); 
-
-//         // --- 解析 0x82, 0x49 (GNSS Dual Antenna Status) ---
-//         // 0xD3 佔 14 bytes (2 header + 12 data)，因此 0x49 Header 在 payload[14..15]
-//         const uint8_t* d49 = &payload[16]; 
-//         hins->heading_da  = be_f32(&d49[4]); // 跳過 Field TOW
-//         hins->heading_unc = be_f32(&d49[8]);
-//         hins->fix_type    = d49[12];
-//         hins->status_flag = be_u16(&d49[13]);
-//         hins->valid_flag_da = be_u16(&d49[15]);
-
-//         // 3. Debug 輸出
-//         static uint32_t last_print = 0;
-//         if (millis() - last_print > 500) { 
-//             last_print = millis();
-            
-//             // 如果你的 serial_printf 支援 %f
-//             // serial_printf("[HINS] TOW:%.3f, HDG:%.4f, FIX:%u, VALID:0x%04X\n", 
-//             //               (double)hins->gps_tow, (float)hins->heading_da, 
-//             //               hins->fix_type, hins->valid_flag_da);
-
-//             // 如果上面印不出來或顯示 "?"，請改用下面這段原生語法：
-//             // /*
-//             Serial.print("[HINS] TOW: "); Serial.print(hins->gps_tow, 3);
-//             Serial.print(" HDG: "); Serial.print(hins->heading_da, 4);
-//             Serial.print(" FIX: "); Serial.println(hins->fix_type);
-//             // */
-//         }
-
-//         return true;
-//     }
-    
-//     return false;
-// }
-
-
 static void hins_stage_logic_control(Stream& port, const hins_dual_data_t* hins, float imu_heading) {
     // 判斷 GNSS 品質 (Fix Type 1 or 2 且 Valid Bit 0 為 1) [cite: 22]
     if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
         // 狀態 A：校正狀態
-        float instant_offset = hins->heading_da - imu_heading;
+        float instant_offset = hins->heading_da + imu_heading;
         
         // 角度環繞校正 (-PI ~ PI)
-        while (instant_offset >  PI) instant_offset -= 2.0f * PI;
-        while (instant_offset < -PI) instant_offset += 2.0f * PI;
+        // while (instant_offset >  PI) instant_offset -= 2.0f * PI;
+        // while (instant_offset < -PI) instant_offset += 2.0f * PI;
 
         // 更新偏移量 (Alpha=0.02 低通濾波)
-        g_heading_offset = (g_heading_offset * 0.98f) + (instant_offset * 0.02f);
+        g_heading_offset = instant_offset;
+        // g_heading_offset = (g_heading_offset * 0.98f) + (instant_offset * 0.02f);
+
     } 
     else {
-        // 狀態 B：保持狀態 (GNSS Lost/None) [cite: 22]
+
+        // 狀態 B：保持狀態 (GNSS Lost/None)
         true_heading_t th;
         memset(&th, 0, sizeof(th)); // 先清空，確保未定義位元組為 0
 
@@ -347,7 +301,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     // ---- HINS 資料流更新與邏輯控制 ----
     if (hins_stage_update_raw(g_cmd_port_hins, &sensor_raw.hins)) 
     {
-        // hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, my_att.float_val[2]);
+        hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, my_att.float_val[2]*DEG_TO_RAD);
     }
     // ----------------------------------------
 

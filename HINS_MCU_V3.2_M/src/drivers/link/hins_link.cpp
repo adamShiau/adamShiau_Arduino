@@ -523,9 +523,26 @@ void hins_true_heading_standard(Stream& port_hins, const true_heading_t* th)
   pkt[4 + PACKET_PL + 0] = (uint8_t)(ck >> 8);
   pkt[4 + PACKET_PL + 1] = (uint8_t)(ck & 0xFF);
 
+  // ---- 新增 Debug Print ----
+  static uint32_t last_send_print = 0;
+  if (millis() - last_send_print > 500) { // 每 500ms 印一次，避免洗板
+      last_send_print = millis();
+      
+      Serial.print("[SEND_31] HDG: "); Serial.print(th->Heading.float_val*RAD_TO_DEG, 4);
+      Serial.print(" | TOW_ns: "); Serial.print((unsigned long)(th->ts.nanosecs / 1000000)); Serial.print("ms");
+      Serial.print(" | PKT: ");
+      for (int i = 0; i < (4 + PACKET_PL + 2); i++) {
+          if (pkt[i] < 0x10) Serial.print("0");
+          Serial.print(pkt[i], HEX);
+          Serial.print(" ");
+      }
+      Serial.println();
+  }
+  // --------------------------
+
   // 直接送出
   port_hins.write(pkt, sizeof(pkt));
-  port_hins.flush();
+  // port_hins.flush();
 }
 
 
