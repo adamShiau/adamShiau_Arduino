@@ -187,8 +187,9 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
         if (millis() - last_print > 50) { 
             last_print = millis();
             Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-            Serial.print(" | HDG: "); Serial.print(hins->heading_da, 4);
+            Serial.print(" | HDG: "); Serial.print(hins->heading_da * 57.29578f, 2); // 1 弧度約等於 57.29578 度
             Serial.print(" | FIX: "); Serial.print(hins->fix_type);
+            Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
             Serial.print(" | VALID: 0x"); Serial.println(hins->valid_flag_da, HEX);
         }
         return true;
