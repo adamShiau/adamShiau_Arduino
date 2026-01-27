@@ -406,11 +406,19 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
   if (!fog_inst) return false;
 
   bool ok = true;
+  // DEBUG_PRINT("dump_fog_param..\n");
   ok &= dump_fog_param(fog_inst, 1);        delay(10);
-  ok &= dump_fog_param(fog_inst, 2);        delay(10);
-  ok &= dump_fog_param(fog_inst, 3);        delay(10);
+  // DEBUG_PRINT("dump_fog_param done\n");
+  // ok &= dump_fog_param(fog_inst, 2);        delay(10);
+  // ok &= dump_fog_param(fog_inst, 3);        delay(10);
+  // DEBUG_PRINT("dump_misalignment_param..\n");
   ok &= dump_misalignment_param(fog_inst);  delay(10);
+  // DEBUG_PRINT("dump_misalignment_param done\n");
+  // DEBUG_PRINT("dump_config..\n");
   ok &= dump_config(fog_inst);              delay(10);
+  // DEBUG_PRINT("dump_config done\n");
+  // DEBUG_PRINT("dump_SN..\n");
   ok &= dump_SN(fog_inst);                  delay(10);
+  // DEBUG_PRINT("dump_SN done\n");
   return ok;
 }
