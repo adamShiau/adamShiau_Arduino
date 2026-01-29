@@ -165,11 +165,11 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
 }
 
 
-static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
-    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x21};
+static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
+    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x29};
     
     // 呼叫非阻塞 Parser
-    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 33);
+    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 41);
 
     if (payload != nullptr) {
         // 解析 0xD3 (TOW)
@@ -183,6 +183,12 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
         hins->status_flag = be_u16(&d49[13]);
         hins->valid_flag_da = be_u16(&d49[15]);
 
+        // 解析 0x10 (Status  Data)
+        const uint8_t* d10 = &payload[35]; 
+        hins->filter_status = be_u16(&d10[0]);
+        hins->dynamic_mode = be_u16(&d10[2]);
+        hins->status_flag_82 = be_u16(&d10[4]);
+
         // 使用 Serial.print 進行詳細 Debug
         static uint32_t last_print = 0;
         if (millis() - last_print > 500) { 
@@ -191,14 +197,17 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
             Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
             Serial.print(" | FIX: "); Serial.print(hins->fix_type);
             Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
-            Serial.print(" | VALID: 0x"); Serial.println(hins->valid_flag_da, HEX);
+            Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
+            Serial.print(" | FILTER_STATUS: 0x"); Serial.print(hins->filter_status, HEX);
+            Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
+            Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
         }
         return true;
     }
     return false;
 }
 
-static void hins_stage_logic_control(Stream& port, const hins_dual_data_t* hins, float imu_heading) {
+static void hins_stage_logic_control(Stream& port, const hins_mip_data_t* hins, float imu_heading) {
     // 判斷 GNSS 品質 (Fix Type 1 or 2 且 Valid Bit 0 為 1) [cite: 22]
     if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
         // 狀態 A：校正狀態
@@ -250,6 +259,7 @@ static void hins_stage_logic_control(Stream& port, const hins_dual_data_t* hins,
         if (millis() - last_print > 500) { 
             last_print = millis();
             Serial.print("[Case B_]: ");
+            Serial.print(" | HD_TH: "); Serial.print(th.Heading.float_val * RAD_TO_DEG, 2);
             Serial.print(" | HD_IMU: "); Serial.println(imu_heading * RAD_TO_DEG, 2);
         }
     }

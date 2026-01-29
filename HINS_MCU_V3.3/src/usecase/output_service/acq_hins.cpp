@@ -165,7 +165,7 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
 }
 
 
-static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
+static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
     static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x21};
     
     // 呼叫非阻塞 Parser
@@ -198,7 +198,7 @@ static bool hins_stage_update_raw(Stream& port, hins_dual_data_t* hins) {
     return false;
 }
 
-static void hins_stage_logic_control(Stream& port, const hins_dual_data_t* hins, float imu_heading) {
+static void hins_stage_logic_control(Stream& port, const hins_mip_data_t* hins, float imu_heading) {
     // 判斷 GNSS 品質 (Fix Type 1 or 2 且 Valid Bit 0 為 1) [cite: 22]
     if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
         // 狀態 A：校正狀態
@@ -317,10 +317,10 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     if (!ahrs_stage_update_raw(pkt)) return;
 
     // ---- HINS 資料流更新與邏輯控制 ----
-    if (hins_stage_update_raw(g_cmd_port_hins, &sensor_raw.hins)) 
-    {
-        hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, my_att.float_val[2]*DEG_TO_RAD);
-    }
+    // if (hins_stage_update_raw(g_cmd_port_hins, &sensor_raw.hins)) 
+    // {
+    //     hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, my_att.float_val[2]*DEG_TO_RAD);
+    // }
     // ----------------------------------------
 
     ahrs_stage_calibrate(fog_parameter);
