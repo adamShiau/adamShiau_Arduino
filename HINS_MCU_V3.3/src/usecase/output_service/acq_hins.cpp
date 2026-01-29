@@ -130,7 +130,7 @@ static void ahrs_handle_setup(cmd_ctrl_t* rx)
 {
     if (rx->select_fn != SEL_HINS) return;
     rx->select_fn = SEL_IDLE; // consume command
-    DEBUG_PRINT("-> select acq_ahrs mode\n");
+    DEBUG_PRINT("-> select acq_hins mode\n");
 
     if (rx->value == INT_SYNC || rx->value == EXT_SYNC) {
         ahrs_start_stream(rx);
@@ -326,7 +326,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     ahrs_stage_calibrate(fog_parameter);
     ahrs_stage_frame_transform_to_case();
     ahrs_stage_attitude_update(fog_parameter);
-    // ahrs_stage_output_send_if_ready();
+    ahrs_stage_output_send_if_ready();
 }
 
 void acq_hins (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)

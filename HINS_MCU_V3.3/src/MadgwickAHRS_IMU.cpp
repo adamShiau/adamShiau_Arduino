@@ -1,0 +1,787 @@
+//=============================================================================================
+// MadgwickAHRS_IMU.cpp
+//=============================================================================================
+#include "MadgwickAHRS_IMU.h"
+
+// 預設
+#define sampleFreqDef   512.0f   // 內部預設採樣率；實務請用 begin(fs) 覆蓋
+#define betaDef         0.1f     // Madgwick 增益：大=收斂快但噪、大甩易被拉偏；小=平滑但回正慢
+
+//=============================================================================================
+// 建構
+
+/* Tuning cheatsheet:
+- 手持：beta=0.08~0.12, accTolG=0.12~0.18, gyroHigh=120~180, betaMin=0.25~0.3
+- 載具：beta=0.06~0.10, accTolG=0.18~0.25, gyroHigh=180~240
+- 激烈：beta=0.05~0.08,  accTolG=0.22~0.30, gyroHigh=240~300, betaMin=0.2~0.25
+- 漂移重：開 gyroBiasEnable、biasAlpha=0.003~0.005、stillGyro=1.5、stillAccTolG=0.06
+- Pitch±90° 跳：gimbalLockEnable=true, gimbalLockPitchDeg=89.5~89.9
+*/
+
+Madgwick::Madgwick() {
+    beta = betaDef;                          // 主增益：一般 0.05~0.15
+    q0 = 1.0f; q1 = 0.0f; q2 = 0.0f; q3 = 0.0f; // 初始姿態（world←sensor）
+    invSampleFreq = 1.0f / sampleFreqDef;    // 由 begin(fs) 實際設定
+    anglesComputed = 0;
+    roll = pitch = yaw = 0.0f;
+
+
+    // ------------------------------------------------------------------ //
+    // --- 為了 exp-map / 梯形積分保留上一筆 gyro (rad/s) ---
+    // 2025/10/31 added for trapezoidal integration.
+    hasPrevW   = false;
+    prevWx_rad = 0.0f;
+    prevWy_rad = 0.0f;
+    prevWz_rad = 0.0f;
+    // ------------------------------------------------------------------ //
+
+
+
+    
+// ---- 奇異點保護 / unwrap ----
+    yaw_deg_prev  = 0.0f;                    // unwrap 狀態
+    yaw_deg_cont  = 0.0f;
+    roll_deg_prev = 0.0f;
+    has_prev_angles   = false;
+    gimbalLockEnable  = true;                // Pitch 近 ±90° 鎖定 roll/yaw
+    gimbalLockPitchDeg= 89.0f;               // 88~89.9°；越大越晚鎖
+
+    // ---- 陀螺偏置學習（靜止時）----
+    gyroBiasEnable = true;                   // 自動學偏置，降漂移
+    bgx_dps = bgy_dps = bgz_dps = 0.0f;      // 當前學到的偏置（deg/s）
+    // biasAlpha = 0.002f;                      // 學習速率：小=穩但慢(0.001~0.005)
+    biasAlpha = 0.0f;                        // 初始值，之後由BIAS_ALPHA_BASE覆蓋  
+    stillGyroThreshDps = 1.0f;               // 靜止判定角速閾值(合計)：0.5~2 dps
+    stillAccTolG       = 0.05f;              // 靜止判定加速度容忍(‖a‖ vs 1g)：0.03~0.07
+
+    // ---- 動態加速度權重（大甩降權）----
+    dynAccWeightEnable = true;               // 依 ‖a‖ 偏離與 |gyro| 動態調 β
+    g0 = 9.80665f;                           // 1g（m/s^2）
+    accTolG = 0.15f;                         // ‖a‖ 相對 1g 容忍：0.1~0.25（大甩取大）
+    gyroHighThreshDps = 150.0f;              // |gx|+|gy|+|gz| 高門檻：100~300 dps
+    betaMinRatio = 0.025f;                    // β 最低比例：0.2~0.4（太低回正慢）
+    betaSmoothAlpha = 0.20f;                 // β 平滑：0.1~0.3（大=反應快）
+    betaEffLP = beta;                        // 目前生效 β（內部狀態）
+
+    // ---- Sensor→Case 固定旋轉（幾何對應）----
+    qc0 = 1.0f; qc1 = 0.0f; qc2 = 0.0f; qc3 = 0.0f; // 預設 case==sensor；用 setSensorToCase* 設定
+}
+
+void Madgwick::init(float data_rate) {
+    begin(data_rate); // 設定採樣率
+ 
+    const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor, NED
+    // const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };  // v_case = Rcs * v_sensor, ENU
+    setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
+    setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
+    // setLocalFrameNED(false);    // 設定 Local 世界座標為 ENU
+    setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
+    setDynamicAccelWeight(true); // 啟用動態加權
+    setGimbalLockGuard(true, 89.0f); // 啟用奇異點保護
+}
+
+//=============================================================================================
+// inv sqrt
+
+float Madgwick::invSqrt(float x) {
+    float halfx = 0.5f * x;
+    float y = x;
+    long i = *(long*)&y;
+    i = 0x5f3759df - (i>>1);
+    y = *(float*)&i;
+    y = y * (1.5f - (halfx * y * y));
+    y = y * (1.5f - (halfx * y * y));
+    return y;
+}
+
+//=============================================================================================
+// 動態 β 計算
+
+
+float Madgwick::computeBetaEffective(float gx_dps, float gy_dps, float gz_dps,
+                                     float ax, float ay, float az) {
+    if (!dynAccWeightEnable) { 
+        betaEffLP = beta; 
+        return betaEffLP; 
+    }
+
+    // ---------- 1) 加速度權重 ----------
+    // |‖a‖-1g|
+    float anorm = sqrtf(ax*ax + ay*ay + az*az);
+    float devRel = fabsf(anorm - g0) / g0;
+
+    // 避免 devRel / accTolG 太大造成 k_acc 突然變得非常小
+    float devNorm = devRel / accTolG;
+    if (devNorm > 5.0f) devNorm = 5.0f;      // << 小小加個上限即可 (不想大改公式)
+    float k_acc = 1.0f / (1.0f + devNorm);   // 偏離越大→越小（保留原本設計）
+
+    // ---------- 2) gyro 權重 ----------
+    // |gyro|
+    float gsum = fabsf(gx_dps) + fabsf(gy_dps) + fabsf(gz_dps);
+
+    // 新增一個很小的「低門檻」，避免 gsum 在 0 附近抖動時硬切換
+    const float gyroLowThreshDps = 0.3f;   // 可視實際噪聲調整，例如 0.2~0.5 dps
+
+    float k_gyro;
+    if (gsum >= gyroHighThreshDps) {
+        k_gyro = 0.3f;
+    } 
+    else if (gsum <= gyroLowThreshDps) {
+        // 只要小於「低門檻」都視為幾乎靜止 → 統一給 1.0
+        k_gyro = 1.0f;
+    } 
+    else {
+        // 在 low ~ high 之間做線性插值，仍然維持 1 → 0.3 的設計
+        float r = (gsum - gyroLowThreshDps) / (gyroHighThreshDps - gyroLowThreshDps); // 0..1
+        k_gyro = 1.0f - 0.7f * r;   // 和原本一樣是 1 → 0.3，只是起點換成 low
+    }
+
+    // ---------- 3) 合併與平滑 ----------
+    float k = k_acc * k_gyro;
+    if (k < betaMinRatio) k = betaMinRatio;
+    if (k > 1.0f)         k = 1.0f;
+    float betaTarget = beta * k;
+    betaEffLP = (1.0f - betaSmoothAlpha)*betaEffLP + betaSmoothAlpha*betaTarget;
+    return betaEffLP;
+}
+
+
+//=============================================================================================
+// AHRS + Mag（若 mx=my=mz=0 則 fallback 至 IMU）
+
+void Madgwick::update(float gx, float gy, float gz, float ax, float ay, float az,
+                      float mx, float my, float mz) {
+    if ((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
+        updateIMU(gx, gy, gz, ax, ay, az);
+        return;
+    }
+
+    float recipNorm;
+    float s0, s1, s2, s3;
+    float qDot1, qDot2, qDot3, qDot4;
+    float hx, hy;
+    float _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz;
+    float _2q0, _2q1, _2q2, _2q3, _2q0q2, _2q2q3;
+    float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
+
+    // 偏置學習 + 扣除
+    if (gyroBiasEnable && isStill(gx, gy, gz, ax, ay, az)) {
+        bgx_dps = (1.0f - biasAlpha) * bgx_dps + biasAlpha * gx;
+        bgy_dps = (1.0f - biasAlpha) * bgy_dps + biasAlpha * gy;
+        bgz_dps = (1.0f - biasAlpha) * bgz_dps + biasAlpha * gz;
+    }
+    gx -= bgx_dps; gy -= bgy_dps; gz -= bgz_dps;
+
+    // deg/s → rad/s
+    gx *= 0.0174533f; gy *= 0.0174533f; gz *= 0.0174533f;
+
+    // gyro 推進
+    qDot1 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
+    qDot2 = 0.5f * ( q0 * gx + q2 * gz - q3 * gy);
+    qDot3 = 0.5f * ( q0 * gy - q1 * gz + q3 * gx);
+    qDot4 = 0.5f * ( q0 * gz + q1 * gy - q2 * gx);
+
+    // 有效量測才修正
+    if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+        // normalize acc/mag
+        recipNorm = invSqrt(ax*ax + ay*ay + az*az);
+        ax *= recipNorm; ay *= recipNorm; az *= recipNorm;
+        recipNorm = invSqrt(mx*mx + my*my + mz*mz);
+        mx *= recipNorm; my *= recipNorm; mz *= recipNorm;
+
+        // 省算
+        _2q0mx = 2.0f * q0 * mx;
+        _2q0my = 2.0f * q0 * my;
+        _2q0mz = 2.0f * q0 * mz;
+        _2q1mx = 2.0f * q1 * mx;
+        _2q0   = 2.0f * q0; _2q1 = 2.0f * q1; _2q2 = 2.0f * q2; _2q3 = 2.0f * q3;
+        _2q0q2 = 2.0f * q0 * q2;
+        _2q2q3 = 2.0f * q2 * q3;
+
+        q0q0 = q0*q0; q0q1 = q0*q1; q0q2 = q0*q2; q0q3 = q0*q3;
+        q1q1 = q1*q1; q1q2 = q1*q2; q1q3 = q1*q3;
+        q2q2 = q2*q2; q2q3 = q2*q3; q3q3 = q3*q3;
+
+        // 地磁參考
+        hx = mx * q0q0 - _2q0my*q3 + _2q0mz*q2 + mx*q1q1 + _2q1*my*q2 + _2q1*mz*q3 - mx*q2q2 - mx*q3q3;
+        hy = _2q0mx*q3 + my*q0q0 - _2q0mz*q1 + _2q1mx*q2 - my*q1q1 + my*q2q2 + _2q2*mz*q3 - my*q3q3;
+        _2bx = sqrtf(hx*hx + hy*hy);
+        _2bz = -_2q0mx*q2 + _2q0my*q1 + mz*q0q0 + _2q1mx*q3 - mz*q1q1 + _2q2*my*q3 - mz*q2q2 + mz*q3q3;
+        _4bx = 2.0f * _2bx; _4bz = 2.0f * _2bz;
+
+        // 梯度下降修正
+        float s0 = -_2q2 * (2.0f*q1q3 - _2q0q2 - ax) + _2q1 * (2.0f*q0q1 + _2q2q3 - ay)
+                 - _2bz * q2 * (_2bx*(0.5f - q2q2 - q3q3) + _2bz*(q1q3 - q0q2) - mx)
+                 + (-_2bx*q3 + _2bz*q1) * (_2bx*(q1q2 - q0q3) + _2bz*(q0q1 + q2q3) - my)
+                 + _2bx * q2 * (_2bx*(q0q2 + q1q3) + _2bz*(0.5f - q1q1 - q2q2) - mz);
+
+        float s1 =  _2q3 * (2.0f*q1q3 - _2q0q2 - ax) + _2q0 * (2.0f*q0q1 + _2q2q3 - ay)
+                 - 4.0f*q1*(1.0f - 2.0f*q1q1 - 2.0f*q2q2 - az)
+                 + _2bz*q3 * (_2bx*(0.5f - q2q2 - q3q3) + _2bz*(q1q3 - q0q2) - mx)
+                 + (_2bx*q2 + _2bz*q0) * (_2bx*(q1q2 - q0q3) + _2bz*(q0q1 + q2q3) - my)
+                 + (_2bx*q3 - _4bz*q1) * (_2bx*(q0q2 + q1q3) + _2bz*(0.5f - q1q1 - q2q2) - mz);
+
+        float s2 = -_2q0 * (2.0f*q1q3 - _2q0q2 - ax) + _2q3 * (2.0f*q0q1 + _2q2q3 - ay)
+                 - 4.0f*q2*(1.0f - 2.0f*q1q1 - 2.0f*q2q2 - az)
+                 + (-_4bx*q2 - _2bz*q0) * (_2bx*(0.5f - q2q2 - q3q3) + _2bz*(q1q3 - q0q2) - mx)
+                 + (_2bx*q1 + _2bz*q3) * (_2bx*(q1q2 - q0q3) + _2bz*(q0q1 + q2q3) - my)
+                 + (_2bx*q0 - _4bz*q2) * (_2bx*(q0q2 + q1q3) + _2bz*(0.5f - q1q1 - q2q2) - mz);
+
+        float s3 =  _2q1 * (2.0f*q1q3 - _2q0q2 - ax) + _2q2 * (2.0f*q0q1 + _2q2q3 - ay)
+                 + (-_4bx*q3 + _2bz*q1) * (_2bx*(0.5f - q2q2 - q3q3) + _2bz*(q1q3 - q0q2) - mx)
+                 + (-_2bx*q0 + _2bz*q2) * (_2bx*(q1q2 - q0q3) + _2bz*(q0q1 + q2q3) - my)
+                 + _2bx * q1 * (_2bx*(q0q2 + q1q3) + _2bz*(0.5f - q1q1 - q2q2) - mz);
+
+        // 正規化步長
+        recipNorm = invSqrt(s0*s0 + s1*s1 + s2*s2 + s3*s3);
+        s0*=recipNorm; s1*=recipNorm; s2*=recipNorm; s3*=recipNorm;
+
+        // 動態 β
+        float betaEff = computeBetaEffective(gx*57.29578f, gy*57.29578f, gz*57.29578f, ax*g0, ay*g0, az*g0);
+        qDot1 -= betaEff * s0;
+        qDot2 -= betaEff * s1;
+        qDot3 -= betaEff * s2;
+        qDot4 -= betaEff * s3;
+    }
+
+    // 積分 + 正規化
+    q0 += qDot1 * invSampleFreq;
+    q1 += qDot2 * invSampleFreq;
+    q2 += qDot3 * invSampleFreq;
+    q3 += qDot4 * invSampleFreq;
+
+    recipNorm = invSqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    q0*=recipNorm; q1*=recipNorm; q2*=recipNorm; q3*=recipNorm;
+
+    anglesComputed = 0;
+}
+
+//=============================================================================================
+// IMU only
+
+void Madgwick::updateIMU(float gx, float gy, float gz, float ax, float ay, float az) {
+    float recipNorm;
+    float s0, s1, s2, s3;
+    float qDot1, qDot2, qDot3, qDot4;
+    float _2q0,_2q1,_2q2,_2q3,_4q0,_4q1,_4q2,_8q1,_8q2;
+    float q0q0,q1q1,q2q2,q3q3;
+
+    // 偏置學習 + 扣除
+    if (gyroBiasEnable && isStill(gx, gy, gz, ax, ay, az)) {
+        bgx_dps = (1.0f - biasAlpha) * bgx_dps + biasAlpha * gx;
+        bgy_dps = (1.0f - biasAlpha) * bgy_dps + biasAlpha * gy;
+        bgz_dps = (1.0f - biasAlpha) * bgz_dps + biasAlpha * gz;
+    }
+    gx -= bgx_dps; gy -= bgy_dps; gz -= bgz_dps;
+
+    // deg/s → rad/s
+    const float d2r = 0.0174533f;
+    float gx_rad = gx*d2r, gy_rad = gy*d2r, gz_rad = gz*d2r;
+
+    // gyro 推進
+    qDot1 = 0.5f * (-q1 * gx_rad - q2 * gy_rad - q3 * gz_rad);
+    qDot2 = 0.5f * ( q0 * gx_rad + q2 * gz_rad - q3 * gy_rad);
+    qDot3 = 0.5f * ( q0 * gy_rad - q1 * gz_rad + q3 * gx_rad);
+    qDot4 = 0.5f * ( q0 * gz_rad + q1 * gy_rad - q2 * gx_rad);
+
+    // 有效加速度才修正
+    if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+        // normalize acc
+        recipNorm = invSqrt(ax*ax + ay*ay + az*az);
+        float axu = ax*recipNorm, ayu = ay*recipNorm, azu = az*recipNorm;
+
+        // 輔助量
+        _2q0 = 2.0f*q0; _2q1 = 2.0f*q1; _2q2 = 2.0f*q2; _2q3 = 2.0f*q3;
+        _4q0 = 4.0f*q0; _4q1 = 4.0f*q1; _4q2 = 4.0f*q2;
+        _8q1 = 8.0f*q1; _8q2 = 8.0f*q2;
+        q0q0 = q0*q0; q1q1 = q1*q1; q2q2 = q2*q2; q3q3 = q3*q3;
+
+        // 梯度下降修正（IMU 版）
+        s0 = _4q0*q2q2 + _2q2*axu + _4q0*q1q1 - _2q1*ayu;
+        s1 = _4q1*q3q3 - _2q3*axu + 4.0f*q0q0*q1 - _2q0*ayu - _4q1 + _8q1*q1q1 + _8q1*q2q2 + _4q1*azu;
+        s2 = 4.0f*q0q0*q2 + _2q0*axu + _4q2*q3q3 - _2q3*ayu - _4q2 + _8q2*q1q1 + _8q2*q2q2 + _4q2*azu;
+        s3 = 4.0f*q1*q1*q3 - _2q1*axu + 4.0f*q2*q2*q3 - _2q2*ayu;
+
+        // 正規化步長
+        recipNorm = invSqrt(s0*s0 + s1*s1 + s2*s2 + s3*s3);
+        s0*=recipNorm; s1*=recipNorm; s2*=recipNorm; s3*=recipNorm;
+
+        // 動態 β（這裡 computeBetaEffective 接收 dps 與 m/s^2）
+        float betaEff = computeBetaEffective(gx, gy, gz, ax, ay, az);
+        qDot1 -= betaEff * s0;
+        qDot2 -= betaEff * s1;
+        qDot3 -= betaEff * s2;
+        qDot4 -= betaEff * s3;
+    }
+
+    // 積分 + 正規化
+    q0 += qDot1 * invSampleFreq;
+    q1 += qDot2 * invSampleFreq;
+    q2 += qDot3 * invSampleFreq;
+    q3 += qDot4 * invSampleFreq;
+
+    recipNorm = invSqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    q0*=recipNorm; q1*=recipNorm; q2*=recipNorm; q3*=recipNorm;
+
+    anglesComputed = 0;
+}
+
+void Madgwick::updateIMU_dualAccel(float gx, float gy, float gz,
+                                   float ax_lp, float ay_lp, float az_lp,
+                                   float ax_raw, float ay_raw, float az_raw) {
+    float recipNorm;
+    float s0, s1, s2, s3;
+    // float qDot1, qDot2, qDot3, qDot4;
+    float _2q0,_2q1,_2q2,_2q3,_4q0,_4q1,_4q2,_8q1,_8q2;
+    float q0q0,q1q1,q2q2,q3q3;
+    float dt = invSampleFreq;    // 2025/10/31 added for trapezoidal integration.
+    const float Beta_tune_para = 1.0f;    // 2025/10/31 added for trapezoidal integration.
+
+    const float d2r = 0.0174533f;
+    float wx, wy, wz;
+    wx = gx*d2r;
+    wy = gy*d2r;
+    wz = gz*d2r;
+    
+    // 2025/10/31 added for trapezoidal integration.
+    // 將 gyro 角速度積分成角度增量，使用梯形
+    float dtx, dty, dtz;
+
+    if (!hasPrevW) {
+        // 第一筆
+        dtx = wx * dt;
+        dty = wy * dt;
+        dtz = wz * dt;
+
+        hasPrevW   = true;
+        prevWx_rad = wx;
+        prevWy_rad = wy;
+        prevWz_rad = wz;
+    } else {
+        // 有上一筆 → 做梯形
+        dtx = 0.5f * (wx + prevWx_rad) * dt;
+        dty = 0.5f * (wy + prevWy_rad) * dt;
+        dtz = 0.5f * (wz + prevWz_rad) * dt;
+
+        // 更新上一筆
+        prevWx_rad = wx;
+        prevWy_rad = wy;
+        prevWz_rad = wz;
+    }
+
+    float phi = sqrtf(dtx*dtx + dty*dty + dtz*dtz);
+
+    float dq0, dq1, dq2, dq3;
+    if (phi < 1e-6f) {
+        // 小角度：Δq ≈ [1, 0.5*Δθ]
+        dq0 = 1.0f;
+        dq1 = 0.5f * dtx;
+        dq2 = 0.5f * dty;
+        dq3 = 0.5f * dtz;
+    } else {
+        float half = 0.5f * phi;
+        float s    = sinf(half) / phi;   // = sin(|Δθ|/2)/|Δθ|
+        dq0 = cosf(half);
+        dq1 = dtx * s;
+        dq2 = dty * s;
+        dq3 = dtz * s;
+    }
+
+
+    // 右乘：q = q ⊗ Δq
+    float tq0 = q0*dq0 - q1*dq1 - q2*dq2 - q3*dq3;
+    float tq1 = q0*dq1 + q1*dq0 + q2*dq3 - q3*dq2;
+    float tq2 = q0*dq2 - q1*dq3 + q2*dq0 + q3*dq1;
+    float tq3 = q0*dq3 + q1*dq2 - q2*dq1 + q3*dq0;
+
+    // normalize
+    float invn = invSqrt(tq0*tq0 + tq1*tq1 + tq2*tq2 + tq3*tq3);
+    float q0_gyr = tq0 * invn;
+    float q1_gyr = tq1 * invn;
+    float q2_gyr = tq2 * invn;
+    float q3_gyr = tq3 * invn;
+
+    
+    // 用低通後的加速度做 normalize 與梯度下降 (Accelerometer Raw data)
+    if (!((ax_raw == 0.0f) && (ay_raw == 0.0f) && (az_raw == 0.0f))) {
+        recipNorm = invSqrt(ax_raw*ax_raw + ay_raw*ay_raw + az_raw*az_raw);
+        float axu = ax_raw*recipNorm, ayu = ay_raw*recipNorm, azu = az_raw*recipNorm;
+
+        _2q0 = 2.0f*q0; _2q1 = 2.0f*q1; _2q2 = 2.0f*q2; _2q3 = 2.0f*q3;
+        _4q0 = 4.0f*q0; _4q1 = 4.0f*q1; _4q2 = 4.0f*q2;
+        _8q1 = 8.0f*q1; _8q2 = 8.0f*q2;
+        q0q0 = q0*q0; q1q1 = q1*q1; q2q2 = q2*q2; q3q3 = q3*q3;
+
+        s0 = _4q0*q2q2 + _2q2*axu + _4q0*q1q1 - _2q1*ayu;
+        s1 = _4q1*q3q3 - _2q3*axu + 4.0f*q0q0*q1 - _2q0*ayu - _4q1 + _8q1*q1q1 + _8q1*q2q2 + _4q1*azu;
+        s2 = 4.0f*q0q0*q2 + _2q0*axu + _4q2*q3q3 - _2q3*ayu - _4q2 + _8q2*q1q1 + _8q2*q2q2 + _4q2*azu;
+        s3 = 4.0f*q1*q1*q3 - _2q1*axu + 4.0f*q2*q2*q3 - _2q2*ayu;
+
+        recipNorm = invSqrt(s0*s0 + s1*s1 + s2*s2 + s3*s3);
+        s0*=recipNorm; s1*=recipNorm; s2*=recipNorm; s3*=recipNorm;
+
+        // 動態 β：用「原始（未低通）」加速度判斷
+        float betaEff = computeBetaEffective(gx, gy, gz, ax_raw, ay_raw, az_raw);
+        q0 = q0_gyr - betaEff * s0 * dt * Beta_tune_para;
+        q1 = q1_gyr - betaEff * s1 * dt * Beta_tune_para;
+        q2 = q2_gyr - betaEff * s2 * dt * Beta_tune_para;
+        q3 = q3_gyr - betaEff * s3 * dt * Beta_tune_para;
+        
+    }
+
+
+    recipNorm = invSqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    q0*=recipNorm; q1*=recipNorm; q2*=recipNorm; q3*=recipNorm;
+
+    anglesComputed = 0;
+}
+
+
+
+//=============================================================================================
+// Euler 計算（含奇異點保護 + yaw 連續化）
+
+void Madgwick::computeAngles() {
+    float w=q0, x=q1, y=q2, z=q3;
+    float test = 2.0f * (w*y - z*x);
+
+    float roll_rad, pitch_rad, yaw_rad;
+    float lim = sinf((gimbalLockPitchDeg) * (float)M_PI/180.0f);
+
+    if (gimbalLockEnable && (test >  lim)) {
+        // +90°
+        pitch_rad =  + (float)M_PI * 0.5f;
+        float roll_deg = has_prev_angles ? roll_deg_prev : 0.0f;
+        float yaw_deg  = has_prev_angles ? yaw_deg_prev  : (2.0f * atan2f(x, w) * 57.29578f);
+        roll_rad = roll_deg * (float)M_PI/180.0f;
+        yaw_rad  = yaw_deg  * (float)M_PI/180.0f;
+    } else if (gimbalLockEnable && (test < -lim)) {
+        // -90°
+        pitch_rad =  - (float)M_PI * 0.5f;
+        float roll_deg = has_prev_angles ? roll_deg_prev : 0.0f;
+        float yaw_deg  = has_prev_angles ? yaw_deg_prev  : (-2.0f * atan2f(x, w) * 57.29578f);
+        roll_rad = roll_deg * (float)M_PI/180.0f;
+        yaw_rad  = yaw_deg  * (float)M_PI/180.0f;
+    } else {
+        // 一般區域
+        roll_rad  = atan2f(2.0f*(w*x + y*z), 1.0f - 2.0f*(x*x + y*y));
+        pitch_rad = asinf(2.0f*(w*y - z*x));
+        yaw_rad   = atan2f(2.0f*(w*z + x*y), 1.0f - 2.0f*(y*y + z*z));
+    }
+
+    // 存入快取
+    roll  = roll_rad;
+    pitch = pitch_rad;
+    yaw   = yaw_rad;
+    anglesComputed = 1;
+
+    // unwrap
+    float roll_deg_now = roll  * 57.29578f;
+    float yaw_deg_now  = yaw   * 57.29578f;
+    yaw_deg_cont = has_prev_angles ? unwrapDeg(yaw_deg_prev, yaw_deg_now) : yaw_deg_now;
+    yaw_deg_prev  = yaw_deg_cont;
+    roll_deg_prev = roll_deg_now;
+    has_prev_angles = true;
+}
+
+//=============================================================================================
+// STOP 用：重置姿態（可選清偏置）
+
+void Madgwick::resetAttitude(bool resetBias) {
+    q0 = 1.0f; q1 = 0.0f; q2 = 0.0f; q3 = 0.0f;
+    roll = pitch = yaw = 0.0f;
+    anglesComputed = 0;
+    yaw_deg_prev = yaw_deg_cont = 0.0f;
+    roll_deg_prev = 0.0f;
+    has_prev_angles = false;
+    betaEffLP = beta;
+    if (resetBias) { bgx_dps = bgy_dps = bgz_dps = 0.0f; }
+    yawZeroValid = false;
+    qz0w = 1.0f; qz0x = 0.0f; qz0y = 0.0f; qz0z = 0.0f;
+
+}
+
+//=============================================================================================
+// Sensor→Case 固定旋轉設定 & Case 姿態輸出
+
+void Madgwick::setSensorToCaseRPYdeg(float r_deg,float p_deg,float y_deg) {
+    const float D2R = 0.01745329252f;
+    float cr = cosf(0.5f*r_deg*D2R), sr = sinf(0.5f*r_deg*D2R);
+    float cp = cosf(0.5f*p_deg*D2R), sp = sinf(0.5f*p_deg*D2R);
+    float cy = cosf(0.5f*y_deg*D2R), sy = sinf(0.5f*y_deg*D2R);
+    // ZYX: q = Rz(yaw) ⊗ Ry(pitch) ⊗ Rx(roll)
+    float w = cr*cp*cy + sr*sp*sy;
+    float x = sr*cp*cy - cr*sp*sy;
+    float y = cr*sp*cy + sr*cp*sy;
+    float z = cr*cp*sy - sr*sp*cy;
+    qc0=w; qc1=x; qc2=y; qc3=z; quatNormalize(qc0,qc1,qc2,qc3);
+}
+
+void Madgwick::setSensorToCaseMatrix(const float R[9]) {
+    // row-major: [r00 r01 r02; r10 r11 r12; r20 r21 r22]
+    float tr = R[0] + R[4] + R[8];
+    float w,x,y,z;
+    if (tr > 0.0f) {
+        float s = sqrtf(tr + 1.0f) * 2.0f;
+        w = 0.25f * s;
+        x = (R[7] - R[5]) / s;
+        y = (R[2] - R[6]) / s;
+        z = (R[3] - R[1]) / s;
+    } else if (R[0] > R[4] && R[0] > R[8]) {
+        float s = sqrtf(1.0f + R[0] - R[4] - R[8]) * 2.0f;
+        w = (R[7] - R[5]) / s;
+        x = 0.25f * s;
+        y = (R[1] + R[3]) / s;
+        z = (R[2] + R[6]) / s;
+    } else if (R[4] > R[8]) {
+        float s = sqrtf(1.0f + R[4] - R[0] - R[8]) * 2.0f;
+        w = (R[2] - R[6]) / s;
+        x = (R[1] + R[3]) / s;
+        y = 0.25f * s;
+        z = (R[5] + R[7]) / s;
+    } else {
+        float s = sqrtf(1.0f + R[8] - R[0] - R[4]) * 2.0f;
+        w = (R[3] - R[1]) / s;
+        x = (R[2] + R[6]) / s;
+        y = (R[5] + R[7]) / s;
+        z = 0.25f * s;
+    }
+    qc0=w; qc1=x; qc2=y; qc3=z; quatNormalize(qc0,qc1,qc2,qc3);
+}
+
+float Madgwick::getCaseRoll()  {
+    if (!anglesComputed) computeAngles();
+    // q_WC = q_WS ⊗ conj(q_CS)
+    float wc0,wc1,wc2,wc3;
+    quatMul(q0,q1,q2,q3,   qc0,-qc1,-qc2,-qc3,  wc0,wc1,wc2,wc3);
+    float r,p,y; eulerZYX_from_quat_deg(wc0,wc1,wc2,wc3, r,p,y);
+    return r;
+}
+float Madgwick::getCasePitch() {
+    if (!anglesComputed) computeAngles();
+    float wc0,wc1,wc2,wc3;
+    quatMul(q0,q1,q2,q3,   qc0,-qc1,-qc2,-qc3,  wc0,wc1,wc2,wc3);
+    float r,p,y; eulerZYX_from_quat_deg(wc0,wc1,wc2,wc3, r,p,y);
+    return p;
+}
+float Madgwick::getCaseYaw()   {
+    if (!anglesComputed) computeAngles();
+    float wc0,wc1,wc2,wc3;
+    quatMul(q0,q1,q2,q3,   qc0,-qc1,-qc2,-qc3,  wc0,wc1,wc2,wc3);
+    float r,p,y; eulerZYX_from_quat_deg(wc0,wc1,wc2,wc3, r,p,y);
+    return y;
+}
+
+void Madgwick::setLocalFrameNED(bool enable) {
+  if (!enable) {
+    // Local = ENU → 身分四元數
+    qwl0=1.0f; qwl1=qwl2=qwl3=0.0f;
+    return;
+  }
+  // Local = NED：R_L←E = [[0,1,0],[1,0,0],[0,0,-1]]
+  const float R[9] = { 0,1,0,  1,0,0,  0,0,-1 };
+  quatFromR(R, qwl0,qwl1,qwl2,qwl3); // 會得到 (w,x,y,z) ≈ (0, √2/2, √2/2, 0)
+}
+
+void Madgwick::setLocalFromENUMatrix(const float R[9]) {
+  quatFromR(R, qwl0,qwl1,qwl2,qwl3);
+}
+
+float Madgwick::getLocalRoll()
+{
+    if (!anglesComputed) computeAngles();
+
+    // q_LS = q_LW ⊗ q_WS
+    float ls0, ls1, ls2, ls3;
+    quatMul(qwl0, qwl1, qwl2, qwl3,
+            q0,   q1,   q2,   q3,
+            ls0,  ls1,  ls2,  ls3);
+
+    // Apply yaw-zero in Local frame if available (match local-case behavior)
+    if (yawZeroValid) {
+        float aj0, aj1, aj2, aj3;
+        quatMul(qz0w, qz0x, qz0y, qz0z,
+                ls0,  ls1,  ls2,  ls3,
+                aj0,  aj1,  aj2,  aj3);
+        float r, p, y;
+        eulerZYX_from_quat_deg(aj0, aj1, aj2, aj3, r, p, y);
+        return r;
+    } else {
+        float r, p, y;
+        eulerZYX_from_quat_deg(ls0, ls1, ls2, ls3, r, p, y);
+        return r;
+    }
+}
+
+float Madgwick::getLocalPitch()
+{
+    if (!anglesComputed) computeAngles();
+
+    float ls0, ls1, ls2, ls3;
+    quatMul(qwl0, qwl1, qwl2, qwl3,
+            q0,   q1,   q2,   q3,
+            ls0,  ls1,  ls2,  ls3);
+
+    if (yawZeroValid) {
+        float aj0, aj1, aj2, aj3;
+        quatMul(qz0w, qz0x, qz0y, qz0z,
+                ls0,  ls1,  ls2,  ls3,
+                aj0,  aj1,  aj2,  aj3);
+        float r, p, y;
+        eulerZYX_from_quat_deg(aj0, aj1, aj2, aj3, r, p, y);
+        return p;
+    } else {
+        float r, p, y;
+        eulerZYX_from_quat_deg(ls0, ls1, ls2, ls3, r, p, y);
+        return p;
+    }
+}
+
+float Madgwick::getLocalYaw()
+{
+    if (!anglesComputed) computeAngles();
+
+    float ls0, ls1, ls2, ls3;
+    quatMul(qwl0, qwl1, qwl2, qwl3,
+            q0,   q1,   q2,   q3,
+            ls0,  ls1,  ls2,  ls3);
+
+    if (yawZeroValid) {
+        float aj0, aj1, aj2, aj3;
+        quatMul(qz0w, qz0x, qz0y, qz0z,
+                ls0,  ls1,  ls2,  ls3,
+                aj0,  aj1,  aj2,  aj3);
+        float r, p, y;
+        eulerZYX_from_quat_deg(aj0, aj1, aj2, aj3, r, p, y);
+        return y;
+    } else {
+        float r, p, y;
+        eulerZYX_from_quat_deg(ls0, ls1, ls2, ls3, r, p, y);
+        return y;
+    }
+}
+
+
+
+float Madgwick::getLocalCaseRoll() {
+  if (!anglesComputed) computeAngles();
+  // q_WC = q_WS ⊗ conj(q_CS)
+  float cq0=qc0, cq1=-qc1, cq2=-qc2, cq3=-qc3; // conj(q_CS)
+  float wc0,wc1,wc2,wc3;
+  quatMul(q0,q1,q2,q3,  cq0,cq1,cq2,cq3,  wc0,wc1,wc2,wc3);
+  // q_LC = q_LW ⊗ q_WC
+  float lc0,lc1,lc2,lc3;
+  quatMul(qwl0,qwl1,qwl2,qwl3,  wc0,wc1,wc2,wc3,  lc0,lc1,lc2,lc3);
+  float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+  return r;
+}
+float Madgwick::getLocalCasePitch() {
+  if (!anglesComputed) computeAngles();
+  float cq0=qc0, cq1=-qc1, cq2=-qc2, cq3=-qc3;
+  float wc0,wc1,wc2,wc3; quatMul(q0,q1,q2,q3,  cq0,cq1,cq2,cq3,  wc0,wc1,wc2,wc3);
+  float lc0,lc1,lc2,lc3; quatMul(qwl0,qwl1,qwl2,qwl3, wc0,wc1,wc2,wc3, lc0,lc1,lc2,lc3);
+  float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+  return p;
+}
+float Madgwick::getLocalCaseYaw() {
+  if (!anglesComputed) computeAngles();
+  float lc0,lc1,lc2,lc3;
+  currentLocalCaseQuat(q0,q1,q2,q3, qc0,qc1,qc2,qc3, qwl0,qwl1,qwl2,qwl3, lc0,lc1,lc2,lc3);
+
+  if (yawZeroValid) {
+    // q_adj = Rz(-yaw0) ⊗ q_LC
+    float aj0,aj1,aj2,aj3;
+    quatMul(qz0w,qz0x,qz0y,qz0z, lc0,lc1,lc2,lc3, aj0,aj1,aj2,aj3);
+    float r,p,y; eulerZYX_from_quat_deg(aj0,aj1,aj2,aj3, r,p,y);
+    return y;
+  } else {
+    float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+    return y;
+  }
+}
+
+void Madgwick::captureYawZeroLocal() {
+  if (!anglesComputed) computeAngles();
+
+  // q_LS = q_LW ⊗ q_WS
+  float ls0, ls1, ls2, ls3;
+  quatMul(qwl0, qwl1, qwl2, qwl3,
+          q0,   q1,   q2,   q3,
+          ls0,  ls1,  ls2,  ls3);
+
+  // Extract yaw (ZYX) and set yaw-zero
+  float r, p, y;
+  eulerZYX_from_quat_deg(ls0, ls1, ls2, ls3, r, p, y);
+  setYawZeroDeg(y);
+}
+
+
+
+void Madgwick::captureYawZeroLocalCase() {
+  if (!anglesComputed) computeAngles();
+  // 1) 取得當下 Local+Case 的四元數
+  float lc0,lc1,lc2,lc3;
+  currentLocalCaseQuat(q0,q1,q2,q3, qc0,qc1,qc2,qc3, qwl0,qwl1,qwl2,qwl3, lc0,lc1,lc2,lc3);
+  // 2) 取出當下的 yaw（ZYX），只用來做 Rz(-yaw0)
+  float r,p,y; eulerZYX_from_quat_deg(lc0,lc1,lc2,lc3, r,p,y);
+  setYawZeroDeg(y); // 將當下 yaw 當作零位
+}
+
+void Madgwick::setYawZeroDeg(float yaw0_deg) {
+  float a = -0.5f * yaw0_deg * 0.01745329252f; // -yaw0/2 (rad)
+  qz0w = cosf(a); qz0x = 0.0f; qz0y = 0.0f; qz0z = sinf(a); // Rz(-yaw0)
+  yawZeroValid = true;
+}
+
+void Madgwick::clearYawZero() {
+  yawZeroValid = false;
+  qz0w = 1.0f; qz0x = qz0y = qz0z = 0.0f;
+}
+
+void Madgwick::sensorVecToCase(const float vS[3], float vC[3]) const {
+    // v' = q * (0,v) * q_conj，這裡 q = q_CS
+    float w=qc0, x=qc1, y=qc2, z=qc3;
+    float tx = 2.0f * (y*vS[2] - z*vS[1]);
+    float ty = 2.0f * (z*vS[0] - x*vS[2]);
+    float tz = 2.0f * (x*vS[1] - y*vS[0]);
+    vC[0] = vS[0] + w*tx + (y*tz - z*ty);
+    vC[1] = vS[1] + w*ty + (z*tx - x*tz);
+    vC[2] = vS[2] + w*tz + (x*ty - y*tx);
+}
+
+void Madgwick::setGyroBiasAlpha(float a) {
+    // 夾一個合理範圍，避免填入 0 或過大
+    if (a < 1e-6f) a = 1e-6f;
+    if (a > 0.1f)  a = 0.1f;
+    biasAlpha = a;
+}
+float Madgwick::getGyroBiasAlpha() const {
+    return biasAlpha;
+}
+
+void Madgwick::getQuatWS(float& w, float& x, float& y, float& z) const {
+    w = q0; x = q1; y = q2; z = q3;
+}
+
+void Madgwick::initQuaternionFromAccel(float ax, float ay, float az) {
+    // 計算初始 Roll 和 Pitch (假設偏航角 Yaw 為 0)
+    // 使用 atan2 確保能處理 Z 軸朝下 (Az ~ -9.8) 的情況
+    float initialRoll  = atan2f(ay, az);
+    float initialPitch = atan2f(-ax, sqrtf(ay * ay + az * az));
+
+    // 將 Euler 角轉為四元數 (Z-Y-X 順序)
+    float cosRoll  = cosf(initialRoll  * 0.5f);
+    float sinRoll  = sinf(initialRoll  * 0.5f);
+    float cosPitch = cosf(initialPitch * 0.5f);
+    float sinPitch = sinf(initialPitch * 0.5f);
+    float cosYaw   = 1.0f; // cos(0)
+    float sinYaw   = 0.0f; // sin(0)
+
+    q0 = cosRoll * cosPitch * cosYaw + sinRoll * sinPitch * sinYaw;
+    q1 = sinRoll * cosPitch * cosYaw - cosRoll * sinPitch * sinYaw;
+    q2 = cosRoll * sinPitch * cosYaw + sinRoll * cosPitch * sinYaw;
+    q3 = cosRoll * cosPitch * sinYaw - sinRoll * sinPitch * cosYaw;
+}
+
+
+

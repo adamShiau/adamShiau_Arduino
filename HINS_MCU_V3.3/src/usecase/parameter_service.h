@@ -1,0 +1,26 @@
+#pragma once
+#include <Arduino.h>
+#include "../common.h"   // temporary: provides cmd_ctrl_t, fog_parameter_t, constants, etc.
+#include "usecase_types.h"
+
+/**
+ * @brief Handle parameter-related commands (usecase layer).
+ *
+ * Caller provides the Print stream to use for sending commands.
+ * This function does NOT perform UART framing/reading; it only interprets an already-decoded cmd_ctrl_t.
+ */
+void parameter_service_handle(Stream& port, cmd_ctrl_t* rx, fog_parameter_t* fog_inst);
+
+
+UsecaseResult parameter_service_handle_ex(Stream& port,
+                                         cmd_ctrl_t* rx,
+                                         fog_parameter_t* fog_inst,
+                                         const TransactionSpec& spec);
+
+UsecaseResult parameter_service_handle_ex2(Stream& port_fpga,
+                                        Stream& port_hins,
+                                         cmd_ctrl_t* rx,
+                                         fog_parameter_t* fog_inst,
+                                         const TransactionSpec& spec);
+
+                                         

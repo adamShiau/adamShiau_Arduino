@@ -128,9 +128,9 @@ static void ahrs_stop_stream(cmd_ctrl_t* rx)
 
 static void ahrs_handle_setup(cmd_ctrl_t* rx)
 {
-    if (rx->select_fn != SEL_HINS) return;
+    if (rx->select_fn != SEL_CV7) return;
     rx->select_fn = SEL_IDLE; // consume command
-    DEBUG_PRINT("-> select acq_ahrs mode\n");
+    DEBUG_PRINT("-> select acq_cv7 mode\n");
 
     if (rx->value == INT_SYNC || rx->value == EXT_SYNC) {
         ahrs_start_stream(rx);
@@ -326,10 +326,10 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     ahrs_stage_calibrate(fog_parameter);
     ahrs_stage_frame_transform_to_case();
     ahrs_stage_attitude_update(fog_parameter);
-    // ahrs_stage_output_send_if_ready();
+    ahrs_stage_output_send_if_ready();
 }
 
-void acq_hins (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
+void acq_cv7 (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 {
     // 1) handle setup commands (start/stop)
     ahrs_handle_setup(rx);
