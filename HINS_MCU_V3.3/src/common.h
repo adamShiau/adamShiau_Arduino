@@ -169,9 +169,10 @@ typedef struct {
   uint8_t     fix_type;      // 0:None, 1:Float, 2:Fixed
   uint16_t    status_flag;   // bit 0: rcv_1, bit 1: rcv_2, bit 2: ant_offset
   uint16_t    valid_flag_da; // 0:Invalid, 1:Valid
-  uint16_t    filter_status; // 1:Init, 2: vert_gyro, 3: ahrs, 4: full_nav
+  uint16_t    filter_state; // 1:Init, 2: vert_gyro, 3: ahrs, 4: full_nav
   uint16_t    dynamic_mode;  // 1: default
   uint16_t    status_flag_82;
+  uint8_t     case_flag;
 
 } hins_mip_data_t;
 

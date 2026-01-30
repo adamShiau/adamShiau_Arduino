@@ -591,3 +591,30 @@ Status hins_capture_mip_data(Stream& port_hins,
     }
     return Status::TIMEOUT;
 }
+
+void hins_send_gui_monitor(Stream& port_gui, const gui_monitor_t* mon) {
+    const uint16_t total_len = sizeof(gui_monitor_t);
+    const uint16_t data_len  = total_len - 2; // 扣除校驗位元
+    uint8_t pkt[total_len];
+    
+    memcpy(pkt, mon, data_len);
+    
+    // 計算 Fletcher-16 並填入封包末尾
+    uint16_t ck = mip_fletcher16(pkt, data_len);
+    pkt[data_len + 0] = (uint8_t)(ck >> 8);   // MSB
+    pkt[data_len + 1] = (uint8_t)(ck & 0xFF); // LSB
+
+    // ---- 新增 Debug HEX Print ----
+    // Serial.print("[GUI_MON] Len:"); 
+    // Serial.print(total_len); 
+    // Serial.print(" | PKT: ");
+    // for (int i = 0; i < total_len; i++) {
+    //     if (pkt[i] < 0x10) Serial.print("0"); // 補齊兩位數
+    //     Serial.print(pkt[i], HEX);
+    //     Serial.print(" ");
+    // }
+    // Serial.println();
+    // ------------------------------
+
+    port_gui.write(pkt, total_len);
+}

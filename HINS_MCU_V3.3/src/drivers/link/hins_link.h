@@ -21,6 +21,23 @@ typedef struct {
     uint8_t  checksum[2];
 } HINS_RD_Ctx;
 
+// #pragma pack(push, 1)
+typedef struct __attribute__((packed)) {
+    uint8_t     header[2];      // 固定 0xEB, 0x90
+    uint8_t     fix_type;       // 1 byte
+    uint16_t    valid_flag_da;  // 2 bytes
+    float       heading_da;     // 4 bytes
+    float       imu_heading;    // 4 bytes
+    float       g_heading_offset; // 4 bytes
+    double      gps_tow;        // 8 bytes
+    uint16_t    filter_state;  // 2 bytes
+    uint16_t    dynamic_mode;   // 2 bytes
+    uint16_t    status_flag_82; // 2 bytes
+    uint8_t     case_flag;       // 1 byte
+    uint8_t     ck[2];          // 2 bytes Fletcher-16
+} gui_monitor_t;
+// #pragma pack(pop)
+
 // 讀到 ACK(0x00) -> OK
 // 讀到 NACK(!=0) -> FAIL（你可視需求改成 BAD_PARAM / FAIL）
 // timeout -> TIMEOUT
@@ -77,4 +94,4 @@ Status hins_capture_mip_data(Stream& port_hins,
                              uint32_t timeout_ms);
 
 
-
+void hins_send_gui_monitor(Stream& port_gui, const gui_monitor_t* mon);

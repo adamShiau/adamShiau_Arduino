@@ -77,6 +77,26 @@ static void ahrs_reset_runtime_state(void)
     }
 }
 
+// 封裝後的 GUI 監控發送方法
+static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset) {
+    gui_monitor_t mon;
+    mon.header[0]      = 0xEB; 
+    mon.header[1]      = 0x90;
+    mon.fix_type       = hins->fix_type;        //
+    mon.valid_flag_da  = hins->valid_flag_da;   //
+    mon.heading_da     = hins->heading_da;      //
+    mon.imu_heading    = imu_heading;           // 
+    mon.g_heading_offset = offset;              //
+    mon.gps_tow        = hins->gps_tow;         //
+    mon.filter_state  = hins->filter_state;  //
+    mon.dynamic_mode   = hins->dynamic_mode;    //
+    mon.status_flag_82 = hins->status_flag_82;  //
+    mon.case_flag = hins->case_flag;
+
+    // 呼叫底層發送 (會自動計算 Fletcher-16)
+    hins_send_gui_monitor(port, &mon); 
+}
+
 
 static void ahrs_start_stream(cmd_ctrl_t* rx)
 {
@@ -185,7 +205,7 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
 
         // 解析 0x10 (Status  Data)
         const uint8_t* d10 = &payload[35]; 
-        hins->filter_status = be_u16(&d10[0]);
+        hins->filter_state = be_u16(&d10[0]);
         hins->dynamic_mode = be_u16(&d10[2]);
         hins->status_flag_82 = be_u16(&d10[4]);
 
@@ -198,7 +218,7 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
             Serial.print(" | FIX: "); Serial.print(hins->fix_type);
             Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
             Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
-            Serial.print(" | FILTER_STATUS: 0x"); Serial.print(hins->filter_status, HEX);
+            Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
             Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
             Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
         }
@@ -207,15 +227,17 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
     return false;
 }
 
-static void hins_stage_logic_control(Stream& port, const hins_mip_data_t* hins, float imu_heading) {
+static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float imu_heading) {
     // 判斷 GNSS 品質 (Fix Type 1 or 2 且 Valid Bit 0 為 1) [cite: 22]
     if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
         // 狀態 A：校正狀態
+        hins->case_flag = 1;
+
         float instant_offset = hins->heading_da - imu_heading;
         
         // 角度環繞校正 (-PI ~ PI)
-        // while (instant_offset >  PI) instant_offset -= 2.0f * PI;
-        // while (instant_offset < -PI) instant_offset += 2.0f * PI;
+        while (instant_offset >  PI) instant_offset -= 2.0f * PI;
+        while (instant_offset < -PI) instant_offset += 2.0f * PI;
 
         // 更新偏移量 (Alpha=0.02 低通濾波)
         g_heading_offset = instant_offset;
@@ -233,13 +255,14 @@ static void hins_stage_logic_control(Stream& port, const hins_mip_data_t* hins, 
 
     } 
     else {
-
         // 狀態 B：保持狀態 (GNSS Lost/None)
+        hins->case_flag = 2;
+
         true_heading_t th;
         memset(&th, 0, sizeof(th)); // 先清空，確保未定義位元組為 0
 
         // 1. 明確設定時間基準與保留位
-        th.ts.timebase = 0x01; // INTERNAL_REFERENCE 
+        th.ts.timebase = 0x01; // INTERNAL_REFERENCE nj/4
         th.ts.reserved = 0x01; // 依照手冊規範
 
         // 2. 轉換 TOW 到奈秒 
@@ -329,7 +352,13 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     // ---- HINS 資料流更新與邏輯控制 ----
     if (hins_stage_update_raw(g_cmd_port_hins, &sensor_raw.hins)) 
     {
-        hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, my_att.float_val[2]*DEG_TO_RAD);
+        float current_imu_hdg = my_att.float_val[2] * DEG_TO_RAD; // 先算好弧度
+
+        // 執行邏輯控制
+        hins_stage_logic_control(g_cmd_port_hins, &sensor_raw.hins, current_imu_hdg);
+
+        // GUI 監控送出
+        hins_stage_gui_monitor_send(g_cmd_port_output, &sensor_raw.hins, current_imu_hdg, g_heading_offset);
     }
     // ----------------------------------------
 
