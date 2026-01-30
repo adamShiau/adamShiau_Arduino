@@ -25,6 +25,7 @@ typedef struct {
 typedef struct __attribute__((packed)) {
     uint8_t     header[2];      // 固定 0xEB, 0x90
     uint8_t     fix_type;       // 1 byte
+    uint16_t    status_flag;    // 2 bytes bit 0: rcv_1, bit 1: rcv_2, bit 2: ant_offset
     uint16_t    valid_flag_da;  // 2 bytes
     float       heading_da;     // 4 bytes
     float       imu_heading;    // 4 bytes

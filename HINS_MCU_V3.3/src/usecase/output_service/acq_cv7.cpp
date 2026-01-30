@@ -87,26 +87,6 @@ static void ahrs_reset_runtime_state(void)
     }
 }
 
-// 封裝後的 GUI 監控發送方法
-static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset) {
-    gui_monitor_t mon;
-    mon.header[0]      = 0xEB; 
-    mon.header[1]      = 0x90;
-    mon.fix_type       = hins->fix_type;        //
-    mon.valid_flag_da  = hins->valid_flag_da;   //
-    mon.heading_da     = hins->heading_da;      //
-    mon.imu_heading    = imu_heading;           // 
-    mon.g_heading_offset = offset;              //
-    mon.gps_tow        = hins->gps_tow;         //
-    mon.filter_state  = hins->filter_state;  //
-    mon.dynamic_mode   = hins->dynamic_mode;    //
-    mon.status_flag_82 = hins->status_flag_82;  //
-    mon.case_flag = hins->case_flag;
-
-    // 呼叫底層發送 (會自動計算 Fletcher-16)
-    hins_send_gui_monitor(port, &mon); 
-}
-
 
 static void ahrs_start_stream(cmd_ctrl_t* rx)
 {
@@ -220,21 +200,42 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
         hins->status_flag_82 = be_u16(&d10[4]);
 
         // 使用 Serial.print 進行詳細 Debug
-        // static uint32_t last_print = 0;
-        // if (millis() - last_print > 500) { 
-        //     last_print = millis();
-        //     Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-        //     Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
-        //     Serial.print(" | FIX: "); Serial.print(hins->fix_type);
-        //     Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
-        //     Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
-        //     Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
-        //     Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
-        //     Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
-        // }
+        static uint32_t last_print = 0;
+        if (millis() - last_print > 500) { 
+            last_print = millis();
+            Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
+            Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
+            Serial.print(" | FIX: "); Serial.print(hins->fix_type);
+            Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
+            Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
+            Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
+            Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
+            Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
+        }
         return true;
     }
     return false;
+}
+
+// 封裝後的 GUI 監控發送方法
+static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset) {
+    gui_monitor_t mon;
+    mon.header[0]      = 0xEB; 
+    mon.header[1]      = 0x90;
+    mon.fix_type       = hins->fix_type;   
+    mon.status_flag    = hins->status_flag;      
+    mon.valid_flag_da  = hins->valid_flag_da;   
+    mon.heading_da     = hins->heading_da;      
+    mon.imu_heading    = imu_heading;            
+    mon.g_heading_offset = offset;              
+    mon.gps_tow        = hins->gps_tow;         
+    mon.filter_state  = hins->filter_state;  
+    mon.dynamic_mode   = hins->dynamic_mode;    
+    mon.status_flag_82 = hins->status_flag_82;  
+    mon.case_flag = hins->case_flag;
+
+    // 呼叫底層發送 (會自動計算 Fletcher-16)
+    hins_send_gui_monitor(port, &mon); 
 }
 
 static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float imu_heading) {
