@@ -37,6 +37,9 @@ static const uint16_t HINS_FIELD_DATA_LEN = 17;
 
 static float g_heading_offset = 0.0f; // 存儲 IMU 與 GNSS DA 的偏差
 
+static bool g_hins_initialized = false;      // 記錄是否已完成開機後的首次 5 秒穩定收斂
+static uint32_t g_fix2_start_ms = 0;         // 記錄達到 Fix 2 的起始時間點
+
 
 // INT_SYNC / EXT_SYNC / STOP_RUN are defined in common.h
 
@@ -49,6 +52,8 @@ static float g_heading_offset = 0.0f; // 存儲 IMU 與 GNSS DA 的偏差
 // 合併後總長度
 #define TOTAL_PAYLOAD_LEN  (44 + ATT_PAYLOAD_LEN)
 
+#define GNSS_CONVERGE_TIME 5000
+
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
@@ -60,6 +65,7 @@ static uint32_t try_cnt = 0;
 static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
 
 
+
 static void ahrs_reset_runtime_state(void)
 {
     sensor_raw = {};
@@ -67,6 +73,10 @@ static void ahrs_reset_runtime_state(void)
 
     data_cnt = 0;
     try_cnt  = 0;
+
+    // 重置 HINS 初始化狀態，確保下次啟動重新收斂
+    g_hins_initialized = false;
+    g_fix2_start_ms = 0;
 
     // reset extracted attitude-stage states
     if (!g_att_ctx_inited) {
@@ -210,27 +220,65 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
         hins->status_flag_82 = be_u16(&d10[4]);
 
         // 使用 Serial.print 進行詳細 Debug
-        static uint32_t last_print = 0;
-        if (millis() - last_print > 500) { 
-            last_print = millis();
-            Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-            Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
-            Serial.print(" | FIX: "); Serial.print(hins->fix_type);
-            Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
-            Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
-            Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
-            Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
-            Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
-        }
+        // static uint32_t last_print = 0;
+        // if (millis() - last_print > 500) { 
+        //     last_print = millis();
+        //     Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
+        //     Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
+        //     Serial.print(" | FIX: "); Serial.print(hins->fix_type);
+        //     Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
+        //     Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
+        //     Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
+        //     Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
+        //     Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
+        // }
         return true;
     }
     return false;
 }
 
 static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float imu_heading) {
-    // 判斷 GNSS 品質 (Fix Type 1 or 2 且 Valid Bit 0 為 1) [cite: 22]
+
+    // ---- 狀態 C：初始收斂狀態 (Case 3) ----
+    // 只有在系統尚未完成「開機後首次高品質收斂」時進入
+    if (!g_hins_initialized) {
+        hins->case_flag = 3;
+
+        // 必須達到高品質解 (Fix Type == 2) 才開始計時
+        if (hins->fix_type == 2) {
+            if (g_fix2_start_ms == 0) {
+                g_fix2_start_ms = millis(); // 首次偵測到 Fix 2，開始計時
+            }
+
+            // 檢查是否已穩定持續超過 5000 毫秒
+            if (millis() - g_fix2_start_ms >= GNSS_CONVERGE_TIME) {
+                g_hins_initialized = true; 
+                Serial.println("[HINS] Initial Convergence Done. Entering Normal Operation.");
+            }
+        } else {
+            // 如果中間 Fix 掉出 2，計時重置，必須重新等待連續 5 秒
+            g_fix2_start_ms = 0;
+        }
+
+        // Case 3 期間：只觀察不操作。不上傳 True Heading，也不更新 Offset
+        static uint32_t last_print = 0;
+        if (millis() - last_print > 1000) { 
+            last_print = millis();
+            Serial.print("[Case 3]: Waiting for Fix 2 stability... Current Fix: ");
+            Serial.print(hins->fix_type);
+            if (g_fix2_start_ms > 0) {
+                Serial.print(" | Stable Time: "); Serial.print((millis() - g_fix2_start_ms)/1000); Serial.println("s");
+            } else {
+                Serial.println(" | Unstable");
+            }
+        }
+        return; // 跳出函式，不執行下方的 Case 1/2
+    }
+
+    // ---- 通過初始收斂後，進入正常的 Case 1 / Case 2 切換邏輯 ----
+    
     if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
-        // 狀態 A：校正狀態
+        // 狀態 A：校正狀態 (Case 1)
         hins->case_flag = 1;
 
         float instant_offset = hins->heading_da - imu_heading;
@@ -239,30 +287,27 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
         while (instant_offset >  PI) instant_offset -= 2.0f * PI;
         while (instant_offset < -PI) instant_offset += 2.0f * PI;
 
-        // 更新偏移量 (Alpha=0.02 低通濾波)
+        // 更新偏移量
         g_heading_offset = instant_offset;
-        // g_heading_offset = (g_heading_offset * 0.98f) + (instant_offset * 0.02f);
 
-        // 使用 Serial.print 進行詳細 Debug
         static uint32_t last_print = 0;
         if (millis() - last_print > 500) { 
             last_print = millis();
-            Serial.print("[Case A]: ");
+            Serial.print("[Case 1]: ");
             Serial.print(" | HD_DA: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2);
             Serial.print(" | HD_IMU: "); Serial.print(imu_heading * RAD_TO_DEG, 2);
             Serial.print(" | OFFSET: "); Serial.println(g_heading_offset * RAD_TO_DEG, 2);
         }
-
-    } 
+    }
     else {
-        // 狀態 B：保持狀態 (GNSS Lost/None)
+        // 狀態 B：慣導保持狀態 (Case 2)
         hins->case_flag = 2;
 
         true_heading_t th;
         memset(&th, 0, sizeof(th)); // 先清空，確保未定義位元組為 0
 
         // 1. 明確設定時間基準與保留位
-        th.ts.timebase = 0x01; // INTERNAL_REFERENCE nj/4
+        th.ts.timebase = 0x01; // INTERNAL_REFERENCE
         th.ts.reserved = 0x01; // 依照手冊規範
 
         // 2. 轉換 TOW 到奈秒 
@@ -274,14 +319,14 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
         th.Uncertainty.float_val = 0.05f; // 初始漂移預估量
         th.valid_flag = 0x0001; // Bit 0: Valid
 
-        // 4. 呼叫底層發送
+        // 4. 更新給 CV7
         hins_true_heading_standard(port, &th);
 
         // 使用 Serial.print 進行詳細 Debug
         static uint32_t last_print = 0;
         if (millis() - last_print > 500) { 
             last_print = millis();
-            Serial.print("[Case B_]: ");
+            Serial.print("[Case 2]: ");
             Serial.print(" | HD_TH: "); Serial.print(th.Heading.float_val * RAD_TO_DEG, 2);
             Serial.print(" | HD_IMU: "); Serial.println(imu_heading * RAD_TO_DEG, 2);
         }
