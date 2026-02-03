@@ -200,18 +200,18 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
         hins->status_flag_82 = be_u16(&d10[4]);
 
         // 使用 Serial.print 進行詳細 Debug
-        static uint32_t last_print = 0;
-        if (millis() - last_print > 500) { 
-            last_print = millis();
-            Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-            Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
-            Serial.print(" | FIX: "); Serial.print(hins->fix_type);
-            Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
-            Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
-            Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
-            Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
-            Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
-        }
+        // static uint32_t last_print = 0;
+        // if (millis() - last_print > 500) { 
+        //     last_print = millis();
+        //     Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
+        //     Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
+        //     Serial.print(" | FIX: "); Serial.print(hins->fix_type);
+        //     Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
+        //     Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
+        //     Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
+        //     Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
+        //     Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
+        // }
         return true;
     }
     return false;
@@ -262,23 +262,23 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
         }
 
         // Case 3 期間：只觀察不操作。不上傳 True Heading，也不更新 Offset
-        static uint32_t last_print = 0;
-        if (millis() - last_print > 1000) { 
-            last_print = millis();
-            Serial.print("[Case 3]: Waiting for Fix 2 stability... Current Fix: ");
-            Serial.print(hins->fix_type);
-            if (g_fix2_start_ms > 0) {
-                Serial.print(" | Stable Time: "); Serial.print((millis() - g_fix2_start_ms)/1000); Serial.println("s");
-            } else {
-                Serial.println(" | Unstable");
-            }
-        }
+        // static uint32_t last_print = 0;
+        // if (millis() - last_print > 1000) { 
+        //     last_print = millis();
+        //     Serial.print("[Case Init]: Waiting for Fix 2 stability... Current Fix: ");
+        //     Serial.print(hins->fix_type);
+        //     if (g_fix2_start_ms > 0) {
+        //         Serial.print(" | Stable Time: "); Serial.print((millis() - g_fix2_start_ms)/1000); Serial.println("s");
+        //     } else {
+        //         Serial.println(" | Unstable");
+        //     }
+        // }
         return; // 跳出函式，不執行下方的 Case 1/2
     }
 
     // ---- 通過初始收斂後，進入正常的 Case 1 / Case 2 切換邏輯 ----
     
-    if (hins->fix_type >= 1 && (hins->valid_flag_da & 0x0001)) {
+    if (hins->fix_type >= 2 && (hins->valid_flag_da & 0x0001)) {
         // 狀態 A：校正狀態 (Case 1)
         hins->case_flag = 1;
 
@@ -291,14 +291,14 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
         // 更新偏移量
         g_heading_offset = instant_offset;
 
-        static uint32_t last_print = 0;
-        if (millis() - last_print > 500) { 
-            last_print = millis();
-            Serial.print("[Case 1]: ");
-            Serial.print(" | HD_DA: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2);
-            Serial.print(" | HD_IMU: "); Serial.print(imu_heading * RAD_TO_DEG, 2);
-            Serial.print(" | OFFSET: "); Serial.println(g_heading_offset * RAD_TO_DEG, 2);
-        }
+        // static uint32_t last_print = 0;
+        // if (millis() - last_print > 500) { 
+        //     last_print = millis();
+        //     Serial.print("[Case Cali.]: ");
+        //     Serial.print(" | HD_DA: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2);
+        //     Serial.print(" | HD_IMU: "); Serial.print(imu_heading * RAD_TO_DEG, 2);
+        //     Serial.print(" | OFFSET: "); Serial.println(g_heading_offset * RAD_TO_DEG, 2);
+        // }
     }
     else {
         // 狀態 B：慣導保持狀態 (Case 2)
@@ -325,12 +325,12 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
 
         // 使用 Serial.print 進行詳細 Debug
         static uint32_t last_print = 0;
-        if (millis() - last_print > 500) { 
-            last_print = millis();
-            Serial.print("[Case 2]: ");
-            Serial.print(" | HD_TH: "); Serial.print(th.Heading.float_val * RAD_TO_DEG, 2);
-            Serial.print(" | HD_IMU: "); Serial.println(imu_heading * RAD_TO_DEG, 2);
-        }
+        // if (millis() - last_print > 500) { 
+        //     last_print = millis();
+        //     Serial.print("[Case Nav.]: ");
+        //     Serial.print(" | HD_TH: "); Serial.print(th.Heading.float_val * RAD_TO_DEG, 2);
+        //     Serial.print(" | HD_IMU: "); Serial.println(imu_heading * RAD_TO_DEG, 2);
+        // }
     }
 }
 
@@ -395,6 +395,10 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 
     if (!ahrs_stage_update_raw(pkt)) return;
 
+    ahrs_stage_calibrate(fog_parameter);
+    ahrs_stage_frame_transform_to_case();
+    ahrs_stage_attitude_update(fog_parameter);
+
     // ---- HINS 資料流更新與邏輯控制 ----
     if (hins_stage_update_raw(g_cmd_port_hins, &sensor_raw.hins)) 
     {
@@ -408,9 +412,6 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
     }
     // ----------------------------------------
 
-    ahrs_stage_calibrate(fog_parameter);
-    ahrs_stage_frame_transform_to_case();
-    ahrs_stage_attitude_update(fog_parameter);
     ahrs_stage_output_send_if_ready();
 }
 

@@ -41,7 +41,7 @@ static const float COE_TIMER = 0.0001;
 
 static const float COE_TEMP_AD590 = 0.00007165585;
 static const float VIN_MON_COFF = 0.0000023505;
-static const float ADC3p3_COEE = 0.000000039339; 
+static const float ADC3p3_COEE = 0.00000039339; // 3.3/2^23 = 3.93390656e-7
 
 const uint8_t HDR_ABBA[2] = {0xAB, 0xBA};
 const uint8_t HDR_CDDC[2] = {0xCD, 0xDC};
@@ -442,7 +442,20 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15; 
   float vin_mon = ((float)raw->hk.Vin_mon.int_val) * VIN_MON_COFF;
   float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
-  // Serial.println(vin_mon);
+
+  //------ debug ADC voltage------------------
+
+  // float temp_Volt = ((float)raw->temp.tempz.int_val) * ADC3p3_COEE;
+  // float vin_Volt = ((float)raw->hk.Vin_mon.int_val) * ADC3p3_COEE;
+  // float Tact_Volt = ((float)raw->hk.Tact_mon.int_val) * ADC3p3_COEE;
+  // float pumpPd_Volt = ((float)raw->hk.pump_pd_mon.int_val) * ADC3p3_COEE;
+  
+  // Serial.print("PD_T:"); Serial.print(temp_Volt, 3);
+  // Serial.print("   |Vin:"); Serial.print(vin_Volt, 3);
+  // Serial.print("   |Tact:"); Serial.print(Tact_Volt, 3);
+  // Serial.print("   |Pump:"); Serial.print(pumpPd_Volt, 3);
+  // Serial.println();
+  //-----------------------------------------------
 
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro = SF_GYRO_1000DPS;

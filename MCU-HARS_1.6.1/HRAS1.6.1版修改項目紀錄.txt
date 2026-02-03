@@ -1,0 +1,25 @@
+修改日期: 2026/02/02
+進行人員: 葉建麟
+
+
+基礎版本修改資訊:
+原始版本資料夾名稱: MCU-HARS_1.6
+修改版本資料夾名稱: MCU-HARS_1.6.1
+1) Arduino程式檔名修改，修改為MCU-HARS_1.6.1.ino
+2) IMU_PIG_DEFINE.h 修改
+#define MCU_VERSION "MCU-HARS_1.6.1"
+
+
+1. 以MCU-HARS_1.6版為基礎，修改陀螺儀X軸朝向重力旋轉時，FOG Z-axis、Temperature量測數值會產生pulse現象。
+主要此現象來制計算效能問題，在MCU-HARS_1.6版 Pitch, Roll, Yaw角度最後輸出時，採用圓形移動平均進行計算，
+會使用到三角函數(sin, cos, atan)*3，計算量太大，導致最終輸出資料產生pulse問題。
+最終更改為:
+(1) Pitch: 採用一般的移動平均計算。
+(2) Roll, Yaw: 採用Unwrapped Moving Average Filter進行計算。
+最終角度輸出時，不使用三角函數進行計算，改善計算效能、包含移動平均的輸出效果。
+
+
+
+
+
+
