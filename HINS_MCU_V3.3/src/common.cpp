@@ -51,7 +51,7 @@ const uint8_t TRL_5758[2] = {0x57, 0x58};
 const uint8_t TRL_5354[2] = {0x53, 0x54};
 const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
-#define CASE_MEMS
+// #define CASE_MEMS
 
 // -----------------------------------------------------------------------------
 // Forward declare Serial1 (constructed in myUART.cpp)
