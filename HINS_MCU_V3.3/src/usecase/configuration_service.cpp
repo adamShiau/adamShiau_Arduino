@@ -85,6 +85,9 @@ bool apply_baudrate_index(uint8_t br_index)
   uint32_t baud = 1;
   
   if (!map_baudrate_index(br_index, &baud)) {
+    DEBUG_PRINT("Baudrate index fail: %d (baud=%d)\n", br_index, baud);
+    DEBUG_PRINT("Initialize to 115200\n");
+    output_port_begin(115200);
     return false;
   }
 
