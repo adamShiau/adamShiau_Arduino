@@ -26,6 +26,8 @@
   #define STOP_RUN 4
 #endif
 
+#define NAV_TEST_MODE
+
 // ---- HINS streaming control (raw MIP frames, include checksum) ------------
 static const uint8_t HINS_SET_TO_IDLE[] = { 0x75,0x65,0x01,0x02,0x02,0x02,0xE1,0xC7 };  // Stop stream
 static const uint8_t HINS_RESUME[]      = { 0x75,0x65,0x01,0x02,0x02,0x06,0xE5,0xCB };  // resume
@@ -75,7 +77,11 @@ static void ahrs_reset_runtime_state(void)
     try_cnt  = 0;
 
     // 重置 HINS 初始化狀態，確保下次啟動重新收斂
-    g_hins_initialized = false;
+    #ifdef NAV_TEST_MODE
+        g_hins_initialized = true;
+    #elif
+        g_hins_initialized = false;
+    #endif
     g_fix2_start_ms = 0;
 
     // reset extracted attitude-stage states
@@ -324,7 +330,7 @@ static void hins_stage_logic_control(Stream& port, hins_mip_data_t* hins, float 
         hins_true_heading_standard(port, &th);
 
         // 使用 Serial.print 進行詳細 Debug
-        static uint32_t last_print = 0;
+        // static uint32_t last_print = 0;
         // if (millis() - last_print > 500) { 
         //     last_print = millis();
         //     Serial.print("[Case Nav.]: ");

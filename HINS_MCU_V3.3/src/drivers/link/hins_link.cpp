@@ -525,7 +525,7 @@ void hins_true_heading_standard(Stream& port_hins, const true_heading_t* th)
 
   // ---- 新增 Debug Print ----
   static uint32_t last_send_print = 0;
-  if (millis() - last_send_print > 500) { // 每 500ms 印一次，避免洗板
+  if (millis() - last_send_print > 50) { // 每 500ms 印一次，避免洗板
       last_send_print = millis();
       
       Serial.print("[SEND_31] HDG: "); Serial.print(th->Heading.float_val*RAD_TO_DEG, 4);
