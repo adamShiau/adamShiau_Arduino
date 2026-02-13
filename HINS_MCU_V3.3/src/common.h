@@ -173,10 +173,10 @@ typedef struct {
   uint16_t    dynamic_mode;  // 1: default
   uint16_t    status_flag_82;
   // ---- Aiding Measurement Summary (0x82, 0x46) ----
-  float    aiding_tow;      
-  uint8_t  aiding_source;     
-  uint8_t  aiding_type;  
-  uint8_t  aiding_indicator;
+  float    aiding_tow;      // Last aiding TOW
+  uint8_t  aiding_source;   // Source frame ID
+  uint8_t  aiding_type;     // External measurement type
+  uint8_t  aiding_indicator;// Status flags
 
   uint8_t     case_flag;
 

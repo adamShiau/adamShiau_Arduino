@@ -7,6 +7,7 @@
 
 typedef enum {
     HINS_RD_FIND_HEADER = 0,
+    HINS_RD_READ_LEN,
     HINS_RD_READ_PAYLOAD,
     HINS_RD_CHECK_CHECKSUM
 } HINS_RD_State;
@@ -67,6 +68,10 @@ bool hins_send_mip_raw(Stream& port_hins, const uint8_t* mip);
 
 
 uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len, uint16_t payload_len);
+
+uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len);
+
+uint16_t hins_get_last_payload_len(void);
 
 
 void hins_true_heading_standard(

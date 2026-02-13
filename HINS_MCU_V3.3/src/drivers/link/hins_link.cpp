@@ -426,6 +426,74 @@ static inline void hrd_reset(void) {
     hrd.chk_idx = 0;
 }
 
+// 實作 Getter 函式
+uint16_t hins_get_last_payload_len(void) {
+    return hrd.datalen; // 回傳最後一次解析成功的長度
+}
+
+// 修改後的解析器：移除固定 payload_len 參數，改為從 byte 4 自動讀取
+uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len) {
+    if (port.available() == 0) return NULL;
+
+    while (port.available() > 0) {
+        uint8_t b = (uint8_t)port.read();
+
+        switch (hrd.state) {
+            case HINS_RD_FIND_HEADER:
+                if (b == header[hrd.hdr_idx]) {
+                    hrd.hdr_idx++;
+                    if (hrd.hdr_idx >= header_len) {
+                        hrd.state = HINS_RD_READ_LEN; // 找到 Header (75 65 82) 後進入讀長度狀態
+                    }
+                } else {
+                    hrd.hdr_idx = (b == header[0]) ? 1 : 0;
+                }
+                break;
+
+            case HINS_RD_READ_LEN:
+                hrd.datalen = b; // 動態紀錄長度 (例如 0x29 或 0x32)
+                hrd.pay_idx = 0;
+                if (hrd.datalen > HINS_MAX_PAYLOAD_SIZE) {
+                    hrd_reset(); // 防呆：長度過大則重置
+                } else {
+                    hrd.state = HINS_RD_READ_PAYLOAD;
+                }
+                break;
+
+            case HINS_RD_READ_PAYLOAD:
+                hrd.payload[hrd.pay_idx++] = b;
+                if (hrd.pay_idx >= hrd.datalen) {
+                    hrd.state = HINS_RD_CHECK_CHECKSUM;
+                    hrd.chk_idx = 0;
+                }
+                break;
+
+            case HINS_RD_CHECK_CHECKSUM:
+                hrd.checksum[hrd.chk_idx++] = b;
+                if (hrd.chk_idx >= 2) {
+                    // 重新組裝封包進行校驗：[Header 3 bytes] + [Len 1 byte] + [Payload n bytes]
+                    uint8_t tmp[HINS_MAX_PAYLOAD_SIZE + 4];
+                    memcpy(tmp, header, header_len);
+                    tmp[header_len] = hrd.datalen;
+                    memcpy(tmp + header_len + 1, hrd.payload, hrd.datalen);
+                    
+                    uint16_t calc = mip_fletcher16(tmp, header_len + 1 + hrd.datalen);
+                    uint16_t received = (uint16_t(hrd.checksum[0]) << 8) | hrd.checksum[1];
+
+                    if (calc == received) {
+                        uint8_t* ret = hrd.payload;
+                        hrd_reset();
+                        return ret;
+                    } else {
+                        hrd_reset();
+                    }
+                }
+                break;
+        }
+    }
+    return NULL;
+}
+
 uint8_t* hins_parse_stream_bytewise(Stream& port, const uint8_t* header, uint8_t header_len, uint16_t payload_len) {
     if (port.available() == 0) return NULL;
 

@@ -180,19 +180,14 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
 }
 
-
 static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
-    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x29};
+    // 固定的同步頭與數據集 ID
+    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82};
     
-    // 呼叫非阻塞 Parser
-    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 41);
+    // 使用動態長度解析
+    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 3);
 
     /***
-     * 75 65 82 29 
-     * [14 bytes GPS Timestamp (0xFF,0xD3)] 
-     * [19 bytes GNSS Dual Antenna Status (0x82,0x49)] 
-     * [8 bytes Status (0x82,0x10)]
-     * 
      * 75 65 82 32 
      * [14 bytes GPS Timestamp (0xFF,0xD3)] 
      * [19 bytes GNSS Dual Antenna Status (0x82,0x49)] 
@@ -201,40 +196,67 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
      */
 
     if (payload != nullptr) {
-        // 解析 0xD3 (TOW)
-        hins->gps_tow = be_f64(&payload[2]); 
+        uint8_t total_payload_len = hins_get_last_payload_len();
+        uint8_t i = 0;
+        DEBUG_PRINT("\nLen: %d\n", total_payload_len);
 
-        // 解析 0x49 (GNSS Data)
-        const uint8_t* d49 = &payload[16]; 
-        hins->heading_da  = be_f32(&d49[4]);
-        hins->heading_unc = be_f32(&d49[8]);
-        hins->fix_type    = d49[12];
-        hins->status_flag = be_u16(&d49[13]);
-        hins->valid_flag_da = be_u16(&d49[15]);
+        // 掃描所有 Field [Length][Descriptor][Data...]
+        while (i < total_payload_len) {
+            uint8_t flen  = payload[i];
+            uint8_t fdesc = payload[i + 1];
+            uint8_t* fdata = &payload[i + 2];
 
-        // 解析 0x10 (Status  Data)
-        const uint8_t* d10 = &payload[35]; 
-        hins->filter_state = be_u16(&d10[0]);
-        hins->dynamic_mode = be_u16(&d10[2]);
-        hins->status_flag_82 = be_u16(&d10[4]);
+            // 根據 MIP PDF 定義解析各個 Descriptor
+            switch (fdesc) {
+                case 0xD3: // GPS Timestamp (Len: 14)
+                    DEBUG_PRINT("GPS Timestamp\n");
+                    hins->gps_tow = be_f64(&fdata[0]); 
+                    break;
 
-        // 使用 Serial.print 進行詳細 Debug
-        // static uint32_t last_print = 0;
-        // if (millis() - last_print > 500) { 
-        //     last_print = millis();
-        //     Serial.print("[HINS_PARSE] TOW: "); Serial.print(hins->gps_tow, 3);
-        //     Serial.print(" | HDG: "); Serial.print(hins->heading_da * RAD_TO_DEG, 2); // 1 弧度約等於 57.29578 度
-        //     Serial.print(" | FIX: "); Serial.print(hins->fix_type);
-        //     Serial.print(" | STATUS: 0x"); Serial.print(hins->status_flag, HEX);
-        //     Serial.print(" | VALID: 0x"); Serial.print(hins->valid_flag_da, HEX);
-        //     Serial.print(" | FILTER_STATE: 0x"); Serial.print(hins->filter_state, HEX);
-        //     Serial.print(" | MODE: 0x"); Serial.print(hins->dynamic_mode, HEX);
-        //     Serial.print(" | STATUS_FLAGS: 0x"); Serial.println(hins->status_flag_82, HEX);
-        // }
+                case 0x49: // GNSS Dual Antenna Status (Len: 19)
+                    DEBUG_PRINT("GPS Dual Antenna Status\n");
+                    hins->heading_da    = be_f32(&fdata[4]);
+                    hins->heading_unc   = be_f32(&fdata[8]);
+                    hins->fix_type      = fdata[12];
+                    hins->status_flag   = be_u16(&fdata[13]);
+                    hins->valid_flag_da = be_u16(&fdata[15]);
+                    break;
+
+                case 0x10: // Status Data (Len: 8)
+                    DEBUG_PRINT("Status Data\n");
+                    hins->filter_state   = be_u16(&fdata[0]);
+                    hins->dynamic_mode   = be_u16(&fdata[2]);
+                    hins->status_flag_82 = be_u16(&fdata[4]);
+                    break;
+
+                case 0x46: // Aiding Measurement Summary (Len: 9)
+                    DEBUG_PRINT("Aiding Measurement Summary\n");
+
+                    // ---- 新增 HEX Print 區塊 ----
+                    // Serial.print("[HEX 0x46]: ");
+                    // for (int k = 0; k < 7; k++) {
+                    //     if (fdata[k] < 0x10) Serial.print("0"); // 補零確保兩位數
+                    //     Serial.print(fdata[k], HEX);
+                    //     Serial.print(" ");
+                    // }
+                    // Serial.println();
+                    // ----------------------------
+
+                    hins->aiding_tow       = be_f32(&fdata[0]); // TOW is float
+                    hins->aiding_source    = fdata[4];          // Source ID
+                    hins->aiding_type      = fdata[5];          // Measurement type
+                    hins->aiding_indicator = fdata[6];          // Indicator bitfield
+                    break;
+            }
+            // 移動索引至下一個 Field
+            if (flen == 0) break; // 避免死迴圈
+            i += flen;
+        }
         return true;
     }
     return false;
 }
+
 
 // 封裝後的 GUI 監控發送方法
 static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset) {
