@@ -182,12 +182,23 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
 
 
 static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
-    // static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x29};
-    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x3B};
+    static const uint8_t HINS_COMPOSITE_HDR[] = {0x75, 0x65, 0x82, 0x29};
     
     // 呼叫非阻塞 Parser
-    // uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 41);
-    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 59);
+    uint8_t* payload = hins_parse_stream_bytewise(port, HINS_COMPOSITE_HDR, 4, 41);
+
+    /***
+     * 75 65 82 29 
+     * [14 bytes GPS Timestamp (0xFF,0xD3)] 
+     * [19 bytes GNSS Dual Antenna Status (0x82,0x49)] 
+     * [8 bytes Status (0x82,0x10)]
+     * 
+     * 75 65 82 32 
+     * [14 bytes GPS Timestamp (0xFF,0xD3)] 
+     * [19 bytes GNSS Dual Antenna Status (0x82,0x49)] 
+     * [8 bytes Status (0x82,0x10)]
+     * [9 bytes Aiding Measurement Summary (0x82, 0x46)]
+     */
 
     if (payload != nullptr) {
         // 解析 0xD3 (TOW)

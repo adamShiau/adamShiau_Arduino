@@ -172,6 +172,12 @@ typedef struct {
   uint16_t    filter_state; // 1:Init, 2: vert_gyro, 3: ahrs, 4: full_nav
   uint16_t    dynamic_mode;  // 1: default
   uint16_t    status_flag_82;
+  // ---- Aiding Measurement Summary (0x82, 0x46) ----
+  float    aiding_tow;      
+  uint8_t  aiding_source;     
+  uint8_t  aiding_type;  
+  uint8_t  aiding_indicator;
+
   uint8_t     case_flag;
 
 } hins_mip_data_t;
