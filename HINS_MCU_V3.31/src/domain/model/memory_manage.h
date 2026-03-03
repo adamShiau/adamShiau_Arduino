@@ -6,7 +6,7 @@
 
 #define PAR_LEN 40 // 定義陣列大小
 #define MIS_LEN 30
-#define CFG_LEN 10
+#define CFG_LEN 20
 
 #define CONTAINER_TO_CMD_OFFSET     8   
 #define MIS_CONTAINER_TO_CMD_OFFSET     48  

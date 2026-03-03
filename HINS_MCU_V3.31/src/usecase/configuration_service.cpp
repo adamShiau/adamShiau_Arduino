@@ -106,4 +106,40 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   // Apply in order: datarate then baudrate
   (void)apply_datarate_index(dr_idx);
   (void)apply_baudrate_index(br_idx);
+
+  apply_rcs_matrix_from_container(params);
+  apply_is_NED_from_container(params);
+}
+
+void apply_rcs_matrix_from_container(const fog_parameter_t* params)
+{
+  float Rcs[9];
+  
+  // Rcs_11 (index 2) 到 Rcs_33 (index 10)
+  for (int i = 0; i < 9; i++) {
+    const mem_unit_t* u = &params->config[i + 2];
+    
+    // 根據您的資料結構，Rcs 儲存為 TYPE_FLOAT 
+    // 直接從 data.float_val 讀取原始浮點數
+    Rcs[i] = u->data.float_val;
+  }
+
+  // 使用 ahrs_attitude 提供的方法設定感測器至機殼的轉換矩陣 [cite: 1, 3]
+  ahrs_attitude.setSensorToCaseMatrix(Rcs);
+
+  DEBUG_PRINT("\nApplying Rcs matrix from config[2..10]\n");
+  Serial.print(Rcs[0],2); Serial.print(", ");Serial.print(Rcs[1],2); Serial.print(", ");Serial.println(Rcs[2],2);
+  Serial.print(Rcs[3],2); Serial.print(", ");Serial.print(Rcs[4],2); Serial.print(", ");Serial.println(Rcs[5],2);
+  Serial.print(Rcs[6],2); Serial.print(", ");Serial.print(Rcs[7],2); Serial.print(", ");Serial.println(Rcs[8],2);
+}
+
+void apply_is_NED_from_container(const fog_parameter_t* params)
+{
+  bool is_NED;
+  
+  is_NED = (bool)params->config[11].data.int_val;
+  ahrs_attitude.setLocalFrameNED(is_NED);
+  
+  DEBUG_PRINT("\nApplying is_NED value from config[11]\n");
+  DEBUG_PRINT("Set NED: %d\n", is_NED);
 }

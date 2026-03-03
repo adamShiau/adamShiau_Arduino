@@ -1,6 +1,8 @@
 #include "parameter_service.h"
 #include "configuration_service.h"
 #include "../drivers/link/hins_link.h"
+#include "../app/app_state.h"
+#include "output_service/ahrs_attitude_lib.h"
 
 
 extern Uart Serial3;
@@ -1636,8 +1638,8 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_MIS_G32, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G32 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
+							update_parameter_container(rx, fog_inst, CMD_MIS_G32 - MIS_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == 3) {
 							
@@ -1708,6 +1710,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					}
 					case CMD_CFG_DR: {
 						DEBUG_PRINT("CMD_CFG_DR:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							// PC sends datarate index (0~4). Convert to FPGA sync counter and forward to FPGA (ch fixed to 6).
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_DR, rx->value, rx->ch); delay(100);
@@ -1723,6 +1726,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					} 
 					case CMD_CFG_BR: {
 						DEBUG_PRINT("CMD_CFG_BR:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_BR, rx->value, rx->ch); delay(100);
              				update_parameter_container(rx, fog_inst, CMD_CFG_BR - CFG_CONTAINER_TO_CMD_OFFSET);
@@ -1734,12 +1738,12 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						}			
 						break;
 					}
-					case CMD_CFG_RSC: {
-						DEBUG_PRINT("CMD_CFG_RSC:\n");	
+					case CMD_CFG_RSC_11: {
+						DEBUG_PRINT("CMD_CFG_RSC_11:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
-							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC, rx->value, rx->ch); delay(100);
-             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC - CFG_CONTAINER_TO_CMD_OFFSET);
-							(void)apply_baudrate_index((uint8_t)rx->value);
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_11, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_11 - CFG_CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
@@ -1747,6 +1751,142 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						}			
 						break;
 					}
+					case CMD_CFG_RSC_12: {
+						DEBUG_PRINT("CMD_CFG_RSC_12:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_12, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_12 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_13: {
+						DEBUG_PRINT("CMD_CFG_RSC_13:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_13, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_13 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_21: {
+						DEBUG_PRINT("CMD_CFG_RSC_21:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_21, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_21 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_22: {
+						DEBUG_PRINT("CMD_CFG_RSC_22:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_22, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_22 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_23: {
+						DEBUG_PRINT("CMD_CFG_RSC_23:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_23, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_23 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_31: {
+						DEBUG_PRINT("CMD_CFG_RSC_31:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_31, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_31 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_32: {
+						DEBUG_PRINT("CMD_CFG_RSC_32:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_32, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_32 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_RSC_33: {
+						DEBUG_PRINT("CMD_CFG_RSC_33:\n");
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_RSC_33, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_RSC_33 - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+							DEBUG_PRINT("---Updating AHRS Rcs:---\n");
+							float Rcs_11=fog_inst->config[2].data.float_val, Rcs_12=fog_inst->config[3].data.float_val, Rcs_13=fog_inst->config[4].data.float_val;
+							float Rcs_21=fog_inst->config[5].data.float_val, Rcs_22=fog_inst->config[6].data.float_val, Rcs_23=fog_inst->config[7].data.float_val;
+							float Rcs_31=fog_inst->config[8].data.float_val, Rcs_32=fog_inst->config[9].data.float_val, Rcs_33=fog_inst->config[10].data.float_val;
+							float Rcs[9] = {Rcs_11, Rcs_12, Rcs_13,
+											Rcs_21, Rcs_21, Rcs_23,
+											Rcs_31, Rcs_32, Rcs_33};
+							ahrs_attitude.setSensorToCaseMatrix(Rcs); 
+							Serial.print(Rcs_11,2); Serial.print(", ");Serial.print(Rcs_12,2); Serial.print(", ");Serial.println(Rcs_13,2);
+							Serial.print(Rcs_21,2); Serial.print(", ");Serial.print(Rcs_22,2); Serial.print(", ");Serial.println(Rcs_23,2);
+							Serial.print(Rcs_31,2); Serial.print(", ");Serial.print(Rcs_32,2); Serial.print(", ");Serial.println(Rcs_33,2);
+							DEBUG_PRINT("---Update AHRS Rcs done---\n\n");
+
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+					case CMD_CFG_LF: {
+						DEBUG_PRINT("CMD_CFG_LF:\n");
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}	
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_LF, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_LF - CFG_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+							DEBUG_PRINT("---Updating AHRS Local Frame:---\n");
+							bool is_NED = (bool)fog_inst->config[11].data.int_val;
+							ahrs_attitude.setLocalFrameNED(is_NED);
+							DEBUG_PRINT("Set NED: %d\n", is_NED);
+							DEBUG_PRINT("---Update AHRS Local Frame done---\n\n");
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
+
 					default:{
 						DEBUG_PRINT("condition 1 default case\n");
 					} 

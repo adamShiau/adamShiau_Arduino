@@ -248,7 +248,7 @@ static void config_store_cb(int key, int32_t val, void* user)
   if (!C || !C->fog) return;
   if (key < 0 || key >= CFG_LEN) return;
 
-  C->fog->config[key].type = TYPE_INT;
+  // C->fog->config[key].type = TYPE_INT; //目前 MCU 端沒有使用到 .type
   C->fog->config[key].data.int_val = val;
 }
 

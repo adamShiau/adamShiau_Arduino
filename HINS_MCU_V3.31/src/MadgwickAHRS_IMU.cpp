@@ -69,12 +69,11 @@ Madgwick::Madgwick() {
 
 void Madgwick::init(float data_rate) {
     begin(data_rate); // 設定採樣率
+    Serial.print("\nAttitude rate set to "); Serial.print(data_rate); Serial.println(" Hz");
  
-    // const float Rcs[9] = { 0,-1,0,  1,0,0,  0,0,1 };  // v_case = Rcs * v_sensor, NED
     const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };  // v_case = Rcs * v_sensor, ENU
     setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
-    // setLocalFrameNED(true);     // 設定 Local 世界座標為 NED
-    setLocalFrameNED(false);    // 設定 Local 世界座標為 ENU
+    setLocalFrameNED(true);    // 設定 Local 世界座標為 ENU
     setGyroBiasLearning(true);  // 啟用靜止時自動估測偏置
     setDynamicAccelWeight(true); // 啟用動態加權
     setGimbalLockGuard(true, 89.0f); // 啟用奇異點保護
@@ -578,7 +577,6 @@ void Madgwick::setLocalFrameNED(bool enable) {
     qwl0=1.0f; qwl1=qwl2=qwl3=0.0f;
     return;
   }
-  // Local = NED：R_L←E = [[0,1,0],[1,0,0],[0,0,-1]]
   const float R[9] = { 0,1,0,  1,0,0,  0,0,-1 };
   quatFromR(R, qwl0,qwl1,qwl2,qwl3); // 會得到 (w,x,y,z) ≈ (0, √2/2, √2/2, 0)
 }

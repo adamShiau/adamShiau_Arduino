@@ -33,10 +33,10 @@ void setup() {
   delay(1000);
   DEBUG_PRINT("apply_configuration_from_container..\n");
   apply_configuration_from_container(&g_fog_params);
-  delay(10);
-  DEBUG_PRINT("ahrs_attitude init..\n");
-  ahrs_attitude.init(100.0f); // sample rate  
-  DEBUG_PRINT("Setup done\n");  
+  // delay(10);
+  // DEBUG_PRINT("ahrs_attitude init..\n");
+  // ahrs_attitude.init(100.0f); // sample rate  
+  DEBUG_PRINT("\nSetup done\n");  
 }
 
 void loop() { 

@@ -66,11 +66,19 @@ enum {
     CMD_MIS_G33,                //0x47
 
     CMD_CFG_DR = 72,            //0x48
-    CMD_CFG_BR,                 //0x49
-    CMD_CFG_RSC,
+    CMD_CFG_BR,
+    CMD_CFG_RSC_11,             //0x4A
+    CMD_CFG_RSC_12,
+    CMD_CFG_RSC_13,
+    CMD_CFG_RSC_21,
+    CMD_CFG_RSC_22,
+    CMD_CFG_RSC_23,
+    CMD_CFG_RSC_31,
+    CMD_CFG_RSC_32,
+    CMD_CFG_RSC_33,
     CMD_CFG_LF,
     CMD_CFG_LPF_G,
-    CMD_CFG_LPF_A,
+    CMD_CFG_LPF_A,             //0x55
 
     CMD_DATA_OUT_START = 99,    //0x63
     CMD_HW_TIMER_RST = 100,     //0x64
