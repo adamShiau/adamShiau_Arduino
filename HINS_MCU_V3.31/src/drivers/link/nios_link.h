@@ -42,3 +42,7 @@ bool sendSN(Stream& port,
  */
 bool nios_send_cfg_datarate(Stream& port, uint8_t cmd_sync_cnt, uint8_t dr_index);
 
+bool nios_send_cfg_ASM330LHHX_Gyro_LPF1(Stream& port, uint8_t cmd, uint8_t ftype);
+
+bool nios_send_cfg_ASM330LHHX_Accl_LPF2(Stream& port, uint8_t cmd, uint8_t ftype);
+

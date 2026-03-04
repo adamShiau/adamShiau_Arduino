@@ -104,11 +104,13 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   uint8_t br_idx = cfg_get_u8(params, 1, 1); // default to 115200
 
   // Apply in order: datarate then baudrate
-  (void)apply_datarate_index(dr_idx);
+  (void)apply_datarate_index(dr_idx); delay(50);
   (void)apply_baudrate_index(br_idx);
 
   apply_rcs_matrix_from_container(params);
   apply_is_NED_from_container(params);
+  (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50);
+  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); 
 }
 
 void apply_rcs_matrix_from_container(const fog_parameter_t* params)
@@ -142,4 +144,32 @@ void apply_is_NED_from_container(const fog_parameter_t* params)
   
   DEBUG_PRINT("\nApplying is_NED value from config[11]\n");
   DEBUG_PRINT("Set NED: %d\n", is_NED);
+}
+
+bool apply_ASM330LHHX_Gyro_LPF1_from_container(const fog_parameter_t* params)
+{
+  uint8_t ftype = 0;
+  ftype = (uint8_t)params->config[12].data.int_val;
+
+  if (!nios_send_cfg_ASM330LHHX_Gyro_LPF1(g_cmd_port_fpga, CMD_CFG_LPF_G, ftype)) {
+    return false;
+  }
+  DEBUG_PRINT("\nApplying ASM330LHH gyro LPF1 value from config[12]\n");
+  DEBUG_PRINT("Set LPF1: %d\n", ftype);
+
+  return true;
+}
+
+bool apply_ASM330LHHX_Accl_LPF2_from_container(const fog_parameter_t* params)
+{
+  uint8_t cutoff_bw = 0;
+  cutoff_bw = (uint8_t)params->config[13].data.int_val;
+
+  if (!nios_send_cfg_ASM330LHHX_Accl_LPF2(g_cmd_port_fpga, CMD_CFG_LPF_A, cutoff_bw)) {
+    return false;
+  }
+  DEBUG_PRINT("\nApplying ASM330LHH accl LPF2 value from config[13]\n");
+  DEBUG_PRINT("Set LPF2: %d\n", cutoff_bw);
+
+  return true;
 }

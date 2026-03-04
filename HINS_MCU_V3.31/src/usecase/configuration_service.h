@@ -37,3 +37,7 @@ void apply_rcs_matrix_from_container(const fog_parameter_t* params);
 
 void apply_is_NED_from_container(const fog_parameter_t* params);
 
+bool apply_ASM330LHHX_Gyro_LPF1_from_container(const fog_parameter_t* params);
+
+bool apply_ASM330LHHX_Accl_LPF2_from_container(const fog_parameter_t* params);
+

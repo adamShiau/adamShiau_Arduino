@@ -1,6 +1,10 @@
 #include "nios_link.h"
 #include "../../domain/model/command_id.h"
 
+// Fixed framing for Nios link
+static const uint8_t HDR_ABBA_LOCAL[2] = {0xAB, 0xBA};
+static const uint8_t TRL_5556_LOCAL[2] = {0x55, 0x56};
+
 size_t sendCmd(Stream& port, const uint8_t header[2], const uint8_t trailer[2], uint8_t cmd, 
   int32_t value, uint8_t ch)
 {
@@ -69,10 +73,6 @@ bool sendSN(Stream& port, const uint8_t header[2], const uint8_t trailer[2], uin
 
 bool nios_send_cfg_datarate(Stream& port, uint8_t cmd_sync_cnt, uint8_t dr_index)
 {
-    // Fixed framing for Nios link
-    static const uint8_t HDR_ABBA_LOCAL[2] = {0xAB, 0xBA};
-    static const uint8_t TRL_5556_LOCAL[2] = {0x55, 0x56};
-
     // DR_xxHz constants (FPGA expects "sync counter" ticks)
     const uint32_t DR_10Hz  = 5000000UL;
     const uint32_t DR_50Hz  = 1000000UL;
@@ -95,5 +95,17 @@ bool nios_send_cfg_datarate(Stream& port, uint8_t cmd_sync_cnt, uint8_t dr_index
 
     // ch fixed to 6 per spec
     sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd_sync_cnt, (int32_t)dr_cnt, 6);
+    return true;
+}
+
+bool nios_send_cfg_ASM330LHHX_Gyro_LPF1(Stream& port, uint8_t cmd, uint8_t ftypes)
+{
+    sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd, (int32_t)ftypes, 6);
+    return true;
+}
+
+bool nios_send_cfg_ASM330LHHX_Accl_LPF2(Stream& port, uint8_t cmd, uint8_t ftypes)
+{
+    sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd, (int32_t)ftypes, 6);
     return true;
 }
