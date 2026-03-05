@@ -110,7 +110,7 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   apply_rcs_matrix_from_container(params);
   apply_is_NED_from_container(params);
   (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50);
-  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); delay(50);
+  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params);
   (void)apply_gyroZ_source_from_container(params); 
 }
 
