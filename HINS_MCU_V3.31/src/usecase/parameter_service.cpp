@@ -1929,10 +1929,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_WZ_SRC, rx->value, rx->ch); delay(100);
              				update_parameter_container(rx, fog_inst, CMD_CFG_WZ_SRC - CFG_CONTAINER_TO_CMD_OFFSET);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-							
-							bool is_NED = (bool)fog_inst->config[11].data.int_val;
-							ahrs_attitude.setLocalFrameNED(is_NED);
-
+							set_wz_source((uint8_t)rx->value);
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
 							

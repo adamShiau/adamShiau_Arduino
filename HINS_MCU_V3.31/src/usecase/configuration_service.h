@@ -41,3 +41,5 @@ bool apply_ASM330LHHX_Gyro_LPF1_from_container(const fog_parameter_t* params);
 
 bool apply_ASM330LHHX_Accl_LPF2_from_container(const fog_parameter_t* params);
 
+bool apply_gyroZ_source_from_container(const fog_parameter_t* params);
+

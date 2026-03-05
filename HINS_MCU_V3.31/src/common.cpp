@@ -19,6 +19,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "app/app_state.h"
+// #include "usecase/parameter_service.h"
 // #include "domain/protocol/ack_codec_v1.h"
 // #include "utils/version_info.h"
 
@@ -51,7 +52,12 @@ const uint8_t TRL_5758[2] = {0x57, 0x58};
 const uint8_t TRL_5354[2] = {0x53, 0x54};
 const uint8_t KVH_HEADER[4] = {0xFE, 0x81, 0xFF, 0x55};
 
-#define CASE_MEMS
+#define WZ_SRC_MEMS 0  
+#define WZ_SRC_FOG  1  
+
+static uint8_t s_wz_src = WZ_SRC_MEMS;
+
+// #define CASE_MEMS
 
 // -----------------------------------------------------------------------------
 // Forward declare Serial1 (constructed in myUART.cpp)
@@ -458,24 +464,42 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   //-----------------------------------------------
 
   // === Gyro scale factor（一次線性）===
-  float sf_x_gyro = SF_GYRO_1000DPS;
-  float sf_y_gyro = SF_GYRO_1000DPS;
+  float sf_x_gyro, sf_y_gyro, sf_z_gyro;
 
-  #ifdef CASE_MEMS
-    float sf_z_gyro = SF_GYRO_1000DPS;
-  #else
-    float sf_z_gyro = sf_temp_comp_1st(tz,
-    fog_parameter->paramZ[17].data.float_val,
-    fog_parameter->paramZ[18].data.float_val);
-  #endif
+  sf_x_gyro = SF_GYRO_1000DPS;
 
-  // float sf_x_gyro = sf_temp_comp_1st(tx,
-  //     fog_parameter->paramX[17].data.float_val,
-  //     fog_parameter->paramX[18].data.float_val);
+  /***
+  sf_x_gyro = SF_GYRO_1000DPS*sf_temp_comp_1st(tacc,
+          fog_parameter->paramX[17].data.float_val,
+          fog_parameter->paramX[18].data.float_val);
+  */
+  
+  sf_y_gyro = SF_GYRO_1000DPS;
 
-  // float sf_y_gyro = sf_temp_comp_1st(ty,
-  //     fog_parameter->paramY[17].data.float_val,
-  //     fog_parameter->paramY[18].data.float_val);
+  /***
+  sf_y_gyro = SF_GYRO_1000DPS*sf_temp_comp_1st(tacc,
+          fog_parameter->paramY[17].data.float_val,
+          fog_parameter->paramY[18].data.float_val);
+  */
+
+  if (s_wz_src == WZ_SRC_MEMS) { 
+      sf_z_gyro = SF_GYRO_1000DPS;
+      // sf_z_gyro = sf_temp_comp_1st(tz,
+      //     fog_parameter->paramZ[17].data.float_val,
+      //     fog_parameter->paramZ[18].data.float_val*SF_GYRO_1000DPS);
+  } else {
+      sf_z_gyro = sf_temp_comp_1st(tz,
+          fog_parameter->paramZ[17].data.float_val,
+          fog_parameter->paramZ[18].data.float_val);
+  }
+
+  // #ifdef CASE_MEMS
+  //   float sf_z_gyro = SF_GYRO_1000DPS;
+  // #else
+  //   float sf_z_gyro = sf_temp_comp_1st(tz,
+  //   fog_parameter->paramZ[17].data.float_val,
+  //   fog_parameter->paramZ[18].data.float_val);
+  // #endif
 
     // Serial.println("\nsf_gyro: slope, offset:");
     // Serial.print(fog_parameter->paramX[17].data.float_val,4); Serial.print(","); 
@@ -513,16 +537,30 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float bx_gyro = 0;
   float by_gyro = 0;
 
-  #ifdef CASE_MEMS
-    float bz_gyro = 0;
-  #else
-    float bz_gyro = bias_temp_comp_1st_3t(
-      tz, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
-      fog_parameter->paramZ[25].data.float_val, fog_parameter->paramZ[26].data.float_val,
-      fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
-      fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
+  float bz_gyro;
+  if (s_wz_src == WZ_SRC_MEMS) {
+    bz_gyro = 0;
+  }
+  else { 
+    bz_gyro = bias_temp_comp_1st_3t(
+        tz, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
+        fog_parameter->paramZ[25].data.float_val, fog_parameter->paramZ[26].data.float_val,
+        fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
+        fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
     );
-  #endif
+  }
+
+  // #ifdef CASE_MEMS
+  //   float bz_gyro = 0;
+  // #else
+  //   float bz_gyro = bias_temp_comp_1st_3t(
+  //     tz, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
+  //     fog_parameter->paramZ[25].data.float_val, fog_parameter->paramZ[26].data.float_val,
+  //     fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
+  //     fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
+  //   );
+  // #endif
+
   // float bx_gyro = bias_temp_comp_1st_3t(
   //     tx,
   //     fog_parameter->paramX[23].data.float_val,  // T1
@@ -594,12 +632,19 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // === Gyro 溫補（scale factor & bias）===
   float gx_comp = ((float)raw->fog.fogx.step.int_val) * sf_x_gyro - bx_gyro;
   float gy_comp = ((float)raw->fog.fogy.step.int_val) * sf_y_gyro - by_gyro;
+
+  float gz_comp;
+    if (s_wz_src == WZ_SRC_MEMS) {
+        gz_comp = ((float)raw->m_gyro.gz.int_val) * sf_z_gyro - bz_gyro;
+    } else {
+        gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
+    }
   
-  #ifdef CASE_MEMS
-    float gz_comp = ((float)raw->m_gyro.gz.int_val) * sf_z_gyro - bz_gyro;
-  #else
-    float gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
-  #endif
+  // #ifdef CASE_MEMS
+  //   float gz_comp = ((float)raw->m_gyro.gz.int_val) * sf_z_gyro - bz_gyro;
+  // #else
+  //   float gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
+  // #endif
 
   // Serial.print(raw->fog.fogx.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogy.step.float_val); Serial.print(","); 
@@ -714,8 +759,12 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->time.time.float_val = time;
 }
 
-#include "usecase/parameter_service.h"
-#include "app/app_state.h"
+void set_wz_source(uint8_t src) {
+    s_wz_src = src;
+    DEBUG_PRINT("@Setter, WZ source set to: %d\n", s_wz_src);
+}
+
+
 
 
 

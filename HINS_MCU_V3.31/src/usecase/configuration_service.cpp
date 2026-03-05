@@ -110,7 +110,8 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   apply_rcs_matrix_from_container(params);
   apply_is_NED_from_container(params);
   (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50);
-  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); 
+  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); delay(50);
+  (void)apply_gyroZ_source_from_container(params); 
 }
 
 void apply_rcs_matrix_from_container(const fog_parameter_t* params)
@@ -170,6 +171,18 @@ bool apply_ASM330LHHX_Accl_LPF2_from_container(const fog_parameter_t* params)
   }
   DEBUG_PRINT("\nApplying ASM330LHH accl LPF2 value from config[13]\n");
   DEBUG_PRINT("Set LPF2: %d\n", cutoff_bw);
+
+  return true;
+}
+
+bool apply_gyroZ_source_from_container(const fog_parameter_t* params)
+{
+  uint8_t wz_src = 0;
+
+  wz_src = (uint8_t)params->config[14].data.int_val;
+
+  DEBUG_PRINT("\nApplying gyro Z source from config[14]\n");
+  set_wz_source(wz_src);
 
   return true;
 }

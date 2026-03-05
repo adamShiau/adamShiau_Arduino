@@ -29,6 +29,8 @@ extern const uint8_t TRL_5758[2];
 extern const uint8_t KVH_HEADER[4];
 #define POLYNOMIAL_32 0x04C11DB7
 
+// extern uint8_t g_wz_src;
+
 // first order temperature compensation, one T
 #define SF_TEMP_COMPENSATION_1ST_ORDER(temp, slope, offset) ((temp) * (slope) + (offset))
 
@@ -235,6 +237,7 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out);
 void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t* fog_parameter);
 void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out);
 void reset_FPGA_timer(void);
+void set_wz_source(uint8_t src);
 
 
 
