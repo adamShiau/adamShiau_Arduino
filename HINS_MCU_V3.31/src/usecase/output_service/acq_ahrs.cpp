@@ -135,9 +135,9 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
     my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
     my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
-    my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
-    my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
+    my_ACCL_cali.float_val[0] = sensor_cali.accl.ax.float_val;
+    my_ACCL_cali.float_val[1] = sensor_cali.accl.ay.float_val;
+    my_ACCL_cali.float_val[2] = sensor_cali.accl.az.float_val;
 }
 
 // Attitude block (candidate to move into dedicated lib later)

@@ -175,9 +175,9 @@ static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
     my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
     my_GYRO_cali.float_val[1] = sensor_cali.fog.fogy.step.float_val;
     my_GYRO_cali.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    my_ACCL_cali.float_val[0] = sensor_cali.adxl357.ax.float_val;
-    my_ACCL_cali.float_val[1] = sensor_cali.adxl357.ay.float_val;
-    my_ACCL_cali.float_val[2] = sensor_cali.adxl357.az.float_val;
+    my_ACCL_cali.float_val[0] = sensor_cali.accl.ax.float_val;
+    my_ACCL_cali.float_val[1] = sensor_cali.accl.ay.float_val;
+    my_ACCL_cali.float_val[2] = sensor_cali.accl.az.float_val;
 }
 
 static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
@@ -384,9 +384,9 @@ static void ahrs_stage_attitude_update(fog_parameter_t* fog_parameter)
     my_GYRO_case.float_val[0] = sensor_cali.fog.fogx.step.float_val;
     my_GYRO_case.float_val[1] = sensor_cali.fog.fogy.step.float_val;
     my_GYRO_case.float_val[2] = sensor_cali.fog.fogz.step.float_val;
-    my_ACCL_case.float_val[0] = sensor_cali.adxl357.ax.float_val;
-    my_ACCL_case.float_val[1] = sensor_cali.adxl357.ay.float_val;
-    my_ACCL_case.float_val[2] = sensor_cali.adxl357.az.float_val;
+    my_ACCL_case.float_val[0] = sensor_cali.accl.ax.float_val;
+    my_ACCL_case.float_val[1] = sensor_cali.accl.ay.float_val;
+    my_ACCL_case.float_val[2] = sensor_cali.accl.az.float_val;
 
     g_att_ctx.out_th = fog_parameter->paramZ[13].data.float_val;
     g_att_ctx.out_th_en = fog_parameter->paramZ[14].data.int_val;

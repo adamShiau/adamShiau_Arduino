@@ -127,10 +127,10 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
     memcpy(out->fog.fogy.step.bin_val,  &pkt[idx], 4); idx += 4;
     memcpy(out->fog.fogx.step.bin_val,  &pkt[idx], 4); idx += 4;
 
-    // adxl357 {ax, ay, az}
-    memcpy(out->adxl357.ax.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->adxl357.ay.bin_val,     &pkt[idx], 4); idx += 4;
-    memcpy(out->adxl357.az.bin_val,     &pkt[idx], 4); idx += 4;
+    // accl {ax, ay, az}
+    memcpy(out->accl.ax.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->accl.ay.bin_val,     &pkt[idx], 4); idx += 4;
+    memcpy(out->accl.az.bin_val,     &pkt[idx], 4); idx += 4;
 
     // temp {x, y, z}
     memcpy(out->temp.tempz.bin_val,     &pkt[idx], 4); idx += 4;
@@ -142,8 +142,8 @@ int update_raw_data(const uint8_t* pkt, my_sensor_t* out)
     memcpy(out->hk.Tact_mon.bin_val,        &pkt[idx], 4); idx += 4;
     memcpy(out->hk.pump_pd_mon.bin_val,     &pkt[idx], 4); idx += 4;
 
-    // adxl357.temp
-    memcpy(out->adxl357.temp.bin_val,   &pkt[idx], 4); idx += 4;
+    // accl.temp
+    memcpy(out->accl.temp.bin_val,   &pkt[idx], 4); idx += 4;
 
     // time
     memcpy(out->time.time.bin_val,      &pkt[idx], 4); idx += 4;
@@ -419,15 +419,15 @@ void pack_sensor_payload_from_cali(const my_sensor_t* cali, uint8_t* out)
   memcpy(&out[idx], cali->fog.fogy.step.bin_val, 4); idx += 4;
   memcpy(&out[idx], cali->fog.fogz.step.bin_val, 4); idx += 4;
 
-  memcpy(&out[idx], cali->adxl357.ax.bin_val, 4);    idx += 4;
-  memcpy(&out[idx], cali->adxl357.ay.bin_val, 4);    idx += 4;
-  memcpy(&out[idx], cali->adxl357.az.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->accl.ax.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->accl.ay.bin_val, 4);    idx += 4;
+  memcpy(&out[idx], cali->accl.az.bin_val, 4);    idx += 4;
 
   memcpy(&out[idx], cali->temp.tempx.bin_val, 4);    idx += 4;
   memcpy(&out[idx], cali->temp.tempy.bin_val, 4);    idx += 4;
   memcpy(&out[idx], cali->temp.tempz.bin_val, 4);    idx += 4;
 
-  memcpy(&out[idx], cali->adxl357.temp.bin_val, 4);  idx += 4;
+  memcpy(&out[idx], cali->accl.temp.bin_val, 4);  idx += 4;
 
   memcpy(&out[idx], cali->time.time.bin_val, 4);     idx += 4;
 }
@@ -441,7 +441,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // float ty   = ((float)raw->temp.tempy.int_val) * COE_TEMP_AD590 - 273.15; 
   float tz   = ((float)raw->temp.tempz.int_val) * COE_TEMP_AD590 - 273.15; 
   float vin_mon = ((float)raw->hk.Vin_mon.int_val) * VIN_MON_COFF;
-  float tacc = ((float)raw->adxl357.temp.int_val) * SF_TEMP + 25.0;
+  float tacc = ((float)raw->accl.temp.int_val) * SF_TEMP + 25.0;
 
   //------ debug ADC voltage------------------
 
@@ -606,9 +606,9 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // Serial.print(raw->fog.fogz.step.float_val); Serial.println();Serial.println();
 
   // === Accel 溫補（scale factor & bias）===
-  float ax_comp = ((float)raw->adxl357.ax.int_val) * sf_x_acc - bx_acc;
-  float ay_comp = ((float)raw->adxl357.ay.int_val) * sf_y_acc - by_acc;
-  float az_comp = ((float)raw->adxl357.az.int_val) * sf_z_acc - bz_acc;
+  float ax_comp = ((float)raw->accl.ax.int_val) * sf_x_acc - bx_acc;
+  float ay_comp = ((float)raw->accl.ay.int_val) * sf_y_acc - by_acc;
+  float az_comp = ((float)raw->accl.az.int_val) * sf_z_acc - bz_acc;
 
   // === Gyro misalignment（misalignment[12..23]）===
   float cgx = fog_parameter->misalignment[12].data.float_val;
@@ -698,15 +698,15 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   cali->fog.fogy.step.float_val = gy_cal;
   cali->fog.fogz.step.float_val = gz_cal;
 
-  cali->adxl357.ax.float_val = ax_cal;
-  cali->adxl357.ay.float_val = ay_cal;
-  cali->adxl357.az.float_val = az_cal;
+  cali->accl.ax.float_val = ax_cal;
+  cali->accl.ay.float_val = ay_cal;
+  cali->accl.az.float_val = az_cal;
 
   // 溫度 / 時間直接沿用 raw
   cali->temp.tempx.float_val = tz;
   cali->temp.tempy.float_val = tz;
   cali->temp.tempz.float_val = tz;
-  cali->adxl357.temp.float_val = tacc;
+  cali->accl.temp.float_val = tacc;
   // Serial.println(cali->temp.tempx.float_val);
   
   // time

@@ -18,7 +18,7 @@ void ahrs_transform_sensorVecToCase(const my_att_t* gyro_cali_dps,
     sensor_cali->fog.fogy.step.float_val = gyro_case.float_val[1];
     sensor_cali->fog.fogz.step.float_val = gyro_case.float_val[2];
 
-    sensor_cali->adxl357.ax.float_val = acc_case.float_val[0];
-    sensor_cali->adxl357.ay.float_val = acc_case.float_val[1];
-    sensor_cali->adxl357.az.float_val = acc_case.float_val[2];
+    sensor_cali->accl.ax.float_val = acc_case.float_val[0];
+    sensor_cali->accl.ay.float_val = acc_case.float_val[1];
+    sensor_cali->accl.az.float_val = acc_case.float_val[2];
 }

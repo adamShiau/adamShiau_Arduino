@@ -187,7 +187,7 @@ typedef struct
   my_time_t time;
   fog_t fog;
   temp_t temp;
-  accl_t adxl357;
+  accl_t accl;
   m_gyro_t m_gyro;
   hk_t hk;
   hins_mip_data_t hins;
