@@ -466,32 +466,40 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro, sf_y_gyro, sf_z_gyro;
 
-  sf_x_gyro = SF_GYRO_1000DPS;
+  // sf_x_gyro = SF_GYRO_1000DPS;
 
-  /***
-  sf_x_gyro = SF_GYRO_1000DPS*sf_temp_comp_1st(tacc,
+  // /***
+  sf_x_gyro = sf_temp_comp_1st(tacc,
           fog_parameter->paramX[17].data.float_val,
           fog_parameter->paramX[18].data.float_val);
-  */
+  // */
   
-  sf_y_gyro = SF_GYRO_1000DPS;
+  // sf_y_gyro = SF_GYRO_1000DPS;
 
-  /***
-  sf_y_gyro = SF_GYRO_1000DPS*sf_temp_comp_1st(tacc,
+  // /***
+  sf_y_gyro = sf_temp_comp_1st(tacc,
           fog_parameter->paramY[17].data.float_val,
           fog_parameter->paramY[18].data.float_val);
-  */
+  // */
+
+  // sf_z_gyro = sf_temp_comp_1st(tz,
+  //         fog_parameter->paramZ[17].data.float_val,
+  //         fog_parameter->paramZ[18].data.float_val);
 
   if (s_wz_src == WZ_SRC_MEMS) { 
-      sf_z_gyro = SF_GYRO_1000DPS;
-      // sf_z_gyro = sf_temp_comp_1st(tz,
-      //     fog_parameter->paramZ[17].data.float_val,
-      //     fog_parameter->paramZ[18].data.float_val*SF_GYRO_1000DPS);
+      // sf_z_gyro = SF_GYRO_1000DPS;
+      sf_z_gyro = sf_temp_comp_1st(tacc,
+          fog_parameter->paramZ[17].data.float_val,
+          fog_parameter->paramZ[18].data.float_val);
   } else {
       sf_z_gyro = sf_temp_comp_1st(tz,
           fog_parameter->paramZ[17].data.float_val,
           fog_parameter->paramZ[18].data.float_val);
   }
+  // Serial.print("sf_y_gyro: ");
+  // Serial.print(" 17| ");Serial.print(fog_parameter->paramY[17].data.float_val);Serial.print(", ");
+  // Serial.print(" 18| ");Serial.println(fog_parameter->paramY[18].data.float_val); 
+
 
   // #ifdef CASE_MEMS
   //   float sf_z_gyro = SF_GYRO_1000DPS;
@@ -535,11 +543,41 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
 
   // === Gyro bias（三區段一次線性）===
   float bx_gyro = 0;
-  float by_gyro = 0;
+  bx_gyro = bias_temp_comp_1st_3t(
+      tacc, fog_parameter->paramX[23].data.float_val, fog_parameter->paramX[24].data.float_val,
+      fog_parameter->paramX[25].data.float_val, fog_parameter->paramX[26].data.float_val,
+      fog_parameter->paramX[27].data.float_val, fog_parameter->paramX[28].data.float_val,
+      fog_parameter->paramX[29].data.float_val, fog_parameter->paramX[30].data.float_val
+  );
+  Serial.print(bx_gyro); Serial.print(" |");
+  Serial.print(tacc); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[23].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[24].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[25].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[26].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[27].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[28].data.float_val); Serial.print(" |");
+  Serial.print(fog_parameter->paramX[29].data.float_val); Serial.print(" |");
+  Serial.println(fog_parameter->paramX[30].data.float_val);
 
-  float bz_gyro;
+
+  float by_gyro = 0;
+  by_gyro = bias_temp_comp_1st_3t(
+      tacc, fog_parameter->paramY[23].data.float_val, fog_parameter->paramY[24].data.float_val,
+      fog_parameter->paramY[25].data.float_val, fog_parameter->paramY[26].data.float_val,
+      fog_parameter->paramY[27].data.float_val, fog_parameter->paramY[28].data.float_val,
+      fog_parameter->paramY[29].data.float_val, fog_parameter->paramY[30].data.float_val
+  );
+
+  float bz_gyro; 
   if (s_wz_src == WZ_SRC_MEMS) {
-    bz_gyro = 0;
+    // bz_gyro = 0;
+    bz_gyro = bias_temp_comp_1st_3t(
+        tacc, fog_parameter->paramZ[23].data.float_val, fog_parameter->paramZ[24].data.float_val,
+        fog_parameter->paramZ[25].data.float_val, fog_parameter->paramZ[26].data.float_val,
+        fog_parameter->paramZ[27].data.float_val, fog_parameter->paramZ[28].data.float_val,
+        fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
+    );
   }
   else { 
     bz_gyro = bias_temp_comp_1st_3t(
@@ -549,6 +587,9 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
         fog_parameter->paramZ[29].data.float_val, fog_parameter->paramZ[30].data.float_val
     );
   }
+  // Serial.print("bz_gyro: "); Serial.println(by_gyro);
+  // Serial.print(" 17| ");Serial.print(fog_parameter->paramZ[17].data.float_val);Serial.print(", ")
+  // Serial.print(" 18| ");Serial.println(fog_parameter->paramZ[18].data.float_val); 
 
   // #ifdef CASE_MEMS
   //   float bz_gyro = 0;
@@ -639,6 +680,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
     } else {
         gz_comp = ((float)raw->fog.fogz.step.int_val) * sf_z_gyro - bz_gyro;
     }
+  // Serial.print("gy_comp: "); Serial.println(gy_comp);
   
   // #ifdef CASE_MEMS
   //   float gz_comp = ((float)raw->m_gyro.gz.int_val) * sf_z_gyro - bz_gyro;

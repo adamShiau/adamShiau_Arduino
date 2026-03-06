@@ -407,10 +407,10 @@ bool boot_capture_all(fog_parameter_t* fog_inst) {
 
   bool ok = true;
   // DEBUG_PRINT("dump_fog_param..\n");
-  ok &= dump_fog_param(fog_inst, 1);        delay(10);
+  ok &= dump_fog_param(fog_inst, 1);        delay(10); // z axis 
   // DEBUG_PRINT("dump_fog_param done\n");
-  // ok &= dump_fog_param(fog_inst, 2);        delay(10);
-  // ok &= dump_fog_param(fog_inst, 3);        delay(10);
+  ok &= dump_fog_param(fog_inst, 2);        delay(10); // y axis 
+  ok &= dump_fog_param(fog_inst, 3);        delay(10); // x axis 
   // DEBUG_PRINT("dump_misalignment_param..\n");
   ok &= dump_misalignment_param(fog_inst);  delay(10);
   // DEBUG_PRINT("dump_misalignment_param done\n");

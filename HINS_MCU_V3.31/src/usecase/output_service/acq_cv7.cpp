@@ -198,7 +198,7 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
     if (payload != nullptr) {
         uint8_t total_payload_len = hins_get_last_payload_len();
         uint8_t i = 0;
-        DEBUG_PRINT("\nLen: %d\n", total_payload_len);
+        // DEBUG_PRINT("\nLen: %d\n", total_payload_len);
 
         // 掃描所有 Field [Length][Descriptor][Data...]
         while (i < total_payload_len) {
@@ -209,12 +209,12 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
             // 根據 MIP PDF 定義解析各個 Descriptor
             switch (fdesc) {
                 case 0xD3: // GPS Timestamp (Len: 14)
-                    DEBUG_PRINT("GPS Timestamp\n");
+                    // DEBUG_PRINT("GPS Timestamp\n");
                     hins->gps_tow = be_f64(&fdata[0]); 
                     break;
 
                 case 0x49: // GNSS Dual Antenna Status (Len: 19)
-                    DEBUG_PRINT("GPS Dual Antenna Status\n");
+                    // DEBUG_PRINT("GPS Dual Antenna Status\n");
                     hins->heading_da    = be_f32(&fdata[4]);
                     hins->heading_unc   = be_f32(&fdata[8]);
                     hins->fix_type      = fdata[12];
@@ -223,14 +223,14 @@ static bool hins_stage_update_raw(Stream& port, hins_mip_data_t* hins) {
                     break;
 
                 case 0x10: // Status Data (Len: 8)
-                    DEBUG_PRINT("Status Data\n");
+                    // DEBUG_PRINT("Status Data\n");
                     hins->filter_state   = be_u16(&fdata[0]);
                     hins->dynamic_mode   = be_u16(&fdata[2]);
                     hins->status_flag_82 = be_u16(&fdata[4]);
                     break;
 
                 case 0x46: // Aiding Measurement Summary (Len: 9)
-                    DEBUG_PRINT("Aiding Measurement Summary\n");
+                    // DEBUG_PRINT("Aiding Measurement Summary\n");
 
                     // ---- 新增 HEX Print 區塊 ----
                     // Serial.print("[HEX 0x46]: ");
