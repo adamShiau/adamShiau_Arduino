@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../HINS_MCU_V3.3"
 		}
 	]
 }

@@ -549,16 +549,16 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       fog_parameter->paramX[27].data.float_val, fog_parameter->paramX[28].data.float_val,
       fog_parameter->paramX[29].data.float_val, fog_parameter->paramX[30].data.float_val
   );
-  Serial.print(bx_gyro); Serial.print(" |");
-  Serial.print(tacc); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[23].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[24].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[25].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[26].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[27].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[28].data.float_val); Serial.print(" |");
-  Serial.print(fog_parameter->paramX[29].data.float_val); Serial.print(" |");
-  Serial.println(fog_parameter->paramX[30].data.float_val);
+  
+  // Serial.print("tempX: ");Serial.print(tacc,2); Serial.print(" |");
+  // Serial.print("T1: ");Serial.print(fog_parameter->paramX[23].data.float_val,2); Serial.print(" |");
+  // Serial.print("T2: ");Serial.print(fog_parameter->paramX[24].data.float_val,2); Serial.print(" |");
+  // Serial.print("s1: ");Serial.print(fog_parameter->paramX[25].data.float_val,2); Serial.print(" |");
+  // Serial.print("o1: ");Serial.print(fog_parameter->paramX[26].data.float_val,2); Serial.print(" |");
+  // Serial.print("s2: ");Serial.print(fog_parameter->paramX[27].data.float_val,2); Serial.print(" |");
+  // Serial.print("o2: ");Serial.print(fog_parameter->paramX[28].data.float_val,2); Serial.print(" |");
+  // Serial.print("s3: ");Serial.print(fog_parameter->paramX[29].data.float_val,2); Serial.print(" |");
+  // Serial.print("o3: ");Serial.println(fog_parameter->paramX[30,2].data.float_val);
 
 
   float by_gyro = 0;
