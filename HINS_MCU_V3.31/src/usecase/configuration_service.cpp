@@ -69,13 +69,13 @@ bool apply_datarate_index(uint8_t dr_index)
 
   // 1) Update FPGA (CMD_SYNC_CNT, ch=6)
   DEBUG_PRINT("Applying datarate index %d (cnt=%d, hz=%f)\n", dr_index, cnt, hz);
-  if (!nios_send_cfg_datarate(g_cmd_port_fpga, CMD_SYNC_CNT, dr_index)) {
-    return false;
-  }
+  // if (!nios_send_cfg_datarate(g_cmd_port_fpga, CMD_SYNC_CNT, dr_index)) {
+  //   return false;
+  // }
 
   // 2) Update MCU local rate (used by ahrs)
   // set_data_rate(cnt);
-  ahrs_attitude.init(hz); //想想要怎麼辦
+  ahrs_attitude.init(hz); //想想要怎麼辦，新增一個 AHRS freq setter, 把原本的 begin 包起來
 
   return true;
 }
@@ -104,7 +104,7 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   uint8_t br_idx = cfg_get_u8(params, 1, 1); // default to 115200
 
   // Apply in order: datarate then baudrate
-  (void)apply_datarate_index(dr_idx); delay(50); // already move to nios2
+  (void)apply_datarate_index(dr_idx); // already move to nios2
   (void)apply_baudrate_index(br_idx);
 
   apply_rcs_matrix_from_container(params);
