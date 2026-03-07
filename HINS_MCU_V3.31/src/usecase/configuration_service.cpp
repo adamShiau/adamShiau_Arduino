@@ -75,7 +75,7 @@ bool apply_datarate_index(uint8_t dr_index)
 
   // 2) Update MCU local rate (used by ahrs)
   // set_data_rate(cnt);
-  ahrs_attitude.init(hz);
+  ahrs_attitude.init(hz); //想想要怎麼辦
 
   return true;
 }
@@ -104,13 +104,13 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   uint8_t br_idx = cfg_get_u8(params, 1, 1); // default to 115200
 
   // Apply in order: datarate then baudrate
-  (void)apply_datarate_index(dr_idx); delay(50);
+  (void)apply_datarate_index(dr_idx); delay(50); // already move to nios2
   (void)apply_baudrate_index(br_idx);
 
   apply_rcs_matrix_from_container(params);
   apply_is_NED_from_container(params);
-  (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50);
-  (void)apply_ASM330LHHX_Accl_LPF2_from_container(params);
+  // (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50); // already move to nios2
+  // (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); delay(50); // already move to nios2
   (void)apply_gyroZ_source_from_container(params); 
 }
 
