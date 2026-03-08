@@ -80,6 +80,17 @@ bool apply_datarate_index(uint8_t dr_index)
   return true;
 }
 
+bool apply_attitude_init(uint8_t dr_index)
+{
+  uint32_t cnt = 0;
+  float hz = 0.0f;
+  if (!map_datarate_index(dr_index, &cnt, &hz)) {
+    return false;
+  }
+  DEBUG_PRINT("Set ahrs_attitude frequency: %f hz= \n", hz);
+  ahrs_attitude.init(hz);
+}
+
 bool apply_baudrate_index(uint8_t br_index)
 {
   uint32_t baud = 1;
@@ -104,7 +115,10 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   uint8_t br_idx = cfg_get_u8(params, 1, 1); // default to 115200
 
   // Apply in order: datarate then baudrate
-  (void)apply_datarate_index(dr_idx); // already move to nios2
+  // (void)apply_datarate_index(dr_idx); // already move to nios2
+
+  (void)apply_attitude_init(dr_idx);
+
   (void)apply_baudrate_index(br_idx);
 
   apply_rcs_matrix_from_container(params);

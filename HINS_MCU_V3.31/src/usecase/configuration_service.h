@@ -29,6 +29,7 @@ bool apply_datarate_index(uint8_t dr_index);
  */
 bool apply_baudrate_index(uint8_t br_index);
 
+bool apply_attitude_init(uint8_t dr_index);
 
 /**
  * @brief 從容器中提取 Rcs 矩陣並應用至 AHRS 演算法
