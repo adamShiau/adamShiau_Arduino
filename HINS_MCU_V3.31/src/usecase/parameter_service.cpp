@@ -1715,7 +1715,6 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							// PC sends datarate index (0~4). Convert to FPGA sync counter and forward to FPGA (ch fixed to 6).
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_DR, rx->value, rx->ch); delay(100);
              				update_parameter_container(rx, fog_inst, CMD_CFG_DR - CFG_CONTAINER_TO_CMD_OFFSET);
-							// (void)apply_datarate_index((uint8_t)rx->value);
 							(void)apply_attitude_init((uint8_t)rx->value);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}

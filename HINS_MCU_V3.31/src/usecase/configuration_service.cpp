@@ -16,13 +16,18 @@ static bool map_datarate_index(uint8_t idx, uint32_t* out_cnt, float* out_hz)
 {
   if (!out_cnt || !out_hz) return false;
 
+  DEBUG_PRINT("\nMapping dr_index: %d: ", idx);
   switch (idx) {
-    case 0: *out_cnt = DR_10Hz_CNT;  *out_hz = 10.0f;  return true;
-    case 1: *out_cnt = DR_50Hz_CNT;  *out_hz = 50.0f;  return true;
-    case 2: *out_cnt = DR_100Hz_CNT; *out_hz = 100.0f; return true;
-    case 3: *out_cnt = DR_200Hz_CNT; *out_hz = 200.0f; return true;
-    case 4: *out_cnt = DR_400Hz_CNT; *out_hz = 400.0f; return true;
-    default: return false;
+    case 0: *out_cnt = DR_10Hz_CNT;  *out_hz = 10.0f;   Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 1: *out_cnt = DR_50Hz_CNT;  *out_hz = 50.0f;   Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 2: *out_cnt = DR_100Hz_CNT; *out_hz = 100.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 3: *out_cnt = DR_200Hz_CNT; *out_hz = 200.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 4: *out_cnt = DR_400Hz_CNT; *out_hz = 400.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    default: {
+      DEBUG_PRINT("[ERROR] data rate index out of range (0 ~ 4)\n");
+      return false;
+    } 
+    
   }
 }
 
@@ -84,10 +89,11 @@ bool apply_attitude_init(uint8_t dr_index)
 {
   uint32_t cnt = 0;
   float hz = 0.0f;
+  
   if (!map_datarate_index(dr_index, &cnt, &hz)) {
     return false;
   }
-  DEBUG_PRINT("Set ahrs_attitude frequency: %f hz= \n", hz);
+  // DEBUG_PRINT("Set ahrs_attitude frequency: %f hz= \n", hz);
   ahrs_attitude.init(hz);
 }
 

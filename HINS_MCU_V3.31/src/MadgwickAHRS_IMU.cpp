@@ -69,7 +69,7 @@ Madgwick::Madgwick() {
 
 void Madgwick::init(float data_rate) {
     begin(data_rate); // 設定採樣率
-    Serial.print("\nAttitude rate set to "); Serial.print(data_rate); Serial.println(" Hz");
+    Serial.print("Attitude rate set to "); Serial.print(data_rate); Serial.println(" Hz");
  
     const float Rcs[9] = { 0,-1,0,  -1,0,0,  0,0,-1 };  // v_case = Rcs * v_sensor, ENU
     setSensorToCaseMatrix(Rcs); // 設定 Sensor→Case 固定旋轉
