@@ -1,5 +1,6 @@
 #include "acq_imu.h"
 #include "src/packet_parser.h"
+#include "EEPROM_MANAGE.h"
 
 // GNSS-IMU Yaw融合變數
 static float heading_shift_offset = 0.0f;      // YAW偏移量
@@ -11,6 +12,14 @@ static float gnss_heading_deg = 0.0f;         // 最新GNSS航向
 static bool gnss_heading_valid = false;       // GNSS航向有效性
 static uint32_t last_gnss_update_time = 0;    // 最後GNSS更新時間
 static DataStatus last_gnss_status = DATA_INVALID;  // 最後收到的GNSS狀態
+static float IEEE_754_INT2F(int in);\
+static int IEEE_754_F2INT(float in);
+static float sf_temp_comp_1st(float temp, int slope, int offset, bool print); 
+static float bias_temp_comp_1st_3t(float temp,
+                                    int T1, int T2,
+                                    int s1, int o1,
+                                    int s2, int o2,
+                                    int s3, int o3, bool print);
 
 void reset_SYNC(); // define  in .ino
 void acc_cali(float acc_cli[3], float acc[3]); // define  in .ino
@@ -18,6 +27,8 @@ void gyro_cali(float gyro_cli[3], float gyro[3]); // define  in .ino
 void print_imu_data(bool on, float acc[3], float gyro[3]); // define  in .ino
 void clear_SEL_EN(byte &select_fn); // define  in .ino
 void sendGpsPacketKVH(const GnssData& gnss_data); // GPS 位置封包輸出 (KVH 格式)
+
+
 
 // GNSS航向更新函數
 void updateGNSSHeading(float heading, DataStatus status) {
@@ -401,7 +412,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
     my_acc_t my_memsGYRO;
     // my_float_t pd_temp;
-    static my_float_t myfog_GYRO;
+    static my_float_t myfog_GYRO, PD_temp;
     static my_acc_t my_memsXLM, my_ACCL_cali;
     static my_acc_t my_GYRO, my_GYRO_cali, my_att;
 
@@ -478,6 +489,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     
     if(run_fog_flag) {
 
+    /*** GNSS decoder section */
     // GPS 5Hz 控制 - 獨立於ISR_PEDGE
     static bool cmd1_sent = false;
     static bool cmd2_sent = false;
@@ -567,300 +579,277 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
     }
 
     // GPS封包輸出已改為收到即發送，不再使用定時器控制
-
+    /*** End of GNSS decoder section */
+    
+    /*** FOG data decoder section */
     fog = sp14.readData(header, sizeofheader, &try_cnt);
 
-    if(fog) {
-      reg_fog = fog;
-      // 取得來自FPGA之FOG數據
-      myfog_GYRO.bin_val[0] = reg_fog[11];
-      myfog_GYRO.bin_val[1] = reg_fog[10];
-      myfog_GYRO.bin_val[2] = reg_fog[9];
-      myfog_GYRO.bin_val[3] = reg_fog[8];
+    if(fog) 
+    {    
+        reg_fog = fog;
 
-    //   Serial.println(myfog_GYRO.int_val);
+        // 取得來自FPGA之FOG數據
+        myfog_GYRO.bin_val[0] = reg_fog[8];
+        myfog_GYRO.bin_val[1] = reg_fog[9];
+        myfog_GYRO.bin_val[2] = reg_fog[10];
+        myfog_GYRO.bin_val[3] = reg_fog[11];
+        //   Serial.println(myfog_GYRO.int_val);
+
+        // 計算 PD_Temp
+        int8_t Hbyte, Lbyte;
+        Hbyte = reg_fog[12];
+        Lbyte = reg_fog[13];
+        
+        if(Hbyte>>7) PD_temp.float_val = (float)Hbyte - 256.0 + (float)(Lbyte>>7)*0.5;
+        else PD_temp.float_val = (float)Hbyte + (float)(Lbyte>>7)*0.5;
 
 
-    //   int8_t Hbyte, Lbyte;
-      
-    //   Hbyte = reg_fog[12];
-    //   Lbyte = reg_fog[13];
-    //   float pd_temp;
+        const eeprom_obj *ptr = &eeprom_x;
 
-    //   if(Hbyte>>7) pd_temp = (float)Hbyte - 256.0 + (float)(Lbyte>>7)*0.5;
-    //   else pd_temp = (float)Hbyte + (float)(Lbyte>>7)*0.5;
+        // SF 補償參數
+        int sf0 = ptr->EEPROM_SF0; 
+        int sf1 = ptr->EEPROM_SF1;
+
+        // Bias 補償參數
+        int t1 = ptr->EEPROM_BIAS_COMP_T1; 
+        int t2 = ptr->EEPROM_BIAS_COMP_T2; 
+        int s1 = ptr->EEPROM_SFB_1_SLOPE;  
+        int o1 = ptr->EEPROM_SFB_1_OFFSET; 
+        int s2 = ptr->EEPROM_SFB_2_SLOPE;  
+        int o2 = ptr->EEPROM_SFB_2_OFFSET; 
+        int s3 = ptr->EEPROM_SFB_3_SLOPE;  
+        int o3 = ptr->EEPROM_SFB_3_OFFSET; 
+
+
+        /*** debug print PD_temp */
+        
+        // Serial.print("Temp| "); Serial.print(PD_temp.float_val, 2); Serial.print(", "); 
+
+        /*** debug print step */
+        // Serial.print("Step| "); Serial.print(myfog_GYRO.int_val); Serial.print("\n");
+        // Serial.print("Step| "); 
+        // Serial.print(myfog_GYRO.bin_val[0], HEX); Serial.print(", "); 
+        // Serial.print(myfog_GYRO.bin_val[1], HEX); Serial.print(", ");
+        // Serial.print(myfog_GYRO.bin_val[2], HEX); Serial.print(", "); 
+        // Serial.print(myfog_GYRO.bin_val[3], HEX); Serial.print("\n"); 
+        // Serial.print("Err| "); 
+        // Serial.print(reg_fog[7], HEX); Serial.print(", "); 
+        // Serial.print(reg_fog[6], HEX); Serial.print(", ");
+        // Serial.print(reg_fog[5], HEX); Serial.print(", "); 
+        // Serial.print(reg_fog[4], HEX); Serial.print("\n");
+        
+        /*** SF first order temperature compensation */
+        float SF_FOG = sf_temp_comp_1st(PD_temp.float_val, sf0, sf1, 0);
+
+        /*** Bias three section temperature compensation */
+        float BS_FOG = bias_temp_comp_1st_3t(PD_temp.float_val,
+                                    t1, t2, s1, o1, s2, o2, s3, o3, 0);
+        
+        // Serial.print("SF: "); Serial.print(SF_FOG, 5); Serial.print(", ");
+        // Serial.print("  |BS: "); Serial.print(BS_FOG, 5); Serial.print("\n");
+
+        // if(ISR_PEDGE)
+        // {
+        data_cnt++;
+        mcu_time.ulong_val = millis() - t_previous;
+
+        ISR_PEDGE = false;
+
+        /*** get sensor raw data*/
+        // IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
+        /*** ------get xlm raw data -----***/
+        IMU.Get_X_Axes_f(my_memsXLM.float_val);// get mems XLM data in g
+        /*** ------mis-alignment calibration xlm raw data -----***/
+        acc_cali(my_ACCL_cali.float_val, my_memsXLM.float_val);
+
+        /*** ------get gyro raw data -----***/
+        IMU.Get_G_Axes_f(my_memsGYRO.float_val);// get mems GYRO data in degree/s
+        my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
+        my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
+        //   my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
+        my_GYRO.float_val[2] = myfog_GYRO.float_val;
+        /*** ------mis-alignment calibration gyro raw data -----***/
+        gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
+
+        switch (phase) 
+        {    // switch, phase, start.
+            case PH_AHRS:
+                {    // case, PH_AHRS, start.
+                // Phase = PH_AHRS: Execute the AHRS algorithm + Pitch (case frame) derived from quaternion, k=1,3,5, ...
+            
+                // 3-1) 閥值與飽和值篩選
+                my_acc_t my_GYRO_att_calculate, my_ACCL_att_calculate;
+                
+                    // Gyro: 死區 + 飽和
+                    my_GYRO_att_calculate.float_val[0] =
+                    apply_deadband_and_sat(my_GYRO_cali.float_val[0], attitude_cali_coe._f.std_wx, GYRO_MAX_DPS);
+                    my_GYRO_att_calculate.float_val[1] =
+                    apply_deadband_and_sat(my_GYRO_cali.float_val[1], attitude_cali_coe._f.std_wy, GYRO_MAX_DPS);
+                    my_GYRO_att_calculate.float_val[2] =
+                    apply_deadband_and_sat(my_GYRO_cali.float_val[2], attitude_cali_coe._f.std_wz, GYRO_MAX_DPS);
+
+                for (int i = 0; i < 3; ++i) {
+                    // Accel: 死區 + 飽和
+                    my_ACCL_att_calculate.float_val[i] =
+                    apply_deadband_and_sat(my_ACCL_cali.float_val[i], ACC_MIN, ACC_MAX);
+                }
+
+                // 3-1.5) Acc 低通（姿態修正用；權重判斷用原始）
+                if (ax_lp==0 && ay_lp==0 && az_lp==0) {
+                    ax_lp = my_ACCL_att_calculate.float_val[0];
+                    ay_lp = my_ACCL_att_calculate.float_val[1];
+                    az_lp = my_ACCL_att_calculate.float_val[2];
+                } else {
+                    ax_lp = (1-ACC_LP_ALPHA)*ax_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[0];
+                    ay_lp = (1-ACC_LP_ALPHA)*ay_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[1];
+                    az_lp = (1-ACC_LP_ALPHA)*az_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[2];
+                }
+
+                // 3-2) 計算 dt（秒）
+                uint32_t now_us = micros();
+                float dt_curr;
+                if (g_last_ts_us == 0) {
+                    dt_curr = Ts;                 // 第一筆：名目取樣時間
+                } else {
+                    uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
+                    dt_curr = (float)du * 1e-6f;
+                }
+                g_last_ts_us = now_us;
+
+                // 夾一下 dt（避免偶發卡頓或 0）
+                if (dt_curr < 1e-5f) dt_curr = 1e-5f;  // 10 µs 下限保護
+
+                // 若超過較寬鬆上限（建議 50 ms），丟棄上一筆，避免錯誤的兩樣本外積
+                if (dt_curr > 0.05f) {   // > 50 ms 視為掉拍
+                    dt_curr = Ts;        // 重置為名目取樣時間
+                    g_have_prev = 0;     // 不做兩樣本合成，下一筆重新開始
+                }
+
+                // 3-3) 兩樣本 coning 合成 → 等效角速率 weq_dps
+                float w_eq_dps[3];
+                if (g_have_prev) {
+                    coning_two_sample_dps(g_w_prev_dps, g_dt_prev_s,
+                                            my_GYRO_att_calculate.float_val, dt_curr,
+                                            w_eq_dps);
+                } else {
+                    w_eq_dps[0] = my_GYRO_att_calculate.float_val[0];
+                    w_eq_dps[1] = my_GYRO_att_calculate.float_val[1];
+                    w_eq_dps[2] = my_GYRO_att_calculate.float_val[2];
+                    g_have_prev = 1;
+                }
+
+                // 3-4) 姿態更新（低通 acc 做修正；原始 acc 做權重判斷）
+                ahrs_attitude.updateIMU_dualAccel(
+                    w_eq_dps[0], w_eq_dps[1], w_eq_dps[2],
+                    ax_lp, ay_lp, az_lp,                                         // 低通 acc → 姿態修正
+                    my_ACCL_att_calculate.float_val[0],                          // 原始 acc → 權重判斷
+                    my_ACCL_att_calculate.float_val[1],
+                    my_ACCL_att_calculate.float_val[2] );
+
+                // --- 滾動 coning 狀態 ---
+                g_w_prev_dps[0] = my_GYRO_att_calculate.float_val[0];
+                g_w_prev_dps[1] = my_GYRO_att_calculate.float_val[1];
+                g_w_prev_dps[2] = my_GYRO_att_calculate.float_val[2];
+                g_dt_prev_s = dt_curr;
+
+                // pitch_AHRS_phase = ahrs_attitude.getLocalCasePitch();            // Store "pitch_AHRS_phase" computed in the AHRS phase for use in the Euler phase.
+                w_eq_dps_AHRS_phase[0] = w_eq_dps[0];                            // Store "w_eq_dps" computed in the AHRS phase for use in the Euler phase.
+                w_eq_dps_AHRS_phase[1] = w_eq_dps[1];
+                w_eq_dps_AHRS_phase[2] = w_eq_dps[2];
+                dt_AHRS_phase = dt_curr;                                         // Store "dt_curr" computed in the AHRS phase for use in the Euler phase.
+                
+                // Serial.println(dt_curr, 6);                                   // The "dt_curr" value should be about 0.01. (AHRS calculation rate: 100 Hz.)
+
+                phase = PH_EULER;
+                break;    // case PH_AHRS break.
+                }         // case, PH_AHRS, end.
+
+            case PH_EULER:
+                {    // case, PH_EULER, start.
+                // Phase = PH_EULER: Euler angle derived from quaternion (case frame) + Unwrapped Moving Average filter. k=2,4,6, ...
+                float roll_deg, pitch_deg, yaw_deg;
+                ahrs_attitude.getLocalCaseEuler(roll_deg, pitch_deg, yaw_deg);
+                my_att.float_val[0] = pitch_deg;
+                my_att.float_val[1] = roll_deg;
+
+                // 3-6) 奇異區遲滯 + 投影積分 yaw
+                float pitch_deg_now = my_att.float_val[0];
+                if (!yaw_gl_locked && fabsf(pitch_deg_now) >= GL_ENTER_DEG) {
+                    yaw_gl_locked = true;
+                    yaw_hold_deg = yaw_deg;     // 2026/03/05 changed, "ahrs_attitude.getLocalCaseYaw()" -> "yaw_deg"
+                }
+                if (yaw_gl_locked && fabsf(pitch_deg_now) <= GL_EXIT_DEG) {
+                    yaw_gl_locked = false;
+                }
+
+                if (yaw_gl_locked) {
+                    // 取 q_WS，投影 ω_b 到世界座標，積分 z 分量
+                    float q0,q1,q2,q3; ahrs_attitude.getQuatWS(q0,q1,q2,q3);
+                    float Rwb[9]; quat_to_Rwb(q0,q1,q2,q3, Rwb);
+                    
+                    // 2026/03/04: Change
+                    // Use "w_eq_dps" stored in the PH_AHRS phase. ("w_eq_dps_AHRS_phase")
+                    float omega_b_dps[3] = { w_eq_dps_AHRS_phase[0], w_eq_dps_AHRS_phase[1], w_eq_dps_AHRS_phase[2] };
+
+                    float omega_w_dps[3] = {
+                        Rwb[0]*omega_b_dps[0] + Rwb[1]*omega_b_dps[1] + Rwb[2]*omega_b_dps[2],
+                        Rwb[3]*omega_b_dps[0] + Rwb[4]*omega_b_dps[1] + Rwb[5]*omega_b_dps[2],
+                        Rwb[6]*omega_b_dps[0] + Rwb[7]*omega_b_dps[1] + Rwb[8]*omega_b_dps[2]
+                    };
+
+                    // 2026/03/04: Change
+                    // Use "dt_curr" stored in the PH_AHRS phase.  ("dt_AHRS_phase")
+                    yaw_hold_deg += omega_w_dps[2] * dt_AHRS_phase; // dps × s = deg
+
+                    my_att.float_val[2] = yaw_hold_deg;
+                } else {
+                    // 正常使用庫內 yaw
+                    my_att.float_val[2] = yaw_deg;             // 2026/03/05 changed, "ahrs_attitude.getLocalCaseYaw()" -> "yaw_deg"
+                    yaw_hold_deg = my_att.float_val[2];        // 讓持有值跟上
+                }
+
+                my_att.float_val[2] = applyGNSSIMUYawFusion(my_att.float_val[2]); // GNSS-IMU yaw融合
+
+                phase = PH_AHRS;
+                break;    // case PH_EULER break.
+                }         // case, PH_EULER, end.
+        }                 // switch, phase, end.
+
+
+        // Send output data to PC.
+        // --- 座標旋轉至輸出IMU顯示正確 --- 
+        my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
+        ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val,     my_GYRO_case_frame.float_val);
+        ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val,  my_memsXLM_case_frame.float_val);
         
 
-    //   Serial.println(pd_temp, 2);
+        //   print_imu_data(false, my_ACCL_cali.float_val, my_GYRO_cali.float_val);
 
+        // // Prepare to send the calculation results.
+        uint8_t imu_packet[IMU_PACKET_TOTAL_LEN];
+        uint8_t CRC32[4];
+
+        // packet the data to send.
+        memcpy(imu_packet + 0,               KVH_HEADER, 4);
+        memcpy(imu_packet + IMU_GYRO_OFFSET, my_GYRO_case_frame.bin_val, 12);
+        memcpy(imu_packet + IMU_ACCL_OFFSET, my_memsXLM_case_frame.bin_val, 12);
+        memcpy(imu_packet + IMU_TEMP_OFFSET, reg_fog + FOG_PD_TEMP_OFFSET, 4);
+        memcpy(imu_packet + IMU_TIME_OFFSET, mcu_time.bin_val, 4);
+        memcpy(imu_packet + IMU_ATT_OFFSET,  my_att.bin_val, 12);
+        imu_packet[IMU_GPS_OFFSET] = last_gnss_status;
+        // Calculate CRC. (CRC32 for bytes [0..48])
+        myCRC.crc_32(imu_packet, IMU_PACKET_NOCRC_LEN, CRC32);
+        memcpy(imu_packet + IMU_CRC_OFFSET, CRC32, 4);
+
+        if (data_cnt >= DELAY_CNT)
+        {
+            Serial1.write(imu_packet, IMU_PACKET_TOTAL_LEN);
+        }
+
+        resetWDT(); 
+        reset_EXT_WDI(WDI); 
     }
-
-    if(ISR_PEDGE)
-    {
-
-    //   uint8_t* imu_data = (uint8_t*)malloc(36+12+1); // KVH_HEADER:4 + GYRO:12 + ACC:12 + TEMP:4 + TIME:4 + ATT:12 + GPS_STATUS:1
-      data_cnt++;
-      mcu_time.ulong_val = millis() - t_previous;
-
-      ISR_PEDGE = false;
-
-      /*** get sensor raw data*/
-      // IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
-      /*** ------get xlm raw data -----***/
-      IMU.Get_X_Axes_f(my_memsXLM.float_val);// get mems XLM data in g
-      /*** ------mis-alignment calibration xlm raw data -----***/
-      acc_cali(my_ACCL_cali.float_val, my_memsXLM.float_val);
-
-      /*** ------get gyro raw data -----***/
-      IMU.Get_G_Axes_f(my_memsGYRO.float_val);// get mems GYRO data in degree/s
-      my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
-      my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
-    //   my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
-      my_GYRO.float_val[2] = myfog_GYRO.float_val;
-      /*** ------mis-alignment calibration gyro raw data -----***/
-      gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
-
-    switch (phase) 
-    {    // switch, phase, start.
-        case PH_AHRS:
-            {    // case, PH_AHRS, start.
-            // Phase = PH_AHRS: Execute the AHRS algorithm + Pitch (case frame) derived from quaternion, k=1,3,5, ...
-           
-            // 3-1) 閥值與飽和值篩選
-            my_acc_t my_GYRO_att_calculate, my_ACCL_att_calculate;
-            
-                // Gyro: 死區 + 飽和
-                my_GYRO_att_calculate.float_val[0] =
-                apply_deadband_and_sat(my_GYRO_cali.float_val[0], attitude_cali_coe._f.std_wx, GYRO_MAX_DPS);
-                my_GYRO_att_calculate.float_val[1] =
-                apply_deadband_and_sat(my_GYRO_cali.float_val[1], attitude_cali_coe._f.std_wy, GYRO_MAX_DPS);
-                my_GYRO_att_calculate.float_val[2] =
-                apply_deadband_and_sat(my_GYRO_cali.float_val[2], attitude_cali_coe._f.std_wz, GYRO_MAX_DPS);
-
-            for (int i = 0; i < 3; ++i) {
-                // Accel: 死區 + 飽和
-                my_ACCL_att_calculate.float_val[i] =
-                apply_deadband_and_sat(my_ACCL_cali.float_val[i], ACC_MIN, ACC_MAX);
-            }
-
-            // 3-1.5) Acc 低通（姿態修正用；權重判斷用原始）
-            if (ax_lp==0 && ay_lp==0 && az_lp==0) {
-                ax_lp = my_ACCL_att_calculate.float_val[0];
-                ay_lp = my_ACCL_att_calculate.float_val[1];
-                az_lp = my_ACCL_att_calculate.float_val[2];
-            } else {
-                ax_lp = (1-ACC_LP_ALPHA)*ax_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[0];
-                ay_lp = (1-ACC_LP_ALPHA)*ay_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[1];
-                az_lp = (1-ACC_LP_ALPHA)*az_lp + ACC_LP_ALPHA*my_ACCL_att_calculate.float_val[2];
-            }
-
-            // 3-2) 計算 dt（秒）
-            uint32_t now_us = micros();
-            float dt_curr;
-            if (g_last_ts_us == 0) {
-                dt_curr = Ts;                 // 第一筆：名目取樣時間
-            } else {
-                uint32_t du = now_us - g_last_ts_us;   // 自動處理 micros 溢位
-                dt_curr = (float)du * 1e-6f;
-            }
-            g_last_ts_us = now_us;
-
-            // 夾一下 dt（避免偶發卡頓或 0）
-            if (dt_curr < 1e-5f) dt_curr = 1e-5f;  // 10 µs 下限保護
-
-            // 若超過較寬鬆上限（建議 50 ms），丟棄上一筆，避免錯誤的兩樣本外積
-            if (dt_curr > 0.05f) {   // > 50 ms 視為掉拍
-                dt_curr = Ts;        // 重置為名目取樣時間
-                g_have_prev = 0;     // 不做兩樣本合成，下一筆重新開始
-            }
-
-            // 3-3) 兩樣本 coning 合成 → 等效角速率 weq_dps
-            float w_eq_dps[3];
-            if (g_have_prev) {
-                coning_two_sample_dps(g_w_prev_dps, g_dt_prev_s,
-                                        my_GYRO_att_calculate.float_val, dt_curr,
-                                        w_eq_dps);
-            } else {
-                w_eq_dps[0] = my_GYRO_att_calculate.float_val[0];
-                w_eq_dps[1] = my_GYRO_att_calculate.float_val[1];
-                w_eq_dps[2] = my_GYRO_att_calculate.float_val[2];
-                g_have_prev = 1;
-            }
-
-            // 3-4) 姿態更新（低通 acc 做修正；原始 acc 做權重判斷）
-            ahrs_attitude.updateIMU_dualAccel(
-                w_eq_dps[0], w_eq_dps[1], w_eq_dps[2],
-                ax_lp, ay_lp, az_lp,                                         // 低通 acc → 姿態修正
-                my_ACCL_att_calculate.float_val[0],                          // 原始 acc → 權重判斷
-                my_ACCL_att_calculate.float_val[1],
-                my_ACCL_att_calculate.float_val[2] );
-
-            // --- 滾動 coning 狀態 ---
-            g_w_prev_dps[0] = my_GYRO_att_calculate.float_val[0];
-            g_w_prev_dps[1] = my_GYRO_att_calculate.float_val[1];
-            g_w_prev_dps[2] = my_GYRO_att_calculate.float_val[2];
-            g_dt_prev_s = dt_curr;
-
-            // pitch_AHRS_phase = ahrs_attitude.getLocalCasePitch();            // Store "pitch_AHRS_phase" computed in the AHRS phase for use in the Euler phase.
-            w_eq_dps_AHRS_phase[0] = w_eq_dps[0];                            // Store "w_eq_dps" computed in the AHRS phase for use in the Euler phase.
-            w_eq_dps_AHRS_phase[1] = w_eq_dps[1];
-            w_eq_dps_AHRS_phase[2] = w_eq_dps[2];
-            dt_AHRS_phase = dt_curr;                                         // Store "dt_curr" computed in the AHRS phase for use in the Euler phase.
-            
-            // Serial.println(dt_curr, 6);                                   // The "dt_curr" value should be about 0.01. (AHRS calculation rate: 100 Hz.)
-
-            phase = PH_EULER;
-            break;    // case PH_AHRS break.
-            }         // case, PH_AHRS, end.
-
-        case PH_EULER:
-            {    // case, PH_EULER, start.
-            // Phase = PH_EULER: Euler angle derived from quaternion (case frame) + Unwrapped Moving Average filter. k=2,4,6, ...
-            float roll_deg, pitch_deg, yaw_deg;
-            ahrs_attitude.getLocalCaseEuler(roll_deg, pitch_deg, yaw_deg);
-            my_att.float_val[0] = pitch_deg;
-            my_att.float_val[1] = roll_deg;
-
-            // 3-6) 奇異區遲滯 + 投影積分 yaw
-            float pitch_deg_now = my_att.float_val[0];
-            if (!yaw_gl_locked && fabsf(pitch_deg_now) >= GL_ENTER_DEG) {
-                yaw_gl_locked = true;
-                yaw_hold_deg = yaw_deg;     // 2026/03/05 changed, "ahrs_attitude.getLocalCaseYaw()" -> "yaw_deg"
-            }
-            if (yaw_gl_locked && fabsf(pitch_deg_now) <= GL_EXIT_DEG) {
-                yaw_gl_locked = false;
-            }
-
-            if (yaw_gl_locked) {
-                // 取 q_WS，投影 ω_b 到世界座標，積分 z 分量
-                float q0,q1,q2,q3; ahrs_attitude.getQuatWS(q0,q1,q2,q3);
-                float Rwb[9]; quat_to_Rwb(q0,q1,q2,q3, Rwb);
-                
-                // 2026/03/04: Change
-                // Use "w_eq_dps" stored in the PH_AHRS phase. ("w_eq_dps_AHRS_phase")
-                float omega_b_dps[3] = { w_eq_dps_AHRS_phase[0], w_eq_dps_AHRS_phase[1], w_eq_dps_AHRS_phase[2] };
-
-                float omega_w_dps[3] = {
-                    Rwb[0]*omega_b_dps[0] + Rwb[1]*omega_b_dps[1] + Rwb[2]*omega_b_dps[2],
-                    Rwb[3]*omega_b_dps[0] + Rwb[4]*omega_b_dps[1] + Rwb[5]*omega_b_dps[2],
-                    Rwb[6]*omega_b_dps[0] + Rwb[7]*omega_b_dps[1] + Rwb[8]*omega_b_dps[2]
-                };
-
-                // 2026/03/04: Change
-                // Use "dt_curr" stored in the PH_AHRS phase.  ("dt_AHRS_phase")
-                yaw_hold_deg += omega_w_dps[2] * dt_AHRS_phase; // dps × s = deg
-
-                my_att.float_val[2] = yaw_hold_deg;
-            } else {
-                // 正常使用庫內 yaw
-                my_att.float_val[2] = yaw_deg;             // 2026/03/05 changed, "ahrs_attitude.getLocalCaseYaw()" -> "yaw_deg"
-                yaw_hold_deg = my_att.float_val[2];        // 讓持有值跟上
-            }
-
-            // // // Start -------------------------------- Unwrapped Moving Average filter setting --------------------------------
-            // // read raw attitude.
-            // float raw_pitch = my_att.float_val[0];
-            // float raw_roll  = my_att.float_val[1];
-            // float raw_yaw   = my_att.float_val[2];
-            // // Pitch Original Moving Average filter.
-            // float ma_pitch = 0.0f;
-            // if (!isfinite(raw_pitch)) raw_pitch = 0.0f;
-            //     pitch_sum = pitch_sum + raw_pitch - pitch_buf[pitch_idx];    // pitch_buf[pitch_idx]: pitch old value.
-            //     pitch_buf[pitch_idx] = raw_pitch;
-            // if (pitch_count < ATT_MA_N) pitch_count++;
-            //     pitch_idx = (pitch_idx + 1) % ATT_MA_N;
-            // if (pitch_count < ATT_MA_N) {
-            //     ma_pitch = pitch_sum / (float)pitch_count;
-            // } else {
-            //     ma_pitch = pitch_sum / (float)ATT_MA_N;
-            // }
-            // // Roll, Yaw Unwrapped Moving Average Filter Calculation.
-            // float ma_roll  = attMovingAverageDeg(rollMaState,  raw_roll, 180.0f, false);
-            // float ma_yaw   = attMovingAverageDeg( yawMaState,   raw_yaw, 180.0f, false);
-            // my_att.float_val[0] = ma_pitch;
-            // my_att.float_val[1] = ma_roll;
-            my_att.float_val[2] = applyGNSSIMUYawFusion(my_att.float_val[2]); // GNSS-IMU yaw融合
-
-            phase = PH_AHRS;
-            break;    // case PH_EULER break.
-            }         // case, PH_EULER, end.
-    }                 // switch, phase, end.
-
-
-      // Send output data to PC.
-      // --- 座標旋轉至輸出IMU顯示正確 --- 
-      my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
-      ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val,     my_GYRO_case_frame.float_val);
-      ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val,  my_memsXLM_case_frame.float_val);
-    
-
-    //   print_imu_data(false, my_ACCL_cali.float_val, my_GYRO_cali.float_val);
-
-      // // Prepare to send the calculation results.
-      uint8_t imu_packet[IMU_PACKET_TOTAL_LEN];
-      uint8_t CRC32[4];
-
-      // packet the data to send.
-      memcpy(imu_packet + 0,               KVH_HEADER, 4);
-      memcpy(imu_packet + IMU_GYRO_OFFSET, my_GYRO_case_frame.bin_val, 12);
-      memcpy(imu_packet + IMU_ACCL_OFFSET, my_memsXLM_case_frame.bin_val, 12);
-      memcpy(imu_packet + IMU_TEMP_OFFSET, reg_fog + FOG_PD_TEMP_OFFSET, 4);
-      memcpy(imu_packet + IMU_TIME_OFFSET, mcu_time.bin_val, 4);
-      memcpy(imu_packet + IMU_ATT_OFFSET,  my_att.bin_val, 12);
-      imu_packet[IMU_GPS_OFFSET] = last_gnss_status;
-      // Calculate CRC. (CRC32 for bytes [0..48])
-      myCRC.crc_32(imu_packet, IMU_PACKET_NOCRC_LEN, CRC32);
-      memcpy(imu_packet + IMU_CRC_OFFSET, CRC32, 4);
-
-      #ifdef UART_RS422_CMD
-      if (data_cnt >= DELAY_CNT)
-      {
-          Serial1.write(imu_packet, IMU_PACKET_TOTAL_LEN);
-      }
-      #endif
-
-
-
-
-    //   memcpy(imu_data, KVH_HEADER, 4);
-    //   memcpy(imu_data+4, my_GYRO_case_frame.bin_val, 12);//wx, wy, wz
-    //   memcpy(imu_data+16, my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
-    //   memcpy(imu_data+28, reg_fog+12, 4);// PD temp
-    //   memcpy(imu_data+32, mcu_time.bin_val, 4);
-    //   memcpy(imu_data+36, my_att.bin_val, 12);
-
-    //   // 添加 GPS 狀態碼到 CRC 計算中
-    //   uint8_t gps_status_byte = last_gnss_status;
-    //   memcpy(imu_data+48, &gps_status_byte, 1);
-
-    //   // 更新 CRC32 計算長度：48 + 1 = 49 字節
-    //   myCRC.crc_32(imu_data, 49, CRC32);
-
-    //   free(imu_data);
-      
-    //   #ifdef UART_RS422_CMD
-    //   if(data_cnt >= DELAY_CNT)
-    //   {
-    //     Serial1.write(KVH_HEADER, 4);
-    //     // Serial1.write(my_GYRO_cali.bin_val, 12);   //wx, wy, wz
-    //     // Serial1.write(my_ACCL_cali.bin_val, 12);//ax, ay, az
-    //     Serial1.write(my_GYRO_case_frame.bin_val, 12);   //wx, wy, wz
-    //     Serial1.write(my_memsXLM_case_frame.bin_val, 12);//ax, ay, az
-    //     Serial1.write(reg_fog+12, 4);         // PD temp
-    //     Serial1.write(mcu_time.bin_val, 4);
-    //     Serial1.write(my_att.bin_val, 12);
-
-    //     // GPS 狀態碼 (1 byte)
-    //     uint8_t gps_status_byte = last_gnss_status;
-    //     Serial1.write(&gps_status_byte, 1);
-
-    //     Serial1.write(CRC32, 4);
-    //   }
-    //   #endif  
-      resetWDT(); 
-      reset_EXT_WDI(WDI); 
-
-    }
+    // }
 	}
 	clear_SEL_EN(select_fn);
 }
@@ -934,4 +923,57 @@ void sendGpsPacketKVH(const GnssData& gnss_data) {
     Serial1.write(gps_packet, 53);
 
     free(gps_packet);
+}
+
+static float sf_temp_comp_1st(float temp, int slope, int offset, bool print=0) {
+    float slope_f  = IEEE_754_INT2F(slope);
+    float offset_f = IEEE_754_INT2F(offset);
+    if(print) {
+        Serial.print("----SF cali----\n");
+        Serial.print("T: "); Serial.print(temp, 2); Serial.print(", ");
+        Serial.print("Slope: ");  Serial.print(slope_f*10000, 2);  Serial.print(", ");
+        Serial.print("offset: "); Serial.print(offset_f*10000, 2); Serial.print("\n");
+    }
+  return slope_f * temp + offset_f;
+}
+
+static float bias_temp_comp_1st_3t(float temp,
+                                    int T1, int T2,
+                                    int s1, int o1,
+                                    int s2, int o2,
+                                    int s3, int o3, bool print) {
+  float slope, offset;
+  float T1_f = IEEE_754_INT2F(T1); float T2_f = IEEE_754_INT2F(T2); float s1_f = IEEE_754_INT2F(s1); float o1_f = IEEE_754_INT2F(o1);
+  float s2_f = IEEE_754_INT2F(s2); float o2_f = IEEE_754_INT2F(o2); float s3_f = IEEE_754_INT2F(s3); float o3_f = IEEE_754_INT2F(o3);
+  if      (temp < T1_f) { slope = s1_f; offset = o1_f; }
+  else if (temp < T2_f) { slope = s2_f; offset = o2_f; }
+  else                  { slope = s3_f; offset = o3_f; }
+  if(print) {
+    Serial.print("----Bias cali----\n");
+    Serial.print("T1: "); Serial.print(T1_f, 2); Serial.print(", ");
+    Serial.print("T2: "); Serial.print(T2_f, 2); Serial.print(", ");
+    Serial.print("s1: "); Serial.print(s1_f*10000, 4); Serial.print(", ");
+    Serial.print("o1: "); Serial.print(o1_f*10000, 4); Serial.print(", ");
+    Serial.print("s2: "); Serial.print(s2_f*10000, 4); Serial.print(", ");
+    Serial.print("o2: "); Serial.print(o2_f*10000, 4); Serial.print(", ");
+    Serial.print("s3: "); Serial.print(s3_f*10000, 4); Serial.print(", ");
+    Serial.print("o3: "); Serial.print(o3_f*10000, 4); Serial.print("\n");
+}
+  return slope * temp + offset;
+}
+
+static float IEEE_754_INT2F(int in)
+{
+	my_float_t temp;
+	temp.int_val = in;
+
+	return temp.float_val;
+}
+
+static int IEEE_754_F2INT(float in)
+{
+	my_float_t temp;
+	temp.float_val = in;
+
+	return temp.int_val;
 }
