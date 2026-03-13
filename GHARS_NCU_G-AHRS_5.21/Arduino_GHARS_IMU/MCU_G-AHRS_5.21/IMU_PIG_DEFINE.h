@@ -74,8 +74,8 @@
 #define CMD_FOG_SFB     	38
 #define CMD_FOG_CUTOFF     	39
 // Bias Temp. Compensation
-#define     40 //28
-#define CMD_BIAS_COCMD_BIAS_COMP_T1MP_T2    41 //29
+#define CMD_BIAS_COMP_T1    40 //28
+#define CMD_BIAS_COMP_T2    41 //29
 #define CMD_SFB_1_SLOPE     42 //2A
 #define CMD_SFB_1_OFFSET    43 //2B
 #define CMD_SFB_2_SLOPE     44 //2C

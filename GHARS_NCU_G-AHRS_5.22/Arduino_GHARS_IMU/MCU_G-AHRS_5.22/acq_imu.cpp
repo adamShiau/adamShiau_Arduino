@@ -667,9 +667,12 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
         my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
         //   my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
-        my_GYRO.float_val[2] = myfog_GYRO.float_val;
+        my_GYRO.float_val[2] = (float)myfog_GYRO.int_val * SF_FOG + BS_FOG;
         /*** ------mis-alignment calibration gyro raw data -----***/
         gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
+
+        // Serial.print("Temp| "); Serial.print(PD_temp.float_val, 2); Serial.print(", "); 
+        // Serial.print("FOG| "); Serial.print(my_GYRO.float_val[2], 2); Serial.print("\n"); 
 
         switch (phase) 
         {    // switch, phase, start.
@@ -821,6 +824,11 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         my_acc_t my_GYRO_case_frame, my_memsXLM_case_frame;
         ahrs_attitude.sensorVecToCase(my_GYRO_cali.float_val,     my_GYRO_case_frame.float_val);
         ahrs_attitude.sensorVecToCase(my_ACCL_cali.float_val,  my_memsXLM_case_frame.float_val);
+
+        // Serial.print("case: "); 
+        // Serial.print(my_GYRO_case_frame.float_val[0], 2); Serial.print(", "); 
+        // Serial.print(my_GYRO_case_frame.float_val[1], 2); Serial.print(", "); 
+        // Serial.print(my_GYRO_case_frame.float_val[2], 2); Serial.print("\n"); 
         
 
         //   print_imu_data(false, my_ACCL_cali.float_val, my_GYRO_cali.float_val);
@@ -829,11 +837,16 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         uint8_t imu_packet[IMU_PACKET_TOTAL_LEN];
         uint8_t CRC32[4];
 
+
         // packet the data to send.
         memcpy(imu_packet + 0,               KVH_HEADER, 4);
         memcpy(imu_packet + IMU_GYRO_OFFSET, my_GYRO_case_frame.bin_val, 12);
         memcpy(imu_packet + IMU_ACCL_OFFSET, my_memsXLM_case_frame.bin_val, 12);
-        memcpy(imu_packet + IMU_TEMP_OFFSET, reg_fog + FOG_PD_TEMP_OFFSET, 4);
+        // memcpy(imu_packet + IMU_TEMP_OFFSET, PD_temp.bin_val, 4);
+        imu_packet[IMU_TEMP_OFFSET + 0] = PD_temp.bin_val[3];
+        imu_packet[IMU_TEMP_OFFSET + 1] = PD_temp.bin_val[2];
+        imu_packet[IMU_TEMP_OFFSET + 2] = PD_temp.bin_val[1];
+        imu_packet[IMU_TEMP_OFFSET + 3] = PD_temp.bin_val[0];
         memcpy(imu_packet + IMU_TIME_OFFSET, mcu_time.bin_val, 4);
         memcpy(imu_packet + IMU_ATT_OFFSET,  my_att.bin_val, 12);
         imu_packet[IMU_GPS_OFFSET] = last_gnss_status;

@@ -2081,6 +2081,11 @@ void acc_cali(float acc_cli[3], float acc[3])
 
 void gyro_cali(float gyro_cli[3], float gyro[3])
 {
+  // Serial.print("raw: "); 
+  // Serial.print(gyro[0], 2); Serial.print(", "); 
+  // Serial.print(gyro[1], 2); Serial.print(", "); 
+  // Serial.print(gyro[2], 2); Serial.print("\n"); 
+
   gyro_cli[0] = misalignment_cali_coe._f.g11 * gyro[0] + 
                 misalignment_cali_coe._f.g12 * gyro[1] + 
                 misalignment_cali_coe._f.g13 * gyro[2] + 
@@ -2093,6 +2098,11 @@ void gyro_cali(float gyro_cli[3], float gyro[3])
                 misalignment_cali_coe._f.g32 * gyro[1] + 
                 misalignment_cali_coe._f.g33 * gyro[2] + 
                 misalignment_cali_coe._f.gz;
+
+  // Serial.print("cali: "); 
+  // Serial.print(gyro_cli[0], 2); Serial.print(", "); 
+  // Serial.print(gyro_cli[1], 2); Serial.print(", "); 
+  // Serial.print(gyro_cli[2], 2); Serial.print("\n"); 
 } 
 
 void print_imu_data(bool on, float acc[3], float gyro[3])
