@@ -636,11 +636,15 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         step_cnt.bin_val[2] = reg_fog[10];
         step_cnt.bin_val[3] = reg_fog[11];
 
-        int64_t full_step = 0;
-        float averaged_step = 0.0f;
-        full_step = ((int64_t)step_H.int_val << 32) | (uint32_t)step_L.int_val;
+        // 1. 組合 64-bit 整數
+        int64_t full_step_64;
+        full_step_64 = ((int64_t)step_H.int_val << 32) | (uint32_t)step_L.int_val;
+
+        // 2. 使用 double 確保中間運算不丟失任何細節
+        double averaged_step;
+        
         if (step_cnt.int_val > 0) {
-            averaged_step = (float)full_step / (float)step_cnt.int_val;
+            averaged_step = (double)full_step_64 / (double)step_cnt.int_val;
         } else {
             averaged_step = 0.0f; 
         }
@@ -697,7 +701,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
         //   my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
         // my_GYRO.float_val[2] = (float)myfog_GYRO.int_val * SF_FOG + BS_FOG;
-        my_GYRO.float_val[2] = averaged_step * SF_FOG + BS_FOG;
+        my_GYRO.float_val[2] = (float)(averaged_step * SF_FOG + BS_FOG);
         /*** ------mis-alignment calibration gyro raw data -----***/
         gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
 
