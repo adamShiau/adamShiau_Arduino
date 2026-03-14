@@ -412,7 +412,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
 {
     my_acc_t my_memsGYRO;
     // my_float_t pd_temp;
-    static my_float_t myfog_GYRO, PD_temp, step_H, step_L, step_cnt;
+    static my_float_t PD_temp, step_H, step_L, step_cnt;
     static my_acc_t my_memsXLM, my_ACCL_cali;
     static my_acc_t my_GYRO, my_GYRO_cali, my_att;
 
@@ -589,10 +589,10 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         reg_fog = fog;
 
         // 取得來自FPGA之FOG數據
-        myfog_GYRO.bin_val[0] = reg_fog[8];
-        myfog_GYRO.bin_val[1] = reg_fog[9];
-        myfog_GYRO.bin_val[2] = reg_fog[10];
-        myfog_GYRO.bin_val[3] = reg_fog[11];
+        // myfog_GYRO.bin_val[0] = reg_fog[8];
+        // myfog_GYRO.bin_val[1] = reg_fog[9];
+        // myfog_GYRO.bin_val[2] = reg_fog[10];
+        // myfog_GYRO.bin_val[3] = reg_fog[11];
         //   Serial.println(myfog_GYRO.int_val);
 
         // 計算 PD_Temp
@@ -621,20 +621,20 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         int o3 = ptr->EEPROM_SFB_3_OFFSET; 
 
         /*** 處理累積平均 */
-        step_H.bin_val[0] = reg_fog[14];
-        step_H.bin_val[1] = reg_fog[15];
-        step_H.bin_val[2] = reg_fog[16];
-        step_H.bin_val[3] = reg_fog[17];
+        step_H.bin_val[0] = reg_fog[0];
+        step_H.bin_val[1] = reg_fog[1];
+        step_H.bin_val[2] = reg_fog[2];
+        step_H.bin_val[3] = reg_fog[3];
 
-        step_L.bin_val[0] = reg_fog[18];
-        step_L.bin_val[1] = reg_fog[19];
-        step_L.bin_val[2] = reg_fog[20];
-        step_L.bin_val[3] = reg_fog[21];
+        step_L.bin_val[0] = reg_fog[4];
+        step_L.bin_val[1] = reg_fog[5];
+        step_L.bin_val[2] = reg_fog[6];
+        step_L.bin_val[3] = reg_fog[7];
 
-        step_cnt.bin_val[0] = reg_fog[22];
-        step_cnt.bin_val[1] = reg_fog[23];
-        step_cnt.bin_val[2] = reg_fog[24];
-        step_cnt.bin_val[3] = reg_fog[25];
+        step_cnt.bin_val[0] = reg_fog[8];
+        step_cnt.bin_val[1] = reg_fog[9];
+        step_cnt.bin_val[2] = reg_fog[10];
+        step_cnt.bin_val[3] = reg_fog[11];
 
         int64_t full_step = 0;
         float averaged_step = 0.0f;
@@ -655,7 +655,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         // Serial.print("Step_H| "); Serial.print(step_H.int_val); Serial.print(", ");
         // Serial.print("Step_L| "); Serial.print(step_L.int_val); Serial.print(", ");
         // Serial.print("Step_cnt| "); Serial.print(step_cnt.int_val); Serial.print("\n");
-        
+
         // Serial.print("Step| "); 
         // Serial.print(myfog_GYRO.bin_val[0], HEX); Serial.print(", "); 
         // Serial.print(myfog_GYRO.bin_val[1], HEX); Serial.print(", ");
