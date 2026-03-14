@@ -1,0 +1,9 @@
+Adxl355		KEYWORD1
+adxl355		KEYWORD1
+
+init		KEYWORD2
+setRegVal	KEYWORD2
+printRegVal	KEYWORD2
+printRegAll	KEYWORD2
+readData	KEYWORD2
+readFakeData	KEYWORD2
