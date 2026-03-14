@@ -1731,7 +1731,7 @@ void update_baudrate(byte eeprom_var)
       Serial1.println("Baudrate set to 230400");
       Serial.println("Baudrate set to 230400");
       delay(100);
-      Serial1.begin(230400);
+      Serial1.begin(460800);
       break;
     }
     case SET_BAUDRATE_115200: {
