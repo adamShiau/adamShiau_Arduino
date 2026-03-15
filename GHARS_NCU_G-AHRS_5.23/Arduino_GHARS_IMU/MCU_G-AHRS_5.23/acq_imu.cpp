@@ -23,8 +23,8 @@ static float bias_temp_comp_1st_3t(float temp,
 static float convert_PD_temp_f(uint8_t msb, uint8_t lsb);
 static FirstOrderLPF3D gyroLPF;
 static FirstOrderLPF3D accelLPF;
-static uint8_t g_lpf_idx = 2; // Gyro 預設 20Hz
-static uint8_t a_lpf_idx = 2; // Accel 預設 20Hz (加速度計通常震動較大，建議濾波強一點)
+static uint8_t g_lpf_idx = 4; // Gyro 預設 86Hz
+static uint8_t a_lpf_idx = 1; // Accel 預設 ODR/10 = 41.6
 
 void reset_SYNC(); // define  in .ino
 void acc_cali(float acc_cli[3], float acc[3]); // define  in .ino
