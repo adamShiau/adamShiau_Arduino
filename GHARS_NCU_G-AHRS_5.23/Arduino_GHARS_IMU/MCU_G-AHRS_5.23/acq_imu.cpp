@@ -20,6 +20,11 @@ static float bias_temp_comp_1st_3t(float temp,
                                     int s1, int o1,
                                     int s2, int o2,
                                     int s3, int o3, bool print);
+static float convert_PD_temp_f(uint8_t msb, uint8_t lsb);
+static FirstOrderLPF3D gyroLPF;
+static FirstOrderLPF3D accelLPF;
+static uint8_t g_lpf_idx = 2; // Gyro 預設 10Hz
+static uint8_t a_lpf_idx = 2; // Accel 預設 5Hz (加速度計通常震動較大，建議濾波強一點)
 
 void reset_SYNC(); // define  in .ino
 void acc_cali(float acc_cli[3], float acc[3]); // define  in .ino
@@ -27,6 +32,8 @@ void gyro_cali(float gyro_cli[3], float gyro[3]); // define  in .ino
 void print_imu_data(bool on, float acc[3], float gyro[3]); // define  in .ino
 void clear_SEL_EN(byte &select_fn); // define  in .ino
 void sendGpsPacketKVH(const GnssData& gnss_data); // GPS 位置封包輸出 (KVH 格式)
+
+
 
 
 
@@ -445,6 +452,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
                 ahrs_attitude.captureYawZeroLocalCase();
                 // —— 初始化（開跑 or setup 時做一次）——
                 ahrs_attitude.setGyroBiasAlpha(BIAS_ALPHA_BASE);
+                gyroLPF.initAndPrint("Gyro", 200.0f, g_lpf_idx);
+                accelLPF.initAndPrint("Accel", 200.0f, a_lpf_idx);
 
                 EIC->CONFIG[1].bit.SENSE7 = 3; ////set interrupt condition to Both
                 eeprom.Write(EEPROM_ADDR_FOG_STATUS, 1);
@@ -470,6 +479,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
                 reset_SYNC();
                 data_cnt = 0;
                 ahrs_attitude.resetAttitude(true);
+                gyroLPF.reset();
+                accelLPF.reset();
                 EIC->CONFIG[1].bit.SENSE7 = 0; //set interrupt condition to None
                 eeprom.Write(EEPROM_ADDR_FOG_STATUS, 0);
                 disableWDT();
@@ -596,12 +607,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         //   Serial.println(myfog_GYRO.int_val);
 
         // 計算 PD_Temp
-        int8_t Hbyte, Lbyte;
-        Hbyte = reg_fog[12];
-        Lbyte = reg_fog[13];
-        
-        if(Hbyte>>7) PD_temp.float_val = (float)Hbyte - 256.0 + (float)(Lbyte>>7)*0.5;
-        else PD_temp.float_val = (float)Hbyte + (float)(Lbyte>>7)*0.5;
+        PD_temp.float_val = convert_PD_temp_f(reg_fog[12], reg_fog[13]);
 
 
         const eeprom_obj *ptr = &eeprom_x;
@@ -692,6 +698,8 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         // IMU.Get_X_Axes_g_f(my_memsXLM.float_val);// get mems XLM data in m/s^2
         /*** ------get xlm raw data -----***/
         IMU.Get_X_Axes_f(my_memsXLM.float_val);// get mems XLM data in g
+        // 在 Cali 之前套用 Accel 濾波
+        accelLPF.apply(my_memsXLM.float_val, a_lpf_idx);
         /*** ------mis-alignment calibration xlm raw data -----***/
         acc_cali(my_ACCL_cali.float_val, my_memsXLM.float_val);
 
@@ -699,9 +707,9 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         IMU.Get_G_Axes_f(my_memsGYRO.float_val);// get mems GYRO data in degree/s
         my_GYRO.float_val[0] = my_memsGYRO.float_val[0]; 
         my_GYRO.float_val[1] = my_memsGYRO.float_val[1];
-        //   my_GYRO.float_val[2] = my_memsGYRO.float_val[2];
-        // my_GYRO.float_val[2] = (float)myfog_GYRO.int_val * SF_FOG + BS_FOG;
         my_GYRO.float_val[2] = (float)(averaged_step * SF_FOG + BS_FOG);
+        // 在 Cali 之前套用 Gyro 濾波
+        gyroLPF.apply(my_GYRO.float_val, g_lpf_idx);
         /*** ------mis-alignment calibration gyro raw data -----***/
         gyro_cali(my_GYRO_cali.float_val, my_GYRO.float_val);
 
@@ -1023,4 +1031,19 @@ static int IEEE_754_F2INT(float in)
 	temp.float_val = in;
 
 	return temp.int_val;
+}
+
+/**
+ * 將 DS1775 的 16-bit 原始資料 (MSB, LSB) 轉換為攝氏度浮點數
+ * 支援 12-bit 解析度 (0.0625°C) 並處理 2 補數正負號
+ */
+static float convert_PD_temp_f(uint8_t msb, uint8_t lsb) {
+    // 1. 合併為 16-bit 帶正負號整數 (int16_t)
+    // MSB 移至高位，LSB 放在低位
+    int16_t raw_temp = (int16_t)((msb << 8) | lsb);
+
+    // 2. 轉換為浮點數
+    // 根據 DS1775 手冊，12-bit 模式下 LSB 的 Bit 4 代表 0.0625°C [cite: 235, 238, 250]
+    // 直接除以 256.0f 即可完整保留所有小數位元 [cite: 250]
+    return (float)raw_temp / 256.0f;
 }
