@@ -102,6 +102,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_X_Axes_f(float Acceleration[3]);
     ASM330LHHStatusTypeDef Get_X_Axes_g_f(float Acceleration[3]);
     ASM330LHHStatusTypeDef Get_X_DRDY_Status(uint8_t *Status);
+    ASM330LHHStatusTypeDef Set_X_Filter_BW(uint8_t bw_idx);
 	  ASM330LHHStatusTypeDef readAcceleration(unsigned char *);
 	  void print_AccelerationData(unsigned char *, unsigned int, unsigned int&);
 
@@ -121,6 +122,7 @@ class ASM330LHHSensor
     ASM330LHHStatusTypeDef Get_G_DRDY_Status(uint8_t *Status);
     ASM330LHHStatusTypeDef Get_Temperature(float *temp);
 	  ASM330LHHStatusTypeDef readGyroscope(unsigned char []);
+    ASM330LHHStatusTypeDef Set_G_Filter_BW(uint8_t ftype_idx);
     
     ASM330LHHStatusTypeDef Read_Reg(uint8_t reg, uint8_t *Data);
     ASM330LHHStatusTypeDef Write_Reg(uint8_t reg, uint8_t Data);

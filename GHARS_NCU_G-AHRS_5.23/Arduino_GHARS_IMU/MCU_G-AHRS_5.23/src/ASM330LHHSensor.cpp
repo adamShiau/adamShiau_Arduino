@@ -82,9 +82,11 @@ void ASM330LHHSensor::init()
   Enable_X();
   Enable_G();
   Set_X_ODR(416.0);
-  Set_X_FS(16);  
+  Set_X_FS(16); 
+  Set_X_Filter_BW(1); // set BW to ODR/10 
   Set_G_ODR(416.0);
   Set_G_FS(1000);
+  Set_G_Filter_BW(5); // set BW to 48 Hz@ ODR 416 
 
   Get_X_ODR(&var_f);
   Serial.print("XLM ODR: ");
@@ -737,6 +739,29 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::Get_X_DRDY_Status(uint8_t *Status)
   return ASM330LHH_OK;
 }
 
+/**
+ * 設定加速度計 LPF2 頻寬
+ * bw_idx: 0=ODR/4, 1=ODR/10, 2=ODR/20, 3=ODR/45, 4=ODR/100, 5=ODR/200, 6=ODR/400, 7=ODR/800 
+ */
+ASM330LHHStatusTypeDef ASM330LHHSensor::Set_X_Filter_BW(uint8_t bw_idx) {
+  if (bw_idx > 7) return ASM330LHH_ERROR;
+
+  // 1. 啟用 LPF2 (CTRL1_XL [1] = 1) [cite: 1556]
+  uint8_t reg1;
+  if (Read_Reg(ASM330LHH_CTRL1_XL, &reg1) != ASM330LHH_OK) return ASM330LHH_ERROR;
+  reg1 |= 0x02; 
+  if (Write_Reg(ASM330LHH_CTRL1_XL, reg1) != ASM330LHH_OK) return ASM330LHH_ERROR;
+
+  // 2. 設定頻寬係數 (CTRL8_XL [7:5] = HPCF_XL) [cite: 1675, 1685]
+  uint8_t reg8;
+  if (Read_Reg(ASM330LHH_CTRL8_XL, &reg8) != ASM330LHH_OK) return ASM330LHH_ERROR;
+  reg8 &= 0x1F; // 清除高三位 [cite: 1675]
+  reg8 |= (bw_idx << 5); 
+  if (Write_Reg(ASM330LHH_CTRL8_XL, reg8) != ASM330LHH_OK) return ASM330LHH_ERROR;
+
+  return ASM330LHH_OK;
+}
+
 
 /**
  * @brief  Enable the ASM330LHH gyroscope sensor
@@ -1243,6 +1268,48 @@ ASM330LHHStatusTypeDef ASM330LHHSensor::readGyroscope(unsigned char data[6])
 		
 
 	return ASM330LHH_OK;
+}
+
+/**
+ * 設定陀螺儀 LPF1 頻寬
+ * ftype_idx: 0~7 (對應手冊 Table 59，隨 ODR 變化)
+ * /**
+ * ASM330LHHX Table 59: Gyroscope LPF1 Bandwidth Selection Reference
+ * ---------------------------------------------------------------------------------------
+ * 設定說明：
+ * 1. 必須將 CTRL4_C (13h) [1] LPF1_SEL_G 設為 1 以啟用此數位濾波器 [cite: 1605]。
+ * 2. 透過修改 CTRL6_C (15h) [2:0] FTYPE 位元來選擇頻寬 [cite: 1635, 1639]。
+ * ---------------------------------------------------------------------------------------
+ * FTYPE[2:0] | Binary | ODR = 208 Hz (200Hz) | ODR = 416 Hz (400Hz) | 說明
+ * -----------|--------|----------------------|----------------------|--------------------
+ * 0 (000b)   |  000   |        67 Hz         |       133 Hz         | 預設最寬頻寬
+ * 1 (001b)   |  001   |        67 Hz         |       128 Hz         | 
+ * 2 (010b)   |  010   |        67 Hz         |       112 Hz         | 
+ * 3 (011b)   |  011   |        67 Hz         |       134 Hz         | 
+ * 4 (100b)   |  100   |        62 Hz         |        86 Hz         | 中等過濾
+ * 5 (101b)   |  101   |        43 Hz         |        48 Hz         | 
+ * 6 (110b)   |  110   |        23 Hz         |       24.6 Hz        | 強力過濾
+ * 7 (111b)   |  111   |       12.2 Hz        |       12.4 Hz        | 最窄頻寬 (最平滑)
+ * ---------------------------------------------------------------------------------------
+ */
+ 
+ASM330LHHStatusTypeDef ASM330LHHSensor::Set_G_Filter_BW(uint8_t ftype_idx) {
+  if (ftype_idx > 7) return ASM330LHH_ERROR;
+
+  // 1. 啟用陀螺儀 LPF1 (CTRL4_C [1] = 1) 
+  uint8_t reg4;
+  if (Read_Reg(ASM330LHH_CTRL4_C, &reg4) != ASM330LHH_OK) return ASM330LHH_ERROR;
+  reg4 |= 0x02;
+  if (Write_Reg(ASM330LHH_CTRL4_C, reg4) != ASM330LHH_OK) return ASM330LHH_ERROR;
+
+  // 2. 設定 FTYPE (CTRL6_C [2:0]) [cite: 1633, 1635]
+  uint8_t reg6;
+  if (Read_Reg(ASM330LHH_CTRL6_G, &reg6) != ASM330LHH_OK) return ASM330LHH_ERROR;
+  reg6 &= 0xF8; // 清除低三位 [cite: 1633]
+  reg6 |= ftype_idx;
+  if (Write_Reg(ASM330LHH_CTRL6_G, reg6) != ASM330LHH_OK) return ASM330LHH_ERROR;
+
+  return ASM330LHH_OK;
 }
 
 
