@@ -661,7 +661,7 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch)
         // Serial.print("Temp| "); Serial.print(PD_temp.float_val, 2); Serial.print(", "); 
 
         /*** debug print step */
-        // Serial.print("Step| "); Serial.print(myfog_GYRO.int_val); Serial.print(", ");
+        // Serial.print("Step| "); Serial.print(averaged_step); Serial.print(", ");
         // Serial.print("Step_H| "); Serial.print(step_H.int_val); Serial.print(", ");
         // Serial.print("Step_L| "); Serial.print(step_L.int_val); Serial.print(", ");
         // Serial.print("Step_cnt| "); Serial.print(step_cnt.int_val); Serial.print("\n");
