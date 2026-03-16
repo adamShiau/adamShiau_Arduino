@@ -74,6 +74,26 @@ void acq_imu(byte &select_fn, unsigned int value, byte ch);
  * 5   |      1 Hz      |        0.0591         |        0.0305
  * -------------------------------------------------------------------------
  */
+/* ---------------------------------------------------------------------
+ * y[n]   : 目前的輸出 (Filtered Value)
+ * y[n-1] : 上一次的輸出 (Last State)
+ * x[n]   : 目前的輸入 (Raw Input)
+ * alpha  : 平滑係數 (Smoothing Factor), 範圍 0 < alpha <= 1
+ * * 2. 程式實作變體 (Implementation Formula):
+ * y[n] = y[n-1] + alpha * (x[n] - y[n-1])  <-- 結構體內部的 apply() 邏輯
+ * * 3. 係數與頻寬轉換公式 (Coefficient vs. Bandwidth):
+ * [設計用] alpha = (2*pi*fc*Ts) / (2*pi*fc*Ts + 1)
+ * [分析用] fc = (alpha * fs) / (2*pi * (1 - alpha))
+ * ---------------------------------------------------------------------
+ * fc : 截止頻率 (Cutoff Frequency, BW)
+ * fs : 採樣頻率 (Sampling Rate, e.g., 200Hz)
+ * Ts : 採樣週期 (Sampling Period, 1/fs)
+ * * 4. 係數對照表 (fs = 200 Hz, Ts = 0.005s):
+ * - Index 0: Disable  (alpha = 1.0000)
+ * - Index 1: ~62 Hz   (alpha = 0.6610) <-- 高動態模式
+ * - Index 3: 10 Hz    (alpha = 0.2391) <-- 推薦穩定模式
+ * =========================================================================
+ */
 struct FirstOrderLPF3D {
     float state[3];
     bool inited = false;
