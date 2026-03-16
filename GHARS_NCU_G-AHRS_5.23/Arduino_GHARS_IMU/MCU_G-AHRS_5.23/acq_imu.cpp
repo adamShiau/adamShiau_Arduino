@@ -14,7 +14,7 @@ static uint32_t last_gnss_update_time = 0;    // 最後GNSS更新時間
 static DataStatus last_gnss_status = DATA_INVALID;  // 最後收到的GNSS狀態
 static float IEEE_754_INT2F(int in);\
 static int IEEE_754_F2INT(float in);
-static float sf_temp_comp_1st(float temp, int slope, int offset, bool print); 
+static float sf_temp_comp_1st(float temp, int slope, int offset, bool print);
 static float bias_temp_comp_1st_3t(float temp,
                                     int T1, int T2,
                                     int s1, int o1,
@@ -23,8 +23,8 @@ static float bias_temp_comp_1st_3t(float temp,
 static float convert_PD_temp_f(uint8_t msb, uint8_t lsb);
 static FirstOrderLPF3D gyroLPF;
 static FirstOrderLPF3D accelLPF;
-static uint8_t g_lpf_idx = 4; // Gyro 預設 86Hz
-static uint8_t a_lpf_idx = 1; // Accel 預設 ODR/10 = 41.6
+static uint8_t g_lpf_idx = 2; // 20 Hz
+static uint8_t a_lpf_idx = 2; // 20 Hz
 
 void reset_SYNC(); // define  in .ino
 void acc_cali(float acc_cli[3], float acc[3]); // define  in .ino
