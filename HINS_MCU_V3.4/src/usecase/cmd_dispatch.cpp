@@ -137,12 +137,14 @@ void cmd_dispatch(cmd_ctrl_t* cmd,
     }
     return;
   }
-
   // -------------------------
   // Output path (streaming / mode / output_fn)
   // -------------------------
-    UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
+  else if(cmd->mux == MUX_OUTPUT) {
     output_mode_setting(cmd, output_fn, auto_rst);
+  }
+    // UsecaseResult r = parameter_service_handle_ex2(fpga_port(), hins_port(), cmd, params, spec);
+    
 
 }
 
