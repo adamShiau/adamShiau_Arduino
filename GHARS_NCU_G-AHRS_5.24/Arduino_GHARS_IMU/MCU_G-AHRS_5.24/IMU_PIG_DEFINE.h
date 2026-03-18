@@ -2,7 +2,7 @@
 #define IMU_PIG_DEFINE_H
 
 /*** VERSION */
-#define MCU_VERSION "MCU_G-AHRS_5.23"
+#define MCU_VERSION "MCU_G-AHRS_5.24"
 
 /*** adxl355 conversion factor***/
 #define ADXL355_8G 0.0000156

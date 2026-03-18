@@ -145,4 +145,3 @@ struct FirstOrderLPF3D {
     }
 };
 
-mcu_fletcher16(const uint8_t* data, size_t len);

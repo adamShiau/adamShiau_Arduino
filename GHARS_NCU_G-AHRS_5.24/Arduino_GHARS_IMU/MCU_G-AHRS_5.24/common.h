@@ -46,38 +46,44 @@ typedef union {
 typedef void (*fn_ptr)(byte&, unsigned int, byte);
 
 struct FletcherChecksumBuffer {
-    uint8_t last_valid_buf[18]; // 儲存 16 bytes data + 2 bytes checksum
-    bool has_first_valid = false;
-    uint32_t error_count = 0;   // 用於監控通訊品質
+    uint8_t last_valid_buf[64]; 
+    uint8_t payload_len;        
+    bool has_first_valid = false; // 標記是否曾經存入過正確資料
+    uint32_t error_count = 0;
 
-    // 驗證並更新內部 Buffer
-    void verifyAndLock(uint8_t* new_data) {
-        if (new_data == nullptr) return;
+    FletcherChecksumBuffer(uint8_t len) : payload_len(len) {
+        memset(last_valid_buf, 0, sizeof(last_valid_buf));
+    }
 
-        // 1. 計算前 16 bytes 的 Fletcher16
+    void verifyAndLock(uint8_t* raw_input) {
+        if (!raw_input) return;
+
+        // 計算 Checksum (包含手動補回 0xABBA)
         uint8_t sum1 = 0, sum2 = 0;
-        for (int i = 0; i < 16; i++) {
-            sum1 += new_data[i];
-            sum2 += sum1;
-        }
+        uint8_t header[2] = {0xAB, 0xBA};
+        for (int i=0; i<2; i++) { sum1 += header[i]; sum2 += sum1; }
+        for (int i=0; i<payload_len-2; i++) { sum1 += raw_input[i]; sum2 += sum1; }
+
         uint16_t calculated = (uint16_t)((uint16_t)sum1 << 8) | sum2;
+        uint16_t received = (uint16_t)(raw_input[payload_len-2] << 8) | raw_input[payload_len-1];
 
-        // 2. 提取原始 Checksum
-        uint16_t received = (uint16_t)(new_data[16] << 8) | new_data[17];
-
-        // 3. 比對
         if (calculated == received) {
-            memcpy(last_valid_buf, new_data, 18);
+            // 校驗成功：更新快取
+            memcpy(last_valid_buf, raw_input, payload_len);
             has_first_valid = true;
         } else {
+            // 校驗失敗：不更新快取，僅紀錄錯誤
             error_count++;
-            // 這裡不更新 last_valid_buf，保持舊值
+            // 自動打印除錯資訊
+            Serial.print(" Cksum Fail! Calc:"); Serial.print(calculated, HEX);
+            Serial.print(" Recv:"); Serial.println(received, HEX);
         }
     }
 
-    // 提供給 if(fog) 使用的輸出介面
     uint8_t* getOutput() {
-        return has_first_valid ? last_valid_buf : nullptr;
+        // 只要 has_first_valid 為 true，就回傳快取位址。
+        // 即使 verifyAndLock 剛才失敗了，這裏回傳的依然是「上一次正確」的資料位址。
+        return has_first_valid ? last_valid_buf : nullptr; 
     }
 };
 
