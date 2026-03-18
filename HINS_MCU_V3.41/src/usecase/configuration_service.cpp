@@ -1,0 +1,208 @@
+#include "configuration_service.h"
+
+#include "../app/app_state.h"        // g_cmd_port_fpga, output_port_begin, ahrs_attitude
+#include "../drivers/link/nios_link.h"
+#include "../domain/model/command_id.h"           // CMD_SYNC_CNT
+#include "../common.h"               // set_data_rate, DEBUG_PRINT (if available)
+
+// MCU side sync counters (must match FPGA expectations)
+#define DR_10Hz_CNT   5000000UL
+#define DR_50Hz_CNT   1000000UL
+#define DR_100Hz_CNT  500000UL
+#define DR_200Hz_CNT  250000UL
+#define DR_400Hz_CNT  125000UL
+
+static bool map_datarate_index(uint8_t idx, uint32_t* out_cnt, float* out_hz)
+{
+  if (!out_cnt || !out_hz) return false;
+
+  DEBUG_PRINT("\nMapping dr_index: %d: ", idx);
+  switch (idx) {
+    case 0: *out_cnt = DR_10Hz_CNT;  *out_hz = 10.0f;   Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 1: *out_cnt = DR_50Hz_CNT;  *out_hz = 50.0f;   Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 2: *out_cnt = DR_100Hz_CNT; *out_hz = 100.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 3: *out_cnt = DR_200Hz_CNT; *out_hz = 200.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    case 4: *out_cnt = DR_400Hz_CNT; *out_hz = 400.0f;  Serial.print(*out_hz); Serial.println(" Hz"); return true;
+    default: {
+      DEBUG_PRINT("[ERROR] data rate index out of range (0 ~ 4)\n");
+      return false;
+    } 
+    
+  }
+}
+
+static bool map_baudrate_index(uint8_t idx, uint32_t* out_baud)
+{
+  if (!out_baud) return false;
+
+  switch (idx) {
+    case 0: *out_baud = 9600UL;   return true;
+    case 1: *out_baud = 115200UL; return true;
+    case 2: *out_baud = 230400UL; return true;
+    case 3: *out_baud = 460800UL; return true;
+    case 4: *out_baud = 921600UL; return true;
+    default: return false;
+  }
+}
+
+static uint8_t cfg_get_u8(const fog_parameter_t* p, uint8_t cfg_idx, uint8_t fallback)
+{
+  if (!p) return fallback;
+
+  // config[] element is mem_unit_t; prefer int_val for indexes
+  // NOTE: We avoid hard-coding enum values; if type isn't int, still cast float.
+  const mem_unit_t* u = &p->config[cfg_idx];
+  // If your mem_unit_t has a 'type' enum, keep this simple and robust:
+  // - int indexes are stored in int_val
+  // - otherwise fallback to float_val
+  uint8_t v = 0;
+  if (u->type == TYPE_INT) {
+    v = (uint8_t)u->data.int_val;
+  } else {
+    v = (uint8_t)u->data.float_val;
+  }
+  return v;
+}
+
+bool apply_datarate_index(uint8_t dr_index)
+{
+  uint32_t cnt = 0;
+  float hz = 0.0f;
+  if (!map_datarate_index(dr_index, &cnt, &hz)) {
+    return false;
+  }
+
+  // 1) Update FPGA (CMD_SYNC_CNT, ch=6)
+  DEBUG_PRINT("Applying datarate index %d (cnt=%d, hz=%f)\n", dr_index, cnt, hz);
+  // if (!nios_send_cfg_datarate(g_cmd_port_fpga, CMD_SYNC_CNT, dr_index)) {
+  //   return false;
+  // }
+
+  // 2) Update MCU local rate (used by ahrs)
+  // set_data_rate(cnt);
+  ahrs_attitude.init(hz); //想想要怎麼辦，新增一個 AHRS freq setter, 把原本的 begin 包起來
+
+  return true;
+}
+
+bool apply_attitude_init(uint8_t dr_index)
+{
+  uint32_t cnt = 0;
+  float hz = 0.0f;
+  
+  if (!map_datarate_index(dr_index, &cnt, &hz)) {
+    return false;
+  }
+  // DEBUG_PRINT("Set ahrs_attitude frequency: %f hz= \n", hz);
+  ahrs_attitude.init(hz);
+}
+
+bool apply_baudrate_index(uint8_t br_index)
+{
+  uint32_t baud = 1;
+  
+  if (!map_baudrate_index(br_index, &baud)) {
+    DEBUG_PRINT("Baudrate index fail: %d (baud=%d)\n", br_index, baud);
+    DEBUG_PRINT("Initialize to 115200\n");
+    output_port_begin(115200);
+    return false;
+  }
+
+  // Only MCU-side UART, FPGA not involved
+  DEBUG_PRINT("Applying baudrate index %d (baud=%d)\n", br_index, baud);
+  output_port_begin(baud);
+  return true;
+}
+
+void apply_configuration_from_container(const fog_parameter_t* params)
+{
+  // config[0] = datarate index, config[1] = baudrate index
+  uint8_t dr_idx = cfg_get_u8(params, 0, 2); // default to 100Hz
+  uint8_t br_idx = cfg_get_u8(params, 1, 1); // default to 115200
+
+  // Apply in order: datarate then baudrate
+  // (void)apply_datarate_index(dr_idx); // already move to nios2
+
+  (void)apply_attitude_init(dr_idx);
+
+  (void)apply_baudrate_index(br_idx);
+
+  apply_rcs_matrix_from_container(params);
+  apply_is_NED_from_container(params);
+  // (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50); // already move to nios2
+  // (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); delay(50); // already move to nios2
+  (void)apply_gyroZ_source_from_container(params); 
+}
+
+void apply_rcs_matrix_from_container(const fog_parameter_t* params)
+{
+  float Rcs[9];
+  
+  // Rcs_11 (index 2) 到 Rcs_33 (index 10)
+  for (int i = 0; i < 9; i++) {
+    const mem_unit_t* u = &params->config[i + 2];
+    
+    // 根據您的資料結構，Rcs 儲存為 TYPE_FLOAT 
+    // 直接從 data.float_val 讀取原始浮點數
+    Rcs[i] = u->data.float_val;
+  }
+
+  // 使用 ahrs_attitude 提供的方法設定感測器至機殼的轉換矩陣 [cite: 1, 3]
+  ahrs_attitude.setSensorToCaseMatrix(Rcs);
+
+  DEBUG_PRINT("\nApplying Rcs matrix from config[2..10]\n");
+  Serial.print(Rcs[0],2); Serial.print(", ");Serial.print(Rcs[1],2); Serial.print(", ");Serial.println(Rcs[2],2);
+  Serial.print(Rcs[3],2); Serial.print(", ");Serial.print(Rcs[4],2); Serial.print(", ");Serial.println(Rcs[5],2);
+  Serial.print(Rcs[6],2); Serial.print(", ");Serial.print(Rcs[7],2); Serial.print(", ");Serial.println(Rcs[8],2);
+}
+
+void apply_is_NED_from_container(const fog_parameter_t* params)
+{
+  bool is_NED;
+  
+  is_NED = (bool)params->config[11].data.int_val;
+  ahrs_attitude.setLocalFrameNED(is_NED);
+  
+  DEBUG_PRINT("\nApplying is_NED value from config[11]\n");
+  DEBUG_PRINT("Set NED: %d\n", is_NED);
+}
+
+bool apply_ASM330LHHX_Gyro_LPF1_from_container(const fog_parameter_t* params)
+{
+  uint8_t ftype = 0;
+  ftype = (uint8_t)params->config[12].data.int_val;
+
+  if (!nios_send_cfg_ASM330LHHX_Gyro_LPF1(g_cmd_port_fpga, CMD_CFG_LPF_G, ftype)) {
+    return false;
+  }
+  DEBUG_PRINT("\nApplying ASM330LHH gyro LPF1 value from config[12]\n");
+  DEBUG_PRINT("Set LPF1: %d\n", ftype);
+
+  return true;
+}
+
+bool apply_ASM330LHHX_Accl_LPF2_from_container(const fog_parameter_t* params)
+{
+  uint8_t cutoff_bw = 0;
+  cutoff_bw = (uint8_t)params->config[13].data.int_val;
+
+  if (!nios_send_cfg_ASM330LHHX_Accl_LPF2(g_cmd_port_fpga, CMD_CFG_LPF_A, cutoff_bw)) {
+    return false;
+  }
+  DEBUG_PRINT("\nApplying ASM330LHH accl LPF2 value from config[13]\n");
+  DEBUG_PRINT("Set LPF2: %d\n", cutoff_bw);
+
+  return true;
+}
+
+bool apply_gyroZ_source_from_container(const fog_parameter_t* params)
+{
+  uint8_t wz_src = 0;
+
+  wz_src = (uint8_t)params->config[14].data.int_val;
+
+  DEBUG_PRINT("\nApplying gyro Z source from config[14]\n");
+  set_wz_source(wz_src);
+
+  return true;
+}
