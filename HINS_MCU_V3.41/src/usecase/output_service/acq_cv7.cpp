@@ -9,6 +9,7 @@
 #include "ahrs_transform_lib.h"
 #include "../../drivers/link/hins_link.h"
 #include "../../utils/endian.h"
+#include "../recovery_service.h"
 // #include "../../MadgwickAHRS_IMU.h"
 
 #define DEG_TO_RAD  0.017453292519943295769236907684886
@@ -56,6 +57,11 @@ static uint32_t g_fix2_start_ms = 0;         // 記錄達到 Fix 2 的起始時�
 
 #define GNSS_CONVERGE_TIME 5000
 
+static void ahrs_reset_runtime_state(void);
+static void ahrs_handle_setup(cmd_ctrl_t* rx);
+static void ahrs_start_stream(cmd_ctrl_t* rx);
+static void ahrs_stop_stream(cmd_ctrl_t* rx);
+static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset);
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
 
@@ -68,7 +74,7 @@ static my_att_t my_att, my_GYRO_cali, my_ACCL_cali;
 
 
 
-static void ahrs_reset_runtime_state(void)
+static void ahrs_reset_runtime_state()
 {
     sensor_raw = {};
     sensor_cali = {};
@@ -93,6 +99,20 @@ static void ahrs_reset_runtime_state(void)
     }
 }
 
+static void ahrs_handle_setup(cmd_ctrl_t* rx)
+{
+    if (rx->select_fn != SEL_CV7) return;
+    rx->select_fn = SEL_IDLE; // consume command
+    DEBUG_PRINT("-> select acq_cv7 mode\n");
+
+    if (rx->value == INT_SYNC || rx->value == EXT_SYNC) {
+        ahrs_start_stream(rx);
+        set_cfg_auto_run(ENABLE);
+    } else if (rx->value == STOP_RUN) {
+        ahrs_stop_stream(rx);
+        set_cfg_auto_run(DISABLE);
+    }
+}
 
 static void ahrs_start_stream(cmd_ctrl_t* rx)
 {
@@ -142,18 +162,7 @@ static void ahrs_stop_stream(cmd_ctrl_t* rx)
     ahrs_reset_runtime_state();
 }
 
-static void ahrs_handle_setup(cmd_ctrl_t* rx)
-{
-    if (rx->select_fn != SEL_CV7) return;
-    rx->select_fn = SEL_IDLE; // consume command
-    DEBUG_PRINT("-> select acq_cv7 mode\n");
 
-    if (rx->value == INT_SYNC || rx->value == EXT_SYNC) {
-        ahrs_start_stream(rx);
-    } else if (rx->value == STOP_RUN) {
-        ahrs_stop_stream(rx);
-    }
-}
 
 // ---- run sub-stages --------------------------------------------------------
 static bool ahrs_stage_read_stream(uint8_t** pkt_out)

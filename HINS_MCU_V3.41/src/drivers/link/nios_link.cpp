@@ -109,3 +109,9 @@ bool nios_send_cfg_ASM330LHHX_Accl_LPF2(Stream& port, uint8_t cmd, uint8_t ftype
     sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd, (int32_t)ftypes, 6);
     return true;
 }
+
+bool nios_send_cfg_cmd(Stream& port, uint8_t cmd, uint8_t value)
+{
+    sendCmd(port, HDR_ABBA_LOCAL, TRL_5556_LOCAL, cmd, (int32_t)value, 6);
+    return true;
+}

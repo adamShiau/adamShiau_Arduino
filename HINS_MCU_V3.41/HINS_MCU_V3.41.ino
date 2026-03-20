@@ -6,6 +6,7 @@
 #include "src/utils/crc32.h"
 #include "src/usecase/cmd_dispatch.h"
 #include "src/usecase/configuration_service.h"
+#include "src/usecase/recovery_service.h"
 
 // #define INT_SYNC 1
 // #define EXT_SYNC 2
@@ -31,8 +32,12 @@ void setup() {
   DEBUG_PRINT("Boot capture all parameters from FPGA...\n");
   boot_capture_all(&g_fog_params);
   delay(1000);
-  DEBUG_PRINT("apply_configuration_from_container..\n");
+  DEBUG_PRINT("\napply_configuration_from_container..\n");
   apply_configuration_from_container(&g_fog_params);
+  DEBUG_PRINT("\nupdating sys_ctrl value from container..\n");
+  update_sys_ctrl_from_container(&g_fog_params, &g_sys_ctrl);
+  DEBUG_PRINT("\nchecking auto-tun ststus..\n");
+  system_recovery_init(&g_cmd, &g_output_fn, &g_sys_ctrl);
   // delay(10);
   // DEBUG_PRINT("ahrs_attitude init..\n");
   // ahrs_attitude.init(100.0f); // sample rate  

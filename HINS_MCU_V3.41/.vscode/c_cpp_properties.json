@@ -5,7 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "D:/github/adamShiau_Arduino/HINS_MCU_V3.41/src",
-                "D:/github/adamShiau_Arduino/HINS_MCU_V3.41/src/usecase"
+                "D:/github/adamShiau_Arduino/HINS_MCU_V3.41/src/usecase",
+                "D:/github/adamShiau_Arduino/HINS_MCU_V3.41/src/drivers"
+
             ],
             "defines": [
                 "_DEBUG",

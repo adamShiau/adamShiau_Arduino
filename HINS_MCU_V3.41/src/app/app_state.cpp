@@ -17,7 +17,7 @@ cmd_ctrl_t g_cmd = {
 };
 
 sys_ctrl_t g_sys_ctrl = { 
-  .status = 0, 
+  // .status = 0, 
   .auto_run = DISABLE,
   .fn_mode = MODE_RST };
 

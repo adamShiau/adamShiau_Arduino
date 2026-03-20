@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "../domain/model/memory_manage.h"  // fog_parameter_t
+#include "../common.h"  
 
 /**
  * @brief Apply all configuration items from parameter container.
@@ -13,6 +14,8 @@
  *   apply_configuration_from_container(&g_fog_params);
  */
 void apply_configuration_from_container(const fog_parameter_t* params);
+
+void update_sys_ctrl_from_container(const fog_parameter_t* params, sys_ctrl_t* sys_ctrl);
 
 /**
  * @brief Apply datarate index (0..4) to system.

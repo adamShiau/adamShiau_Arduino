@@ -1963,6 +1963,20 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						}			
 						break;
 					}
+					case CMD_CFG_FN_MODE: {
+						DEBUG_PRINT("CMD_CFG_FN_MODE:\n");	
+						if(rx->ch != 6) {DEBUG_PRINT("Ch value must be 6:\n"); break;}
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_FN_MODE, rx->value, rx->ch); delay(100);
+             				update_parameter_container(rx, fog_inst, CMD_CFG_FN_MODE - CFG_CONTAINER_TO_CMD_OFFSET);
+							// (void)apply_baudrate_index((uint8_t)rx->value);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
+							
+						}			
+						break;
+					}
 
 					default:{
 						DEBUG_PRINT("condition 1 default case\n");

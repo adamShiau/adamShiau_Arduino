@@ -3,7 +3,7 @@
 #include "../app/app_state.h"        // g_cmd_port_fpga, output_port_begin, ahrs_attitude
 #include "../drivers/link/nios_link.h"
 #include "../domain/model/command_id.h"           // CMD_SYNC_CNT
-#include "../common.h"               // set_data_rate, DEBUG_PRINT (if available)
+// #include "../common.h"               // set_data_rate, DEBUG_PRINT (if available)
 
 // MCU side sync counters (must match FPGA expectations)
 #define DR_10Hz_CNT   5000000UL
@@ -115,6 +115,7 @@ bool apply_baudrate_index(uint8_t br_index)
 }
 
 void apply_configuration_from_container(const fog_parameter_t* params)
+
 {
   // config[0] = datarate index, config[1] = baudrate index
   uint8_t dr_idx = cfg_get_u8(params, 0, 2); // default to 100Hz
@@ -132,6 +133,17 @@ void apply_configuration_from_container(const fog_parameter_t* params)
   // (void)apply_ASM330LHHX_Gyro_LPF1_from_container(params); delay(50); // already move to nios2
   // (void)apply_ASM330LHHX_Accl_LPF2_from_container(params); delay(50); // already move to nios2
   (void)apply_gyroZ_source_from_container(params); 
+}
+
+void update_sys_ctrl_from_container(const fog_parameter_t* params, sys_ctrl_t* sys_ctrl)
+{
+  if (!params || !sys_ctrl) return; // 安全檢查
+  
+  // update auto_run flag
+  sys_ctrl->auto_run = (auto_run_mode_t)params->config[16].data.int_val;
+
+  // update fn_mode value
+  sys_ctrl->fn_mode = (output_mode_t)params->config[17].data.int_val;
 }
 
 void apply_rcs_matrix_from_container(const fog_parameter_t* params)

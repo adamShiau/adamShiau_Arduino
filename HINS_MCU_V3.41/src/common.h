@@ -229,7 +229,7 @@ typedef enum {
 
 /*** system control reset structure delaration */
 typedef struct {
-  uint8_t status;
+  // uint8_t status;
   auto_run_mode_t auto_run;
   uint8_t fn_mode;
 } sys_ctrl_t;
