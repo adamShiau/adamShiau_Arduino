@@ -3,6 +3,7 @@
 #include "../drivers/link/hins_link.h"
 #include "../app/app_state.h"
 #include "output_service/ahrs_attitude_lib.h"
+#include "configuration_service.h"
 
 
 extern Uart Serial3;
@@ -1716,6 +1717,7 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_CFG_DR, rx->value, rx->ch); delay(100);
              				update_parameter_container(rx, fog_inst, CMD_CFG_DR - CFG_CONTAINER_TO_CMD_OFFSET);
 							(void)apply_attitude_init((uint8_t)rx->value);
+							(void)apply_rcs_matrix_from_container(fog_inst);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == RX_CONDITION_EFFE_5354) {
