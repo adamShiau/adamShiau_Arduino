@@ -10,6 +10,7 @@
 #include "../../drivers/link/hins_link.h"
 #include "../../utils/endian.h"
 #include "../recovery_service.h"
+#include "../../utils/sensor_filter.h"
 // #include "../../MadgwickAHRS_IMU.h"
 
 #define DEG_TO_RAD  0.017453292519943295769236907684886
@@ -43,6 +44,8 @@ static float g_heading_offset = 0.0f; // 存儲 IMU 與 GNSS DA 的偏差
 static bool g_hins_initialized = false;      // 記錄是否已完成開機後的首次 5 秒穩定收斂
 static uint32_t g_fix2_start_ms = 0;         // 記錄達到 Fix 2 的起始時間點
 
+static FirstOrderLPF_1D g_LPF_fogz;
+
 
 // INT_SYNC / EXT_SYNC / STOP_RUN are defined in common.h
 
@@ -58,9 +61,9 @@ static uint32_t g_fix2_start_ms = 0;         // 記錄達到 Fix 2 的起始時�
 #define GNSS_CONVERGE_TIME 5000
 
 static void ahrs_reset_runtime_state(void);
-static void ahrs_handle_setup(cmd_ctrl_t* rx);
-static void ahrs_start_stream(cmd_ctrl_t* rx);
-static void ahrs_stop_stream(cmd_ctrl_t* rx);
+static void ahrs_handle_setup(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter);
+static void ahrs_start_stream(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter);
+static void ahrs_stop_stream(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter);
 static void hins_stage_gui_monitor_send(Stream& port, const hins_mip_data_t* hins, float imu_heading, float offset);
 
 static my_sensor_t sensor_raw = {}, sensor_cali = {};
@@ -99,22 +102,22 @@ static void ahrs_reset_runtime_state()
     }
 }
 
-static void ahrs_handle_setup(cmd_ctrl_t* rx)
+static void ahrs_handle_setup(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter)
 {
     if (rx->select_fn != SEL_CV7) return;
     rx->select_fn = SEL_IDLE; // consume command
     DEBUG_PRINT("-> select acq_cv7 mode\n");
 
     if (rx->value == INT_SYNC || rx->value == EXT_SYNC) {
-        ahrs_start_stream(rx);
+        ahrs_start_stream(rx, fog_parameter);
         set_cfg_auto_run(ENABLE);
     } else if (rx->value == STOP_RUN) {
-        ahrs_stop_stream(rx);
+        ahrs_stop_stream(rx, fog_parameter);
         set_cfg_auto_run(DISABLE);
     }
 }
 
-static void ahrs_start_stream(cmd_ctrl_t* rx)
+static void ahrs_start_stream(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter)
 {
     DEBUG_PRINT("acq_ahrs start\n");
     // init extracted attitude-stage context (one-time)
@@ -132,6 +135,10 @@ static void ahrs_start_stream(cmd_ctrl_t* rx)
     sendCmd(g_cmd_port_fpga, HDR_ABBA, TRL_5556, 2, 2, 2);
     delay(10);
 
+    // 初始化 LPF
+    g_LPF_fogz.init("LPF_FOGZ", 100.0f, fog_parameter->config[15].data.int_val);
+    // g_LPF_fogz.init("LPF_FOGZ", 100.0f, 5);
+
     // Start streaming from HINS (raw MIP)
     g_heading_offset = 0.0f; // 每次啟動時重置 Offset，重新抓取 GNSS 基準
     hins_send_mip_raw(g_cmd_port_hins, HINS_STREAM_ON);
@@ -146,7 +153,7 @@ static void ahrs_start_stream(cmd_ctrl_t* rx)
     
 }
 
-static void ahrs_stop_stream(cmd_ctrl_t* rx)
+static void ahrs_stop_stream(cmd_ctrl_t* rx, const fog_parameter_t* fog_parameter)
 {
     DEBUG_PRINT("acq_ahrs select stop\n");
     ahrs_attitude.resetAttitude(true); // reset attitude and yaw0
@@ -157,6 +164,9 @@ static void ahrs_stop_stream(cmd_ctrl_t* rx)
 
     hins_send_mip_raw(g_cmd_port_hins, HINS_STREAM_OFF);
     delay(2);
+
+    // 重置 LPF
+    g_LPF_fogz.reset();
 
     // stop should fully clear internal states
     ahrs_reset_runtime_state();
@@ -179,6 +189,10 @@ static bool ahrs_stage_update_raw(const uint8_t* pkt)
 static void ahrs_stage_calibrate(fog_parameter_t* fog_parameter)
 {
     sensor_data_cali(&sensor_raw, &sensor_cali, fog_parameter);
+
+    // 套用 LPF 
+    g_LPF_fogz.apply(&sensor_cali.fog.fogz.step.float_val, (uint8_t)fog_parameter->config[15].data.int_val);
+    // g_LPF_fogz.apply(&sensor_cali.fog.fogz.step.float_val, 5);
 
     // cache to my_att_t for downstream blocks (keep current behavior)
     my_GYRO_cali.float_val[0] = sensor_cali.fog.fogx.step.float_val;
@@ -468,7 +482,7 @@ static void ahrs_run_tick(cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 void acq_cv7 (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
 {
     // 1) handle setup commands (start/stop)
-    ahrs_handle_setup(rx);
+    ahrs_handle_setup(rx, fog_parameter);
 
     // 2) run pipeline tick (only when rx->run == 1)
     ahrs_run_tick(rx, fog_parameter);
