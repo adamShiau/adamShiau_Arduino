@@ -6,6 +6,9 @@
   #define EXT_SYNC 2
 #endif
 
+
+#define FPGA_RST 11 // PA16, MCU_RST, 對應到 FPGA config pin 
+
 void system_recovery_init(cmd_ctrl_t* rx, fn_ptr* output_fn, const sys_ctrl_t* sys_ctrl) {
     /***
      * sys_ctrl->auto_run 與 sys_ctrl->fn_mode 會在 
@@ -37,6 +40,19 @@ void system_recovery_init(cmd_ctrl_t* rx, fn_ptr* output_fn, const sys_ctrl_t* s
     else {
         DEBUG_PRINT("Recovery: Auto-run is disabled or no valid config found.\n");
     }
+}
+
+void FPGA_Config_init(void) {
+    pinMode(FPGA_RST, OUTPUT);
+    digitalWrite(FPGA_RST, HIGH);
+    delay(100);
+    FPGA_Config_rst();
+}
+
+void FPGA_Config_rst(void) {
+    digitalWrite(FPGA_RST, LOW);
+    delay(100);
+    digitalWrite(FPGA_RST, HIGH);
 }
 
 bool set_cfg_auto_run(auto_run_mode_t status) {

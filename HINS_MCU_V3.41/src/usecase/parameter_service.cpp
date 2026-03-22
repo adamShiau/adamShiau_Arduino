@@ -4,6 +4,7 @@
 #include "../app/app_state.h"
 #include "output_service/ahrs_attitude_lib.h"
 #include "configuration_service.h"
+#include "recovery_service.h"
 
 
 extern Uart Serial3;
@@ -1351,9 +1352,10 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_FPGA_RST, rx->value, rx->ch);
 							DEBUG_PRINT("WRITE: %d\n", rx->value);	
-							digitalWrite(11, LOW);
-							delay(100);
-							digitalWrite(11, HIGH);
+							FPGA_Config_rst();
+							// digitalWrite(11, LOW);
+							// delay(100);
+							// digitalWrite(11, HIGH);
 						}
 						else if(rx->condition == 3) {
 							

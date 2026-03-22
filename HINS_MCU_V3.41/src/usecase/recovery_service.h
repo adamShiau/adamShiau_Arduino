@@ -13,3 +13,7 @@ void system_recovery_init(cmd_ctrl_t* rx, fn_ptr* output_fn, const sys_ctrl_t* s
 bool set_cfg_auto_run(auto_run_mode_t status);
 
 bool set_cfg_fn_mode(output_mode_t mode);
+
+void FPGA_Config_init(void);
+
+void FPGA_Config_rst(void);
