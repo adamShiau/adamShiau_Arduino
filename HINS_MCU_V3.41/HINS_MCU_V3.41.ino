@@ -22,10 +22,12 @@ uint8_t data_cnt = 0;
 
 extern Uart Serial4;
 
-
+#define FPGA_RST 11 // PA16, MCU_RST, 對應到 FPGA config pin 
 
 void setup() {
   delay(1000);
+  pinMode(FPGA_RST, OUTPUT);
+  digitalWrite(FPGA_RST, HIGH);
   myUART_init();
   crc32_init_table();
   delay(100);

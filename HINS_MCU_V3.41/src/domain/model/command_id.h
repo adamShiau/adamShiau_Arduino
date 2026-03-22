@@ -93,6 +93,7 @@ enum {
     CMD_DUMP_SN = 130,  //0x82
     CMD_DUMP_VERSION = 131,  //0x83
     CMD_DUMP_CONFIG = 132, //0x84
+    CMD_FPGA_RST    = 133, //0x85
 
     /*** HINS CMD */
 

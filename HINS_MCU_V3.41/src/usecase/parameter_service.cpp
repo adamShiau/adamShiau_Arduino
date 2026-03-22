@@ -1336,14 +1336,28 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 					}
 					case CMD_BIAS_OFFSET_XLM: {
 						DEBUG_PRINT("CMD_BIAS_OFFSET_XLM:\n");
-            if(rx->condition == RX_CONDITION_ABBA_5556) {
-              sendCmd(port, HDR_ABBA, TRL_5556, CMD_BIAS_OFFSET_XLM, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_BIAS_OFFSET_XLM - CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
-            }
-            else if(rx->condition == RX_CONDITION_EFFE_5354) {
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_BIAS_OFFSET_XLM, rx->value, rx->ch);
+							update_parameter_container(rx, fog_inst, CMD_BIAS_OFFSET_XLM - CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+						}
+						else if(rx->condition == RX_CONDITION_EFFE_5354) {
 
-            }			
+						}			
+						break;
+					}
+					case CMD_FPGA_RST: {
+						DEBUG_PRINT("CMD_FPGA_RST:\n");
+						if(rx->condition == RX_CONDITION_ABBA_5556) {
+							sendCmd(port, HDR_ABBA, TRL_5556, CMD_FPGA_RST, rx->value, rx->ch);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
+							digitalWrite(11, LOW);
+							delay(100);
+							digitalWrite(11, HIGH);
+						}
+						else if(rx->condition == 3) {
+							
+						}
 						break;
 					}
 					/***------------- mis-alignment command, accl */
@@ -1652,8 +1666,8 @@ UsecaseResult parameter_service_handle_ex2(Stream& port, Stream& port_hins, cmd_
 						if(rx->ch != 4) {DEBUG_PRINT("Ch value must be 4:\n"); break;}
 						if(rx->condition == RX_CONDITION_ABBA_5556) {
 							sendCmd(port, HDR_ABBA, TRL_5556, CMD_MIS_G33, rx->value, rx->ch);
-              update_parameter_container(rx, fog_inst, CMD_MIS_G33 - MIS_CONTAINER_TO_CMD_OFFSET);
-              DEBUG_PRINT("WRITE: %d\n", rx->value);	
+							update_parameter_container(rx, fog_inst, CMD_MIS_G33 - MIS_CONTAINER_TO_CMD_OFFSET);
+							DEBUG_PRINT("WRITE: %d\n", rx->value);	
 						}
 						else if(rx->condition == 3) {
 							
