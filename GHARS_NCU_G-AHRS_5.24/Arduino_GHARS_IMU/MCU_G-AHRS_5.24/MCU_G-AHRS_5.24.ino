@@ -1787,10 +1787,10 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_100: {
-      // pwm.timer(1, 2, int(60000), false); //12M/2/60000 = 100Hz
+      pwm.timer(1, 2, int(60000), false); //12M/2/60000 = 100Hz
       
       // 2026/02/26: Changed IMU sampling rate from 100 Hz to 200 Hz (major change)
-      pwm.timer(1, 2, int(30000), false); //12M/2/30000 = 200Hz
+      // pwm.timer(1, 2, int(30000), false); //12M/2/30000 = 200Hz
       
       pwm.analogWrite(PWM100, 500);  
       Serial.println("Data rate set to 100 Hz");

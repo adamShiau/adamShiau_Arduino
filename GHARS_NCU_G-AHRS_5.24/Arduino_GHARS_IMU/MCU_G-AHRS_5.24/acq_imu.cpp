@@ -23,8 +23,8 @@ static float bias_temp_comp_1st_3t(float temp,
 static float convert_PD_temp_f(uint8_t msb, uint8_t lsb);
 static FirstOrderLPF3D gyroLPF;
 static FirstOrderLPF3D accelLPF;
-static uint8_t g_lpf_idx = 2; // 20 Hz
-static uint8_t a_lpf_idx = 2; // 20 Hz
+static uint8_t g_lpf_idx = 0; // LPF, 0: disable
+static uint8_t a_lpf_idx = 1; // LPF
 
 void reset_SYNC(); // define  in .ino
 void acc_cali(float acc_cli[3], float acc[3]); // define  in .ino

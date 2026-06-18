@@ -100,7 +100,8 @@ struct FirstOrderLPF3D {
     const char* lpf_name = "Unknown"; // 用於顯示辨識
 
     // 定義 200Hz 下對應的 Alpha 數值陣列 [cite: 271, 331]
-    const float ALPHAS[6] = {1.0000f, 0.6110f, 0.3860f, 0.2391f, 0.1358f, 0.0305f};
+    // const float ALPHAS[6] = {1.0000f, 0.6110f, 0.3860f, 0.2391f, 0.1358f, 0.0305f}; // 200 Hz 
+    const float ALPHAS[6] = {1.0000f, 0.7584f, 0.5568f, 0.3858f, 0.2391f, 0.0591f}; // 100 Hz
 
     void apply(float* data, uint8_t idx) {
         if (idx >= 6) return;
