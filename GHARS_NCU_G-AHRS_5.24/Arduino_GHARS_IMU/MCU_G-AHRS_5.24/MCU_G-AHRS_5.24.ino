@@ -1779,10 +1779,11 @@ void update_datarate(byte eeprom_var)
       break;
     }
     case SET_DATARATE_200: {
-      pwm.timer(1, 2, int(30000), false); //12M/2/30000 = 200Hz
+      // pwm.timer(1, 2, int(30000), false); //12M/2/30000 = 200Hz
+      pwm.timer(1, 2, int(150000), false); //12M/2/150000 = 40Hz
       pwm.analogWrite(PWM100, 500);  
-      Serial.println("Data rate set to 200 Hz");
-      Serial1.println("Data rate set to 200 Hz");
+      Serial.println("Data rate set to 40 Hz");
+      Serial1.println("Data rate set to 40 Hz");
       delay(100);
       break;
     }
