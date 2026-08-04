@@ -165,6 +165,7 @@ void SERCOM5_Handler(void) { Serial1.IrqHandler(); }
 
 /* ----------------------------------------------------------------------------
  * Serial1 fixed-protocol parser (PC commands)
+ * For EM0, change Serial port from serial1 to serial3 for hardware miss wiring. <- 08-04-2026 by Adam
  * ----------------------------------------------------------------------------
  * Returns:
  *   - NULL if incomplete.
