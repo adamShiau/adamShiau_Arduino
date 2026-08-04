@@ -67,11 +67,12 @@ void acq_imu (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 // DEBUG_PRINT("CRC32 = %02X %02X %02X %02X\r\n", crc[0],crc[1],crc[2],crc[3]);
 
                 // 5) 依序送出：Header + Calibrated Payload + CRC
+                // [2026-08 HW change] 輸出埠由 Serial1 改為 Serial3（Serial1 硬體問題）
                 if(data_cnt >= DATA_DELAY_CNT) {
-                    Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
-                    Serial1.write(out, SENSOR_PAYLOAD_LEN);
-                    Serial1.write(crc, 4);
-                }       
+                    Serial3.write(KVH_HEADER, sizeof(KVH_HEADER));
+                    Serial3.write(out, SENSOR_PAYLOAD_LEN);
+                    Serial3.write(crc, 4);
+                }
             }
         }
     }

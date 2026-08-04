@@ -2,7 +2,10 @@
  * myUART.cpp
  *
  * Implementation for myUART.h
- * - Provides fixed-protocol parser for Serial1 (readDataDynamic).
+ * - Provides fixed-protocol parser for Serial3 (readDataDynamic).
+ *   [2026-08 HW change] Originally Serial1; moved cmd RX + sensor-data TX to
+ *   Serial3 due to a hardware issue on the Serial1 (SERCOM5) line. Serial1 is
+ *   still constructed/initialized below but is otherwise unused now.
  * - Provides generic header/trailer parser for Serial4 (readData).
  *
  * Design choices:
@@ -30,7 +33,8 @@ Uart Serial3(&sercom1, 13, 8,  SERCOM_RX_PAD_1, UART_TX_PAD_2);
 Uart Serial4(&sercom3, 10, 9,  SERCOM_RX_PAD_3, UART_TX_PAD_2);
 
 /* ----------------------------------------------------------------------------
- * Serial1 fixed-protocol parser (3 formats)
+ * Serial3 fixed-protocol parser (3 formats) -- PC / RS422 cmd
+ * [2026-08 HW change] Moved from Serial1 to Serial3 (HW issue on Serial1)
  * ----------------------------------------------------------------------------
  * Formats:
  *   #1: Header = AB BA, Trailer = 55 56, DataLen = 6
@@ -63,7 +67,7 @@ typedef enum {
   EXPECTING_TRAILER
 } State;
 
-/* Per-port parser context for Serial1 fixed protocol */
+/* Per-port parser context for Serial3 fixed protocol (was Serial1) */
 typedef struct {
   uint8_t  buffer[BUFFER_SIZE];     // [0] = condition; payload starts at [1]
   uint8_t  bytes_received;          // counts payload/trailer bytes
@@ -76,9 +80,9 @@ typedef struct {
   uint8_t  hdr_idx1, hdr_idx2, hdr_idx3;
 } ParserCtx1;
 
-static ParserCtx1 ctx_ser1;
+static ParserCtx1 ctx_ser3;
 
-/* Reset Serial1 parser context */
+/* Reset Serial3 parser context (was Serial1) */
 static void init_ctx(ParserCtx1* C) {
   memset(C, 0, sizeof(*C));
   C->state = EXPECTING_HEADER;
@@ -124,9 +128,10 @@ void myUART_init(void)
   Serial.begin(230400);
 
   // UARTs
-  Serial1.begin(230400);  // PC (SERCOM5) -- provided by core
+  Serial1.begin(230400);  // (SERCOM5) -- provided by core; [2026-08 HW change] no longer used
+                           // for cmd RX or sensor-data TX (HW issue on this line), kept initialized only
   Serial2.begin(115200);  // SERCOM2
-  Serial3.begin(115200);  // SERCOM1
+  Serial3.begin(230400);  // PC / RS422 cmd (SERCOM1) -- [2026-08 HW change] moved from Serial1
   Serial4.begin(115200);  // FPGA (SERCOM3)
 
   // Pin multiplexing (board-specific; matches your existing setup)
@@ -146,11 +151,11 @@ void myUART_init(void)
   // NVIC_SetPriority(SERCOM1_IRQn, 3); // Serial3
 
   // Reset parser states
-  init_ctx(&ctx_ser1);
+  init_ctx(&ctx_ser3);
   rd4_reset();
 
   // Drain any stale bytes
-  // while (Serial1.available()) (void)Serial1.read();
+  // while (Serial3.available()) (void)Serial3.read();
   // while (Serial4.available()) (void)Serial4.read();
 }
 
@@ -164,24 +169,24 @@ void SERCOM3_Handler(void) { Serial4.IrqHandler(); }
 void SERCOM5_Handler(void) { Serial1.IrqHandler(); }
 
 /* ----------------------------------------------------------------------------
- * Serial1 fixed-protocol parser (PC commands)
- * For EM0, change Serial port from serial1 to serial3 for hardware miss wiring. <- 08-04-2026 by Adam
+ * Serial3 fixed-protocol parser (PC / RS422 commands)
+ * [2026-08 HW change] Moved from Serial1 to Serial3 (HW issue on Serial1)
  * ----------------------------------------------------------------------------
  * Returns:
  *   - NULL if incomplete.
- *   - Pointer to ctx_ser1.buffer on success:
+ *   - Pointer to ctx_ser3.buffer on success:
  *       buffer[0]   = condition (1..3)
  *       buffer[1..] = payload    (length depends on condition)
  */
 uint8_t* readDataDynamic(uint32_t* try_cnt)
 {
-  if (Serial1.available() == 0) return NULL;
+  if (Serial3.available() == 0) return NULL;
 
-  int di = Serial1.read();
+  int di = Serial3.read();
   if (di == -1) return NULL;           // no data; defensive guard
   uint8_t data = (uint8_t)di;
 
-  ParserCtx1* C = &ctx_ser1;
+  ParserCtx1* C = &ctx_ser3;
 
   switch (C->state) {
     case EXPECTING_HEADER:

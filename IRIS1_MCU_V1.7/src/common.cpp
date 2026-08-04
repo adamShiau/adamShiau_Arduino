@@ -1959,9 +1959,9 @@ static bool recv_and_store(fog_parameter_t* fog,
     parse_simple_json_ints(scratch, cfg_store_cb, &ctx);
   }
   
-  // RS422 輸出
-  Serial1.write((const uint8_t*)scratch, strlen(scratch));
-  Serial1.write('\n');
+  // RS422 輸出 [2026-08 HW change] 由 Serial1 改為 Serial3（Serial1 硬體問題）
+  Serial3.write((const uint8_t*)scratch, strlen(scratch));
+  Serial3.write('\n');
   return true;
 }
 

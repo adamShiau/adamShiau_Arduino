@@ -5,7 +5,11 @@
  *
  * Minimal-change UART helpers for Arduino SAMD21 (e.g., Nano 33 IoT).
  * - Keeps a C-style API and your original "readDataDynamic()" usage.
- * - Serial1: fixed protocol with 3 headers/trailers; use readDataDynamic().
+ * - Serial3: fixed protocol with 3 headers/trailers (PC / RS422 cmd); use readDataDynamic().
+ *   [2026-08 HW change] This was originally Serial1. Moved to Serial3 because of a
+ *   hardware issue on the Serial1 (SERCOM5) line; both cmd RX and sensor-data TX now
+ *   go through Serial3. The function name readDataDynamic() is kept unchanged so
+ *   callers (IRIS1_MCU_V1.7.ino) don't need to change.
  * - Serial4: generic parser: caller provides header/trailer/payload length; use readData().
  *
  * IMPORTANT:
@@ -33,9 +37,11 @@ extern "C" {
  * @brief Initialize UARTs and pin multiplexing; reset parser states; drain RX.
  *
  * - Serial  (USB CDC): 230400
- * - Serial1 (SERCOM5): 115200 (PC)  -- provided by the Arduino core
+ * - Serial1 (SERCOM5): 230400 (PC)  -- provided by the Arduino core
+ *   [2026-08 HW change] No longer used for cmd RX or sensor-data TX due to a
+ *   hardware issue on this line; kept initialized but otherwise idle.
  * - Serial2 (SERCOM2): 115200
- * - Serial3 (SERCOM1): 115200
+ * - Serial3 (SERCOM1): 230400 (PC / RS422 cmd -- moved from Serial1)
  * - Serial4 (SERCOM3): 115200 (FPGA)
  *
  * NOTE: Pin mappings are board-specific and match the user's previous setup:
@@ -54,10 +60,11 @@ void SERCOM3_Handler(void);
 void SERCOM5_Handler(void);
 
 /* -------------------------------------------------------------------------- */
-/* Serial1 (PC commands): fixed 3-format protocol                             */
+/* Serial3 (PC commands, RS422): fixed 3-format protocol                      */
+/* [2026-08 HW change] Moved from Serial1 to Serial3 (see myUART.cpp)         */
 /* -------------------------------------------------------------------------- */
 /**
- * @brief Parse one byte (if available) from Serial1 using a fixed protocol:
+ * @brief Parse one byte (if available) from Serial3 using a fixed protocol:
  *        - Header/Trailer/Length sets:
  *            1) Header AB BA, Trailer 55 56, DataLen=6
  *            2) Header CD DC, Trailer 57 58, DataLen=13

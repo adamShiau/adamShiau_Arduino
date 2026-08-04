@@ -427,10 +427,11 @@ void acq_ahrs (cmd_ctrl_t* rx, fog_parameter_t* fog_parameter)
                 gen_crc32(KVH_HEADER, out, TOTAL_PAYLOAD_LEN, crc);
 
                 // 6) 依序送出：Header + 新 payload(56B) + CRC(4B)
+                // [2026-08 HW change] 輸出埠由 Serial1 改為 Serial3（Serial1 硬體問題）
                 if(data_cnt >= DATA_DELAY_CNT) {
-                    Serial1.write(KVH_HEADER, sizeof(KVH_HEADER));
-                    Serial1.write(out, TOTAL_PAYLOAD_LEN);
-                    Serial1.write(crc, 4);
+                    Serial3.write(KVH_HEADER, sizeof(KVH_HEADER));
+                    Serial3.write(out, TOTAL_PAYLOAD_LEN);
+                    Serial3.write(crc, 4);
                 }
             }
         }

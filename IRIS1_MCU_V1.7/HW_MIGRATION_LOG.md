@@ -25,15 +25,14 @@
 ### 2.1 UART 設定 — `src/myUART.cpp` / `src/myUART.h`
 
 - 檔案註解已寫明「Minimal-change UART helpers for Arduino SAMD21 (e.g., Nano 33 IoT)」，看起來先前已經有一輪為了新板子（SAMD21 / Nano 33 IoT）做的搬移。
-- 目前的埠號配置（`myUART.cpp` / `myUART.h` 註解）：
+- **（已於 2026-08-04 更新，見第 3 節修改記錄）** 目前的埠號配置：
   | 名稱 | SERCOM | 用途 | 鮑率 | 腳位 |
   |---|---|---|---|---|
   | Serial（USB CDC） | - | Debug/PC | 230400 | - |
-  | Serial1 | SERCOM5 | PC（由 Arduino core 提供） | 115200 | - |
+  | Serial1 | SERCOM5 | ~~PC cmd RX/TX~~ 已停用（硬體問題），僅保留初始化 | 230400 | - |
   | Serial2 | SERCOM2 | 待確認 | 115200 | TX=24, RX=25 |
-  | Serial3 | SERCOM1 | 待確認 | 115200 | TX=8, RX=13 |
+  | Serial3 | SERCOM1 | **PC / RS422 cmd（原 Serial1，因硬體問題搬移過來）** | 230400 | TX=8, RX=13 |
   | Serial4 | SERCOM3 | **FPGA** | 115200 | TX=9, RX=10 (ALT) |
-- 〔待確認〕新硬體的 UART 改變，是否就是指這份腳位/SERCOM 對應表？還是鮑率、協定格式（header/trailer）也有變？
 
 ### 2.2 從 FPGA 讀取資料 — `src/acq_imu.cpp`、`src/acq_ahrs.cpp`、`src/common.cpp`
 
@@ -64,7 +63,7 @@
 
 | 日期 | 檔案 / 位置 | 修改內容 | 原因（新硬體差異） | 狀態 |
 |---|---|---|---|---|
-| | | | | |
+| 2026-08-04 | `src/myUART.cpp`, `src/myUART.h`, `src/acq_imu.cpp`, `src/acq_ahrs.cpp`, `src/common.cpp` | 原本 Serial1（SERCOM5）用來接收 PC/RS422 cmd，且同時被 `acq_imu.cpp`/`acq_ahrs.cpp`/`common.cpp` 拿來 `write()` 送出感測器輸出資料（RX+TX 都在 Serial1）。改為整組搬到 Serial3（SERCOM1）：<br>1) `readDataDynamic()` 內部改讀 `Serial3` 而非 `Serial1`（函式名稱不變，`.ino` 端呼叫不用改）<br>2) `Serial3.begin()` 鮑率由 115200 改成 230400（沿用原 Serial1 實際鮑率）<br>3) `acq_imu.cpp`/`acq_ahrs.cpp` 送感測器資料、`common.cpp` 的 RS422 輸出（`recv_and_store()` 內）全部 `Serial1.write` 改成 `Serial3.write`<br>4) `Serial1.begin(230400)` 保留（避免影響其他初始化），但已無 RX/TX 用途 | Serial1（SERCOM5）硬體問題，RS422 cmd 收發全部改走 Serial3 | 程式碼已修改完成，**尚未實機驗證**（待燒錄到新硬體測試 cmd 收發是否正常） |
 
 ## 4. Bug 追蹤
 
@@ -74,7 +73,9 @@
 
 ## 5. 待確認事項（Open Questions）
 
-- [ ] UART 改變的具體內容（腳位？鮑率？協定？）
+- [x] ~~UART 改變的具體內容~~ → 2026-08-04 已確認：Serial1 RS422 cmd（RX+TX）搬到 Serial3，鮑率 230400（見第 3 節）
+- [ ] Serial3 原本（改動前）是否真的完全沒被其他功能使用？（目前程式碼掃描沒看到，但請你留意板子上是否還有別的東西接在 SERCOM1/pin 8,13 上）
+- [ ] 實機驗證：燒錄後確認 Serial3 上的 cmd 收發（PC 端也要同步改接線 / 改成連到 Serial3 對應的腳位）
 - [ ] FPGA payload 新格式的完整定義（欄位順序、新增/刪除欄位、資料型態）
 - [ ] 是否有新硬體的 datasheet / pinout 文件可參考
 

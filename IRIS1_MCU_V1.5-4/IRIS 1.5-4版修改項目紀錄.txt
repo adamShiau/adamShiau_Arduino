@@ -1,0 +1,69 @@
+修改日期: 2026/08/04
+進行人員:
+
+
+基礎版本修改資訊:
+原始版本資料夾名稱: IRIS1_MCU_V1.5-3
+修改版本資料夾名稱: IRIS1_MCU_V1.5-4
+1) Arduino程式檔名修改，修改為IRIS1_MCU_V1.5-4.ino
+2) IRIS_MCU.h 修改
+#define MCU_VERSION "IRIS1_MCU_V1.5-4"
+
+
+1. 對外 RS422 通訊埠由 Serial1 改為 Serial3
+原因：新硬體 PCB 走線錯誤，對外收發 RS422（PC 指令接收 + 資料/回應輸出）無法沿用 Serial1 (SERCOM5) 接腳，暫時跳線改接到 Serial3 (SERCOM1)。
+修改內容：
+(1) myUART.cpp / myUART.h：
+    - myUART_init() 內，Serial1.begin(230400) 註解停用，改為 Serial3.begin(230400)（原本 Serial3 只有 115200，因為是沿用 Serial1 的通訊速率，故一併調整）。
+    - readDataDynamic()（PC 指令固定格式解析）改為讀取 Serial3.available()/Serial3.read()，不再讀 Serial1。
+    - 相關註解同步更新，標註原本走 Serial1、2026/08/04 因硬體走線錯誤改接 Serial3。
+(2) acq_imu.cpp、acq_ahrs.cpp：感測器資料輸出（KVH_HEADER + payload + CRC）的 Serial1.write(...) 全部改為 Serial3.write(...)。
+(3) common.cpp：
+    - RS422 輸出（約 1952-1954 行附近）的 Serial1.write(...) 改為 Serial3.write(...)。
+    - dump_fog_param() / dump_misalignment_param()（目前為註解停用的死碼）內轉送 JSON 給 PC 的 Serial1.write(...) 也一併改為 Serial3.write(...)，以保持一致，若未來取消註解可直接使用。
+備註：Serial1 物件本身（SERCOM5 宣告與 ISR handler）保留未刪除，僅不再呼叫 begin()／不再收發資料，避免影響 Arduino core 既有宣告。
+
+發現的bug：
+common.cpp 編譯錯誤 'Serial3' was not declared in this scope（recv_and_store()，約1953行）。
+原因：Serial1 是 Arduino core (variant.h) 內建宣告的物件，任何檔案不需額外 include 就看得到；
+但 Serial2/Serial3/Serial4 是專案自行在 myUART.cpp 建構、myUART.h 內 extern 宣告的物件，
+common.cpp 本身沒有 include "myUART.h"，先前只在檔案內手動 forward declare 了
+`extern Uart Serial4;`（因為原本就有用到 Serial4），這次改用 Serial3 卻沒有一併宣告，所以編譯不到。
+修正：在 common.cpp 同一處補上 `extern Uart Serial3;`（緊接在原本的 Serial4 宣告旁）。
+
+提醒：2026/08/04 曾發生兩次修改被覆蓋回舊版的狀況：
+(a) VSCode 開著舊分頁未關閉，儲存時把上述 1. 的修改覆蓋回 Serial1 舊版（common.cpp 修改時間 16:37:22 對得上）。
+(b) 這個專案資料夾是 git repo，Adam 平常開著 GitHub Desktop 管理；在 (a) 修好、重新套用
+    Serial1→Serial3 與 Serial4→Serial2 兩項修改之後，檔案又再次被還原回舊版（修改時間、
+    大小都對得上寫入當下，但內容是舊的）——確認是 GitHub Desktop 對這些檔案按了
+    Discard changes / Revert，把 working directory 還原回上一次 git commit 版本，蓋掉了
+    尚未 commit 的修改。
+=> 之後編輯這幾個檔案時：
+   1) 若同時有其他編輯器（VSCode/Arduino IDE）開著，記得先關閉分頁或確認分頁內容跟硬碟一致。
+   2) 若用 GitHub Desktop 管理這個 repo，寫入修改後、commit 之前，不要對這些檔案按
+      Discard changes / Revert；驗證編譯沒問題後應盡快 commit，避免修改再次被意外還原。
+
+
+2. 與 FPGA 通訊埠由 Serial4 改為 Serial2
+原因：硬體變更，MCU 與 FPGA 的通訊介面從 Serial4 (SERCOM3) 移到 Serial2 (SERCOM2)。
+修改內容：
+(1) myUART.cpp / myUART.h：
+    - myUART_init() 內，Serial4.begin(115200) 註解停用；Serial2.begin(115200) 沿用原本波特率不變
+      （FPGA 端速率沒變，只是接到不同 SERCOM，故 Serial2 baud 不需調整）。
+    - readDataStream()、readDataBytewise()（原本內部寫死讀取 Serial4）改為讀取 Serial2。
+    - 相關註解同步更新，標註原本走 Serial4、2026/08/04 因硬體變更改接 Serial2。
+    - Serial4 物件宣告與 SERCOM3_Handler ISR 保留未刪除，僅不再呼叫 begin()／不再收發資料。
+(2) common.cpp：
+    - 開頭補上 `extern Uart Serial2;` 前向宣告（跟 Serial3 一起，緊接在 Serial4 宣告旁）。
+    - 所有 `sendCmd(Serial4, ...)` 呼叫（約 65 處，涵蓋各參數寫入指令、CMD_DUMP_FOG/CMD_DUMP_MIS、
+      reset_FPGA_timer()、set_data_rate() 等）全部改為 `sendCmd(Serial2, ...)`。
+    - `read_dump_packet()` 內的 `Serial4` 參數改為 `Serial2`（recv_and_store() 呼叫處）。
+    - dump_fog_param() / dump_misalignment_param()（註解停用的死碼）內 `read_json_object(Serial4,...)`
+      與相關註解、DEBUG_PRINT 文字，一併改為 Serial2，保持一致。
+(3) acq_imu.cpp、acq_ahrs.cpp：啟動/停止 IMU、AHRS 擷取時送給 FPGA 的 `sendCmd(Serial4, ...)`
+    （各 2 處）改為 `sendCmd(Serial2, ...)`。
+備註：sendCmd()／read_json_object()／read_dump_packet() 本身是通用函式（參數為 Print&/Stream&），
+不需要修改函式本體，只需把呼叫端傳入的物件從 Serial4 換成 Serial2 即可；
+只有 readDataStream()／readDataBytewise() 是內部寫死指定 Serial4，需要直接修改 myUART.cpp 內部。
+
+
