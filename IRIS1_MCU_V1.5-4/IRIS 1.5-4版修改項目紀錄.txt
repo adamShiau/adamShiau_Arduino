@@ -65,5 +65,8 @@ common.cpp 本身沒有 include "myUART.h"，先前只在檔案內手動 forward
 備註：sendCmd()／read_json_object()／read_dump_packet() 本身是通用函式（參數為 Print&/Stream&），
 不需要修改函式本體，只需把呼叫端傳入的物件從 Serial4 換成 Serial2 即可；
 只有 readDataStream()／readDataBytewise() 是內部寫死指定 Serial4，需要直接修改 myUART.cpp 內部。
+驗證：2026/08/04 實測 MCU→FPGA 的 Tx 訊號，確認 sendCmd() 送出的指令有正確依照 Serial2 發出
+（對應各 CMD_* 指令）。MCU←FPGA 的 Rx（readDataStream 感測資料流、readDataBytewise dump
+封包）尚待後續實測確認。
 
 
