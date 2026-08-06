@@ -1495,7 +1495,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       // Serial.print(fog_parameter->paramY[17].data.float_val,4); Serial.print(","); 
       // Serial.print(fog_parameter->paramY[18].data.float_val,4); Serial.println();
       // Serial.print(fog_parameter->paramZ[17].data.float_val,4); Serial.print(","); 
-      // Serial.print(fog_parameter->paramZ[18].data.float_val,4); Serial.println();
+      // Serial.print(fog_parameter->paramZ[18].data.float_val,4); Serial.println("\n");
 
   // === Accel scale factor（一次線性；用 adxl 溫度）===
   float sf_x_acc = sf_temp_comp_1st(tacc,
@@ -1515,7 +1515,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
       // Serial.print(fog_parameter->paramY[31].data.float_val); Serial.print(","); 
       // Serial.print(fog_parameter->paramY[32].data.float_val); Serial.println();
       // Serial.print(fog_parameter->paramZ[31].data.float_val); Serial.print(","); 
-      // Serial.print(fog_parameter->paramZ[32].data.float_val); Serial.println();
+      // Serial.print(fog_parameter->paramZ[32].data.float_val); Serial.println("\n");
 
   // === Gyro bias（三區段一次線性）===
   float bx_gyro = bias_temp_comp_1st_3t(
@@ -1594,14 +1594,23 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float gx_comp = raw->fog.fogx.step.float_val * sf_x_gyro - bx_gyro;
   float gy_comp = raw->fog.fogy.step.float_val * sf_y_gyro - by_gyro;
   float gz_comp = raw->fog.fogz.step.float_val * sf_z_gyro - bz_gyro;
+
+  // Serial.println("\ngyro_raw:");
   // Serial.print(raw->fog.fogx.step.float_val); Serial.print(","); 
   // Serial.print(raw->fog.fogy.step.float_val); Serial.print(","); 
-  // Serial.print(raw->fog.fogz.step.float_val); Serial.println();Serial.println();
+  // Serial.print(raw->fog.fogz.step.float_val); Serial.println();
 
   // === Accel 溫補（scale factor & bias）===
   float ax_comp = raw->adxl357.ax.float_val * sf_x_acc - bx_acc;
   float ay_comp = raw->adxl357.ay.float_val * sf_y_acc - by_acc;
   float az_comp = raw->adxl357.az.float_val * sf_z_acc - bz_acc;
+  // Serial.print(raw->adxl357.ax.float_val); Serial.print(","); 
+  // Serial.print(raw->adxl357.ay.float_val); Serial.print(","); 
+  // Serial.print(raw->adxl357.az.float_val); Serial.println("\n");
+
+  // Serial.print(sf_x_acc); Serial.print(","); Serial.print(bx_acc); Serial.print("\n"); 
+  // Serial.print(sf_y_acc); Serial.print(","); Serial.print(by_acc); Serial.print("\n");
+  // Serial.print(sf_z_acc); Serial.print(","); Serial.print(bz_acc); Serial.println("\n");
 
   // === Gyro misalignment（misalignment[12..23]）===
   float cgx = fog_parameter->misalignment[12].data.float_val;
@@ -1625,6 +1634,13 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float gx_cal = g11*gx_comp + g12*gy_comp + g13*gz_comp + cgx;
   float gy_cal = g21*gx_comp + g22*gy_comp + g23*gz_comp + cgy;
   float gz_cal = g31*gx_comp + g32*gy_comp + g33*gz_comp + cgz;
+  // Serial.print(g31); Serial.print(","); 
+  // Serial.print(g32); Serial.print(","); 
+  // Serial.print(g33); Serial.print(","); 
+  // Serial.print(cgz); Serial.print("\n"); 
+  // Serial.print(gx_cal); Serial.print(","); 
+  // Serial.print(gy_cal); Serial.print(","); 
+  // Serial.print(gz_cal); Serial.println();  
 
   // === Gyro 訊號飽和 (Saturation)  ===
   float limit_x = fog_parameter->paramX[12].data.float_val;
@@ -1686,11 +1702,18 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float ax_cal = a11*ax_comp + a12*ay_comp + a13*az_comp + cax;
   float ay_cal = a21*ax_comp + a22*ay_comp + a23*az_comp + cay;
   float az_cal = a31*ax_comp + a32*ay_comp + a33*az_comp + caz;
+  // Serial.println("\nacc_cal:");
+  // Serial.print(ax_cal); Serial.print(","); 
+  // Serial.print(ay_cal); Serial.print(","); 
+  // Serial.print(az_cal); Serial.println();
 
   // === 輸出到 cali 結構 ===
   cali->fog.fogx.step.float_val = gx_cal;
   cali->fog.fogy.step.float_val = gy_cal;
   cali->fog.fogz.step.float_val = gz_cal;
+  // Serial.print(cali->fog.fogx.step.float_val); Serial.print(","); 
+  // Serial.print(cali->fog.fogy.step.float_val); Serial.print(","); 
+  // Serial.print(cali->fog.fogz.step.float_val); Serial.println();
 
   cali->adxl357.ax.float_val = ax_cal;
   cali->adxl357.ay.float_val = ay_cal;
