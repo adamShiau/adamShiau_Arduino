@@ -1,6 +1,8 @@
 修改日期: 2026/11/09
 
 1. copy 自 IRIS1_MCU_V1.5-4
+2. IRIS_MCU.h 修改
+#define MCU_VERSION "IRIS1_MCU_V1.5-5"
 
 
 

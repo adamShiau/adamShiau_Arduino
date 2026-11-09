@@ -1,7 +1,7 @@
 #ifndef IRIS_MCU_H
 #define IRIS_MCU_H
 
-#define MCU_VERSION "IRIS1_MCU_V1.5-4"
+#define MCU_VERSION "IRIS1_MCU_V1.5-5"
 
 #include "myUART.h"
 #include "common.h"
