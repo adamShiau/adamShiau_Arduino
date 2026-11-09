@@ -1476,6 +1476,7 @@ void sensor_data_cali(const my_sensor_t* raw, my_sensor_t* cali, fog_parameter_t
   float ty   = raw->temp.tempy.float_val;
   float tz   = raw->temp.tempz.float_val;
   float tacc = raw->adxl357.temp.float_val;
+  Serial.print("tx: "); Serial.println(tx);
 
   // === Gyro scale factor（一次線性）===
   float sf_x_gyro = sf_temp_comp_1st(tx,
